@@ -1,15 +1,13 @@
+import net.mamoe.mirai.console.command.CommandManager.INSTANCE.commandPrefix
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.register
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.unregister
-import net.mamoe.mirai.console.plugin.PluginManager.INSTANCE.load
 import net.mamoe.mirai.console.plugin.jvm.JvmPluginDescription
 import net.mamoe.mirai.console.plugin.jvm.KotlinPlugin
+import net.mamoe.mirai.contact.Contact
 import net.mamoe.mirai.contact.Group
-import net.mamoe.mirai.contact.isBotMuted
-import net.mamoe.mirai.event.events.GroupMessageEvent
-import net.mamoe.mirai.event.events.MessageEvent
+import net.mamoe.mirai.contact.User
 import net.mamoe.mirai.event.globalEventChannel
 import net.mamoe.mirai.event.subscribeMessages
-import net.mamoe.mirai.message.MessageReceipt
 import net.mamoe.mirai.message.data.*
 import net.mamoe.mirai.utils.info
 
@@ -24,12 +22,16 @@ object JCompilerCollection : KotlinPlugin(
     }
 ) {
     const val CMD_PREFIX = "run"
-    private const val MSG_MAX_LENGTH = 550
+    private const val MSG_MAX_LENGTH = 1000
 
     override fun onEnable() {
         logger.info { "Plugin loaded" }
         JccCommand.register()
         JccPluginData.reload()
+
+        PastebinCommand.register()
+        RunCommand.register()
+        PastebinData.reload()
 
         globalEventChannel()
             .parentScope(this)
@@ -45,7 +47,8 @@ object JCompilerCollection : KotlinPlugin(
                     val index = msg.indexOfFirst(Char::isWhitespace)
                     val language = if (index >= 0) msg.substring(0, index) else msg
                     if (!GlotAPI.checkSupport(language))
-                        return@reply "不支持这种编程语言\n/jcc list #列出所有支持的编程语言"
+                        return@reply "不支持这种编程语言\n${commandPrefix}jcc list 列出所有支持的编程语言\n" +
+                                "如果要执行保存好的pastebin代码，请在指令前添加 $commandPrefix"
 
                     try {
                         // 检查命令的引用
@@ -87,40 +90,8 @@ object JCompilerCollection : KotlinPlugin(
 
                         // subject.sendMessage("正在执行，请稍等...")
                         logger.info("请求执行代码\n$code")
-                        val result = GlotAPI.runCode(language, code, input)
-                        val builder = MessageChainBuilder()
-                        var c = 0
-                        if (result.stdout.isNotEmpty()) c++
-                        if (result.stderr.isNotEmpty()) c++
-                        if (result.error.isNotEmpty()) c++
-                        val title = c >= 2
-                        if (subject is Group) {
-                            builder.add(At(sender))
-                            builder.add("\n")
-                        }
+                        val builder = runCode(subject, sender, language, code, input)
 
-                        if (c == 0) {
-                            builder.add("没有任何结果呢~")
-                        } else {
-                            val sb = StringBuilder()
-                            if (result.error.isNotEmpty()) {
-                                sb.appendLine("error:")
-                                sb.append(result.error)
-                            }
-                            if (result.stdout.isNotEmpty()) {
-                                if (title) sb.appendLine("\nstdout:")
-                                sb.append(result.stdout)
-                            }
-                            if (result.stderr.isNotEmpty()) {
-                                if (title) sb.appendLine("\nstderr:")
-                                sb.append(result.stderr)
-                            }
-                            if (sb.length > MSG_MAX_LENGTH) {
-                                sb.deleteRange(MSG_MAX_LENGTH, sb.length)
-                                sb.append("\n消息内容过长，已截断")
-                            }
-                            builder.append(sb.toString())
-                        }
                         return@reply builder.build()
                     } catch (e: Exception) {
                         logger.warning(e)
@@ -130,7 +101,47 @@ object JCompilerCollection : KotlinPlugin(
         }
     }
 
+    fun runCode(subject: Contact?, sender: User?, language: String, code: String, input: String?): MessageChainBuilder {
+        val result = GlotAPI.runCode(language, code, input)
+        val builder = MessageChainBuilder()
+        var c = 0
+        if (result.stdout.isNotEmpty()) c++
+        if (result.stderr.isNotEmpty()) c++
+        if (result.error.isNotEmpty()) c++
+        val title = c >= 2
+        if (subject is Group) {
+            builder.add(At(sender!!))
+            builder.add("\n")
+        }
+
+        if (c == 0) {
+            builder.add("没有任何结果呢~")
+        } else {
+            val sb = StringBuilder()
+            if (result.error.isNotEmpty()) {
+                sb.appendLine("error:")
+                sb.append(result.error)
+            }
+            if (result.stdout.isNotEmpty()) {
+                if (title) sb.appendLine("\nstdout:")
+                sb.append(result.stdout)
+            }
+            if (result.stderr.isNotEmpty()) {
+                if (title) sb.appendLine("\nstderr:")
+                sb.append(result.stderr)
+            }
+            if (sb.length > MSG_MAX_LENGTH) {
+                sb.deleteRange(MSG_MAX_LENGTH, sb.length)
+                sb.append("\n消息内容过长，已截断")
+            }
+            builder.append(sb.toString())
+        }
+        return builder
+    }
+
     override fun onDisable() {
         JccCommand.unregister()
+        PastebinCommand.unregister()
+        RunCommand.unregister()
     }
 }

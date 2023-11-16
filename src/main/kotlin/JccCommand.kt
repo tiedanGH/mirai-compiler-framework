@@ -1,4 +1,5 @@
 import JCompilerCollection.CMD_PREFIX
+import net.mamoe.mirai.console.command.CommandManager.INSTANCE.commandPrefix
 import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.console.command.CompositeCommand
 
@@ -35,7 +36,7 @@ object JccCommand : CompositeCommand(
     @Description("获取指定语言的模板")
     suspend fun CommandSender.template(language: String) {
         if (!GlotAPI.checkSupport(language)) {
-            sendMessage("不支持该语言，请使用/jcc list列出所有支持的编程语言")
+            sendMessage("不支持该语言，请使用${commandPrefix}jcc list列出所有支持的编程语言")
             return
         }
         val file = GlotAPI.getTemplateFile(language)
