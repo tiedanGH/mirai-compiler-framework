@@ -1,3 +1,4 @@
+import JCompilerCollection.logger
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 
@@ -168,6 +169,19 @@ object GlotAPI {
         return Json.decodeFromString(response) ?: throw Exception("未获取到任何数据")
     }
 
+    /**
+     * # 编译指令
+     * 在编译时根据语言选择合适的编译指令，满足使用需求
+     */
+    private fun useCommand(language: String): String? {
+        val command = when (language) {
+            "c"-> "clang -O2 main.c && ./a.out"
+            "cpp"-> "clang++ -std=c++17 -O2 main.cpp && ./a.out"
+            else-> null
+        }
+        if (command?.isNotEmpty() == true) logger.info("Run Command: $command")
+        return command
+    }
 
     /**
      * # 运行代码
@@ -179,5 +193,5 @@ object GlotAPI {
      * 导致程序无法在限定时间内返回，将会报告超时异常
      */
     fun runCode(language: String, code: String, stdin: String? = null): RunResult =
-        runCode(getSupport(language), RunCodeRequest(stdin, null, listOf(CodeFile(getTemplateFile(language).name, code))))
+        runCode(getSupport(language), RunCodeRequest(stdin, useCommand(language), listOf(CodeFile(getTemplateFile(language).name, code))))
 }
