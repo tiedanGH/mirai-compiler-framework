@@ -34,7 +34,7 @@ object GlotAPI {
                               val command: String? = null,
                               val files: List<CodeFile>)
     @Serializable
-    data class RunResult(val stdout: String, val stderr: String, val error: String)
+    data class RunResult(val stdout: String = "", val stderr: String = "", val error: String = "", val message: String = "")
 
     // val fileExtensions: Map<String, String> = mapOf("assembly" to "asm", "ats" to "dats", "bash" to "sh", "c" to "c", "clojure" to "clj", "cobol" to "cob", "coffeescript" to "coffee", "cpp" to "cpp", "crystal" to "cr", "csharp" to "cs", "d" to "d", "elixir" to "ex", "elm" to "elm", "erlang" to "erl", "fsharp" to "fs", "go" to "go", "groovy" to "groovy", "haskell" to "hs", "idris" to "idr", "java" to "java", "javascript" to "js", "julia" to "jl", "kotlin" to "kt", "lua" to "lua", "mercury" to "m", "nim" to "nim", "nix" to "nix", "ocaml" to "ml", "perl" to "pl", "php" to "php", "python" to "py", "raku" to "raku", "ruby" to "rb", "rust" to "rs", "scala" to "scala", "swift" to "swift", "typescript" to "ts", "plaintext" to "txt", )
 

@@ -11,7 +11,8 @@ object RunCommand : RawCommand(
     owner = JCompilerCollection,
     primaryName = "run",
     secondaryNames = arrayOf("运行"),
-    description = "运行pastebin中的代码"
+    description = "运行pastebin中的代码",
+    usage = "${commandPrefix}run <名称> [输入]"
 ){
     /**
      * 从保存的pastebin链接中直接运行
@@ -31,11 +32,8 @@ object RunCommand : RawCommand(
             }
             val language = PastebinData.pastebin[name]?.get("language").toString()
             val url = PastebinData.pastebin[name]?.get("pastebinUrl").toString()
-            var input = ""
-            args.forEachIndexed { index, item ->
-                if (index == 1) { input += item.content }
-                if (index > 1) { input += " ${item.content}" }
-            }
+            val input = args.drop(1).joinToString(separator = " ")
+
             logger.info("从 $url 中获取代码")
             val code: String = UbuntuPastebinHelper.get(url)
             if (code.isBlank()) {

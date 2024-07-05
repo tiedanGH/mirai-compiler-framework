@@ -104,6 +104,11 @@ object JCompilerCollection : KotlinPlugin(
     fun runCode(subject: Contact?, sender: User?, language: String, code: String, input: String?): MessageChainBuilder {
         val result = GlotAPI.runCode(language, code, input)
         val builder = MessageChainBuilder()
+        if (result.message.isNotEmpty()) {
+            builder.append("执行失败\n收到来自glot接口的消息：")
+            builder.append(result.message)
+            return builder
+        }
         var c = 0
         if (result.stdout.isNotEmpty()) c++
         if (result.stderr.isNotEmpty()) c++
