@@ -35,7 +35,7 @@ object UbuntuPastebinHelper {
     }
 
     fun checkUrl(url: String): Boolean {
-        return url.startsWith("https://pastebin.ubuntu.com/p/") && url.endsWith('/') && url.length < 45
+        return url.startsWith("https://pastebin.ubuntu.com/p/") && url.endsWith('/') && url.length < 45 || url.startsWith("https://pastebin.com/raw/")
     }
 
     /**
@@ -47,6 +47,9 @@ object UbuntuPastebinHelper {
         if (!checkUrl(url))
             throw Exception("非法的url")
         val document = HttpUtil.getDocument(url)
+        if (url.startsWith("https://pastebin.com/raw/")) {
+            return document.wholeText()
+        }
         return HttpUtil.documentSelect(document, "#hidden-content").text()
     }
 

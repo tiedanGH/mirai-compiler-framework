@@ -1,3 +1,7 @@
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.commandPrefix
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.register
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.unregister
@@ -22,15 +26,19 @@ object JCompilerCollection : KotlinPlugin(
     }
 ) {
     const val CMD_PREFIX = "run"
-    private const val MSG_MAX_LENGTH = 1000
+    private const val MSG_TRANSFER_LENGTH = 550
+    private const val MSG_MAX_LENGTH = 800
+
+    var THREAD = 0
 
     override fun onEnable() {
         logger.info { "Plugin loaded" }
         JccCommand.register()
         JccPluginData.reload()
 
-        PastebinCommand.register()
-        RunCommand.register()
+        CommandPastebin.register()
+        CommandRun.register()
+        PastebinConfig.reload()
         PastebinData.reload()
 
         globalEventChannel()
@@ -49,6 +57,15 @@ object JCompilerCollection : KotlinPlugin(
                     if (!GlotAPI.checkSupport(language))
                         return@reply "不支持这种编程语言\n${commandPrefix}jcc list 列出所有支持的编程语言\n" +
                                 "如果要执行保存好的pastebin代码，请在指令前添加 $commandPrefix"
+                    if (THREAD >= 4) {
+                        val builder = MessageChainBuilder()
+                        if (subject is Group) {
+                            builder.add(At(sender))
+                            builder.add("\n")
+                        }
+                        builder.append("当前有 $THREAD 个进程正在执行或等待冷却，请等待几秒后再次尝试")
+                        return@reply builder.build()
+                    }
 
                     try {
                         // 检查命令的引用
@@ -88,11 +105,22 @@ object JCompilerCollection : KotlinPlugin(
                             }
                         }
 
+                        CoroutineScope(Dispatchers.IO).launch {
+                            THREAD++; delay(2000); THREAD--
+                        }
+
                         // subject.sendMessage("正在执行，请稍等...")
                         logger.info("请求执行代码\n$code")
                         val builder = runCode(subject, sender, language, code, input)
 
-                        return@reply builder.build()
+                        CoroutineScope(Dispatchers.IO).launch {
+                            THREAD++; delay(5000); THREAD--
+                        }
+                        when (builder) {
+                            is MessageChainBuilder -> return@reply builder.build()
+                            is ForwardMessage-> return@reply builder
+                            else -> return@reply "[处理消息失败] 不识别的消息类型"
+                        }
                     } catch (e: Exception) {
                         logger.warning(e)
                         return@reply "执行失败\n原因：${e.message}"
@@ -101,7 +129,7 @@ object JCompilerCollection : KotlinPlugin(
         }
     }
 
-    fun runCode(subject: Contact?, sender: User?, language: String, code: String, input: String?): MessageChainBuilder {
+    fun runCode(subject: Contact?, sender: User?, language: String, code: String, input: String?): Any {
         val result = GlotAPI.runCode(language, code, input)
         val builder = MessageChainBuilder()
         if (result.message.isNotEmpty()) {
@@ -135,6 +163,48 @@ object JCompilerCollection : KotlinPlugin(
                 if (title) sb.appendLine("\nstderr:")
                 sb.append(result.stderr)
             }
+            // 输出内容过长，改为转发消息
+            if (sb.length > MSG_TRANSFER_LENGTH && PastebinConfig.enable_ForwardMessage) {
+                var currentCount = 0
+                val resultString = StringBuilder()
+                var tooLong = false
+                for (char in sb) {
+                    val charCount = if (char.code in 0x4E00..0x9FFF) 3 else 1
+                    if (currentCount + charCount <= 14000) {
+                        resultString.append(char)
+                        currentCount += charCount
+                    } else {
+                        tooLong = true
+                        break
+                    }
+                }
+                val forward: ForwardMessage = buildForwardMessage(subject!!) {
+                    displayStrategy = object : ForwardMessage.DisplayStrategy {
+                        override fun generateTitle(forward: RawForwardMessage): String = "输出过长，请查看聊天记录"
+                        override fun generateBrief(forward: RawForwardMessage): String = "[输出内容]"
+                        override fun generatePreview(forward: RawForwardMessage): List<String> =
+                            if (tooLong) {
+                                mutableListOf(
+                                    "提示: 输出内容超过最大上限15000字符（5000中文字符），从14000开始已被截断",
+                                    "输出内容: ${sb.substring(0, 30)}..."
+                                )
+                            } else {
+                                mutableListOf("输出内容: ${sb.substring(0, 50)}...")
+                            }
+
+                        override fun generateSummary(forward: RawForwardMessage): String =
+                            "输出长度总计 ${sb.length} 字符"
+                    }
+                    if (tooLong) {
+                        subject.bot named "提示" says "输出内容超过最大上限15000字符（5000中文字符），从14000开始已被截断"
+                        subject.bot named "输出内容" says resultString.toString()
+                    } else {
+                        subject.bot named "输出内容" says sb.toString()
+                    }
+                }
+                return forward
+            }
+            // 非转发消息放刷屏截断
             if (sb.length > MSG_MAX_LENGTH) {
                 sb.deleteRange(MSG_MAX_LENGTH, sb.length)
                 sb.append("\n消息内容过长，已截断")
@@ -146,7 +216,7 @@ object JCompilerCollection : KotlinPlugin(
 
     override fun onDisable() {
         JccCommand.unregister()
-        PastebinCommand.unregister()
-        RunCommand.unregister()
+        CommandPastebin.unregister()
+        CommandRun.unregister()
     }
 }
