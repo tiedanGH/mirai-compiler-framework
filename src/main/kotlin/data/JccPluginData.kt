@@ -1,3 +1,6 @@
+package data
+
+import utils.GlotAPI
 import net.mamoe.mirai.console.data.AutoSavePluginData
 import net.mamoe.mirai.console.data.value
 

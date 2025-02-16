@@ -2,6 +2,7 @@ import JCompilerCollection.CMD_PREFIX
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.commandPrefix
 import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.console.command.CompositeCommand
+import utils.GlotAPI
 
 object JccCommand : CompositeCommand(
     JCompilerCollection, "jcc",
@@ -26,8 +27,10 @@ object JccCommand : CompositeCommand(
             "$CMD_PREFIX <language> <code>\n" +
             "$CMD_PREFIX <language> <pastebinUrl> [stdin]\n" +
             "引用消息: $CMD_PREFIX <language> [stdin]\n" +
-            "仓库地址：https://github.com/jie65535/mirai-console-jcc-plugin\n" +
+            "仓库地址：https://github.com/tiedanGH/mirai-console-jcc-plugin\n" +
             "其它指令：\n" +
+            "${commandPrefix}pb help   使用pastebin保存代码链接\n" +
+            "${commandPrefix}run <name> [stdin]   运行保存的代码链接\n" +
             usage
         )
     }

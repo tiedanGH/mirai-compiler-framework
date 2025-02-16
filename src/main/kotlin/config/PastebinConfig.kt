@@ -1,10 +1,12 @@
+package config
+
 import net.mamoe.mirai.console.data.*
 
 @PublishedApi
 internal object PastebinConfig : AutoSavePluginConfig("PastebinConfig") {
 
     @ValueDescription("pastebin指令权限")
-    val admins: MutableList<Long> by value(mutableListOf(10000L, 2295824927))
+    val admins: MutableList<Long> by value(mutableListOf(10000L))
 
     @ValueDescription("是否启用转发消息（消息过长时收入转发消息，部分框架可能不支持）")
     var enable_ForwardMessage: Boolean by value(true)

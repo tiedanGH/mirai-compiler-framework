@@ -1,6 +1,11 @@
+package utils
+
 import JCompilerCollection.logger
+import data.JccPluginData
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
+import net.mamoe.mirai.console.util.ConsoleExperimentalApi
+import java.io.File
 
 /**
  * # glot.io api 封装
@@ -23,6 +28,9 @@ object GlotAPI {
     private const val URL_LIST_LANGUAGES = URL_API + "run"
     // 运行代码需要api token，这是的我账号申请的，可以在[https://glot.io/auth/page/simple/register]注册帐号
     private const val API_TOKEN = "074ef4a7-7a94-47f2-9891-85511ef1fb52"
+
+    @OptIn(ConsoleExperimentalApi::class)
+    val utilsFolder = "./data/${JCompilerCollection.dataHolderName}/utils"
 
     @Serializable
     data class Language(val name: String, val url: String)
@@ -183,6 +191,17 @@ object GlotAPI {
         return command
     }
 
+    private fun getFiles(language: String, code: String, file: String?): List<CodeFile> {
+        val mainFile = CodeFile(getTemplateFile(language).name, code)
+        return if (file != null) {
+            val utilFile = File("${MarkdownImageProcessor.folder}/utils/$file").readText()
+            logger.info("Upload Extra File: $file")
+            listOf(mainFile, CodeFile(file, utilFile))
+        } else {
+            listOf(mainFile)
+        }
+    }
+
     /**
      * # 运行代码
      * 更简单的运行代码重载
@@ -192,6 +211,6 @@ object GlotAPI {
      * @return 返回运行结果 若执行了死循环或其它阻塞代码，
      * 导致程序无法在限定时间内返回，将会报告超时异常
      */
-    fun runCode(language: String, code: String, stdin: String? = null): RunResult =
-        runCode(getSupport(language), RunCodeRequest(stdin, useCommand(language), listOf(CodeFile(getTemplateFile(language).name, code))))
+    fun runCode(language: String, code: String, stdin: String? = null, file: String? = null): RunResult =
+        runCode(getSupport(language), RunCodeRequest(stdin, useCommand(language), getFiles(language, code, file)))
 }

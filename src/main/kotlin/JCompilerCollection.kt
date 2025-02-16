@@ -1,3 +1,6 @@
+import config.MailConfig
+import config.PastebinConfig
+import data.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -14,19 +17,24 @@ import net.mamoe.mirai.event.globalEventChannel
 import net.mamoe.mirai.event.subscribeMessages
 import net.mamoe.mirai.message.data.*
 import net.mamoe.mirai.utils.info
+import utils.ForwardMessageGenerator.stringToForwardMessage
+import utils.GlotAPI
+import utils.UbuntuPastebinHelper
+import utils.calculateNextClearDelay
+import utils.executeClearBlackList
 
 object JCompilerCollection : KotlinPlugin(
     JvmPluginDescription(
         id = "top.jie65535.mirai-console-jcc-plugin",
         name = "J Compiler Collection",
-        version = "1.1.0",
+        version = "1.1.0-pastebin",
     ) {
         author("jie65535")
         info("""在线编译器集合""")
     }
 ) {
     const val CMD_PREFIX = "run"
-    private const val MSG_TRANSFER_LENGTH = 550
+    const val MSG_TRANSFER_LENGTH = 550
     private const val MSG_MAX_LENGTH = 800
 
     var THREAD = 0
@@ -39,7 +47,13 @@ object JCompilerCollection : KotlinPlugin(
         CommandPastebin.register()
         CommandRun.register()
         PastebinConfig.reload()
+        MailConfig.reload()
         PastebinData.reload()
+        BlackListData.reload()
+        PastebinStorage.reload()
+        CodeCache.reload()
+
+        startTimer()
 
         globalEventChannel()
             .parentScope(this)
@@ -47,6 +61,10 @@ object JCompilerCollection : KotlinPlugin(
                 content {
                     message.firstIsInstanceOrNull<PlainText>()?.content?.trimStart()?.startsWith(CMD_PREFIX) == true
                 } reply {
+                    if (BlackListData.BlackList.contains(sender.id)) {
+                        return@reply "${sender.id}已被拉黑，请求被拒绝"
+                    }
+
                     val msg = message.firstIsInstance<PlainText>().content.trimStart().removePrefix(CMD_PREFIX).trim()
                     if (msg.isBlank()) {
                         return@reply "请输入正确的命令！例如：\n$CMD_PREFIX python print(\"Hello world\")"
@@ -57,7 +75,7 @@ object JCompilerCollection : KotlinPlugin(
                     if (!GlotAPI.checkSupport(language))
                         return@reply "不支持这种编程语言\n${commandPrefix}jcc list 列出所有支持的编程语言\n" +
                                 "如果要执行保存好的pastebin代码，请在指令前添加 $commandPrefix"
-                    if (THREAD >= 4) {
+                    if (THREAD >= 3) {
                         val builder = MessageChainBuilder()
                         if (subject is Group) {
                             builder.add(At(sender))
@@ -68,6 +86,8 @@ object JCompilerCollection : KotlinPlugin(
                     }
 
                     try {
+                        THREAD++
+
                         // 检查命令的引用
                         val quote = message[QuoteReply]
                         var input: String? = null
@@ -105,32 +125,31 @@ object JCompilerCollection : KotlinPlugin(
                             }
                         }
 
-                        CoroutineScope(Dispatchers.IO).launch {
-                            THREAD++; delay(2000); THREAD--
-                        }
-
-                        // subject.sendMessage("正在执行，请稍等...")
                         logger.info("请求执行代码\n$code")
-                        val builder = runCode(subject, sender, language, code, input)
 
-                        CoroutineScope(Dispatchers.IO).launch {
-                            THREAD++; delay(5000); THREAD--
-                        }
-                        when (builder) {
+                        when (val builder = runCode(subject, sender, language, code, input)) {
                             is MessageChainBuilder -> return@reply builder.build()
                             is ForwardMessage-> return@reply builder
                             else -> return@reply "[处理消息失败] 不识别的消息类型"
                         }
                     } catch (e: Exception) {
-                        logger.warning(e)
+                        logger.warning("执行失败：${e::class.simpleName}(${e.message})")
                         return@reply "执行失败\n原因：${e.message}"
+                    } finally {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            delay(6000); THREAD--
+                        }
                     }
                 }
         }
     }
 
-    fun runCode(subject: Contact?, sender: User?, language: String, code: String, input: String?): Any {
-        val result = GlotAPI.runCode(language, code, input)
+    fun runCode(subject: Contact?, sender: User?, language: String, code: String, input: String?, util: String? = null): Any {
+        val result = if (language == "text")
+            GlotAPI.RunResult(stdout = code)
+        else
+            GlotAPI.runCode(language, code, input, util)
+
         val builder = MessageChainBuilder()
         if (result.message.isNotEmpty()) {
             builder.append("执行失败\n收到来自glot接口的消息：")
@@ -165,44 +184,7 @@ object JCompilerCollection : KotlinPlugin(
             }
             // 输出内容过长，改为转发消息
             if (sb.length > MSG_TRANSFER_LENGTH && PastebinConfig.enable_ForwardMessage) {
-                var currentCount = 0
-                val resultString = StringBuilder()
-                var tooLong = false
-                for (char in sb) {
-                    val charCount = if (char.code in 0x4E00..0x9FFF) 3 else 1
-                    if (currentCount + charCount <= 14000) {
-                        resultString.append(char)
-                        currentCount += charCount
-                    } else {
-                        tooLong = true
-                        break
-                    }
-                }
-                val forward: ForwardMessage = buildForwardMessage(subject!!) {
-                    displayStrategy = object : ForwardMessage.DisplayStrategy {
-                        override fun generateTitle(forward: RawForwardMessage): String = "输出过长，请查看聊天记录"
-                        override fun generateBrief(forward: RawForwardMessage): String = "[输出内容]"
-                        override fun generatePreview(forward: RawForwardMessage): List<String> =
-                            if (tooLong) {
-                                mutableListOf(
-                                    "提示: 输出内容超过最大上限15000字符（5000中文字符），从14000开始已被截断",
-                                    "输出内容: ${sb.substring(0, 30)}..."
-                                )
-                            } else {
-                                mutableListOf("输出内容: ${sb.substring(0, 50)}...")
-                            }
-
-                        override fun generateSummary(forward: RawForwardMessage): String =
-                            "输出长度总计 ${sb.length} 字符"
-                    }
-                    if (tooLong) {
-                        subject.bot named "提示" says "输出内容超过最大上限15000字符（5000中文字符），从14000开始已被截断"
-                        subject.bot named "输出内容" says resultString.toString()
-                    } else {
-                        subject.bot named "输出内容" says sb.toString()
-                    }
-                }
-                return forward
+                return stringToForwardMessage(sb, subject)
             }
             // 非转发消息放刷屏截断
             if (sb.length > MSG_MAX_LENGTH) {
@@ -212,6 +194,17 @@ object JCompilerCollection : KotlinPlugin(
             builder.append(sb.toString())
         }
         return builder
+    }
+
+    private fun startTimer() {
+        launch {
+            while (true) {
+                val delayTime = calculateNextClearDelay()
+                logger.info { "已重新加载协程，下次清除剩余时间 ${delayTime / 1000} 秒" }
+                delay(delayTime)
+                executeClearBlackList()
+            }
+        }
     }
 
     override fun onDisable() {

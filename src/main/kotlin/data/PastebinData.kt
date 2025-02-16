@@ -1,3 +1,5 @@
+package data
+
 import net.mamoe.mirai.console.data.AutoSavePluginData
 import net.mamoe.mirai.console.data.ValueName
 import net.mamoe.mirai.console.data.value
@@ -7,6 +9,9 @@ internal object PastebinData : AutoSavePluginData("PastebinData") {
 
     @ValueName("隐藏Url的名称")
     val hiddenUrl: MutableSet<String> by value(mutableSetOf())
+
+    @ValueName("仅限群聊运行的名称")
+    val groupOnly: MutableSet<String> by value(mutableSetOf())
 
     @ValueName("待审核列表")
     val censorList: MutableSet<String> by value(mutableSetOf())
