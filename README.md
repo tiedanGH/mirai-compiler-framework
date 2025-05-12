@@ -1,4 +1,6 @@
 # JCC - J Compiler Collection
+> 👉[查看pb帮助文档和高级功能请点击这里](README_pb.md)
+
 ## 基于Glot接口的mirai-console在线编译器插件
 
 ## `run`命令原型

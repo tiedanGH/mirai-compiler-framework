@@ -19,6 +19,7 @@ import net.mamoe.mirai.message.data.*
 import net.mamoe.mirai.utils.info
 import utils.ForwardMessageGenerator.stringToForwardMessage
 import utils.GlotAPI
+import utils.JsonProcessor.blockSensitiveContent
 import utils.UbuntuPastebinHelper
 import utils.calculateNextClearDelay
 import utils.executeClearBlackList
@@ -49,7 +50,7 @@ object JCompilerCollection : KotlinPlugin(
         PastebinConfig.reload()
         MailConfig.reload()
         PastebinData.reload()
-        BlackListData.reload()
+        ExtraData.reload()
         PastebinStorage.reload()
         CodeCache.reload()
 
@@ -61,7 +62,7 @@ object JCompilerCollection : KotlinPlugin(
                 content {
                     message.firstIsInstanceOrNull<PlainText>()?.content?.trimStart()?.startsWith(CMD_PREFIX) == true
                 } reply {
-                    if (BlackListData.BlackList.contains(sender.id)) {
+                    if (ExtraData.BlackList.contains(sender.id)) {
                         return@reply "${sender.id}已被拉黑，请求被拒绝"
                     }
 
@@ -75,7 +76,7 @@ object JCompilerCollection : KotlinPlugin(
                     if (!GlotAPI.checkSupport(language))
                         return@reply "不支持这种编程语言\n${commandPrefix}jcc list 列出所有支持的编程语言\n" +
                                 "如果要执行保存好的pastebin代码，请在指令前添加 $commandPrefix"
-                    if (THREAD >= 3) {
+                    if (THREAD >= PastebinConfig.thread_limit) {
                         val builder = MessageChainBuilder()
                         if (subject is Group) {
                             builder.add(At(sender))
@@ -164,6 +165,9 @@ object JCompilerCollection : KotlinPlugin(
         if (subject is Group) {
             builder.add(At(sender!!))
             builder.add("\n")
+        } else {
+            val ret = blockSensitiveContent(result.stdout, at = true, isGroup = false)
+            if (ret.startsWith("[警告]")) builder.add("$ret\n")
         }
 
         if (c == 0) {
@@ -183,10 +187,10 @@ object JCompilerCollection : KotlinPlugin(
                 sb.append(result.stderr)
             }
             // 输出内容过长，改为转发消息
-            if (sb.length > MSG_TRANSFER_LENGTH && PastebinConfig.enable_ForwardMessage) {
+            if ((sb.length > MSG_TRANSFER_LENGTH || sb.lines().size > 30) && PastebinConfig.enable_ForwardMessage) {
                 return stringToForwardMessage(sb, subject)
             }
-            // 非转发消息放刷屏截断
+            // 非转发消息截断
             if (sb.length > MSG_MAX_LENGTH) {
                 sb.deleteRange(MSG_MAX_LENGTH, sb.length)
                 sb.append("\n消息内容过长，已截断")

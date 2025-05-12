@@ -1,6 +1,7 @@
 package utils
 
 import JCompilerCollection.logger
+import config.PastebinConfig
 import data.JccPluginData
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
@@ -26,8 +27,6 @@ object GlotAPI {
     private const val URL_NEW = "https://glot.io/new/"
     private const val URL_API = URL + "api/"
     private const val URL_LIST_LANGUAGES = URL_API + "run"
-    // 运行代码需要api token，这是的我账号申请的，可以在[https://glot.io/auth/page/simple/register]注册帐号
-    private const val API_TOKEN = "074ef4a7-7a94-47f2-9891-85511ef1fb52"
 
     @OptIn(ConsoleExperimentalApi::class)
     val utilsFolder = "./data/${JCompilerCollection.dataHolderName}/utils"
@@ -43,8 +42,6 @@ object GlotAPI {
                               val files: List<CodeFile>)
     @Serializable
     data class RunResult(val stdout: String = "", val stderr: String = "", val error: String = "", val message: String = "")
-
-    // val fileExtensions: Map<String, String> = mapOf("assembly" to "asm", "ats" to "dats", "bash" to "sh", "c" to "c", "clojure" to "clj", "cobol" to "cob", "coffeescript" to "coffee", "cpp" to "cpp", "crystal" to "cr", "csharp" to "cs", "d" to "d", "elixir" to "ex", "elm" to "elm", "erlang" to "erl", "fsharp" to "fs", "go" to "go", "groovy" to "groovy", "haskell" to "hs", "idris" to "idr", "java" to "java", "javascript" to "js", "julia" to "jl", "kotlin" to "kt", "lua" to "lua", "mercury" to "m", "nim" to "nim", "nix" to "nix", "ocaml" to "ml", "perl" to "pl", "php" to "php", "python" to "py", "raku" to "raku", "ruby" to "rb", "rust" to "rs", "scala" to "scala", "swift" to "swift", "typescript" to "ts", "plaintext" to "txt", )
 
     /**
      * 列出所有支持在线运行的语言（缓存）
@@ -173,7 +170,7 @@ object GlotAPI {
      * 导致程序无法在限定时间内返回，将会报告超时异常
      */
     fun runCode(language: Language, requestData: RunCodeRequest): RunResult {
-        val response = HttpUtil.post(language.url + "/latest", Json.encodeToString(requestData), mapOf("Authorization" to API_TOKEN))
+        val response = HttpUtil.post(language.url + "/latest", Json.encodeToString(requestData), mapOf("Authorization" to PastebinConfig.API_TOKEN))
         return Json.decodeFromString(response) ?: throw Exception("未获取到任何数据")
     }
 

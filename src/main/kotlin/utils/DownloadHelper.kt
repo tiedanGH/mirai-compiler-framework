@@ -13,11 +13,32 @@ object DownloadHelper {
     private const val CONNECT_TIMEOUT = 6000   // 连接超时时间
     private const val READ_TIMEOUT = 6000      // 读取超时时间
 
-    // TODO 图片下载，检测是否为图片
+    fun downloadImage(
+        imageUrl: String,
+        outputFilePath: String,
+        fileName: String,
+        timeout: Long = 30,
+        force: Boolean = false
+    ): Pair<String, Long> {
+        if (!isImageUrl(imageUrl)) {
+            return Pair("[错误] 连接失败或未能在链接资源中检测到图片", 0)
+        }
+        return downloadFile(imageUrl, outputFilePath, fileName, timeout, force)
+    }
 
-    fun downloadFile(fileUrl: String, outputFilePath: String, fileName: String, timeout: Long = 60): Pair<String, Long> {
+    private fun downloadFile(
+        fileUrl: String,
+        outputFilePath: String,
+        fileName: String,
+        timeout: Long = 30,
+        force: Boolean = false
+    ): Pair<String, Long> {
         if (fileName.contains("/")) {
             return Pair("[错误] 文件名称中不能包含符号“/”", 0)
+        }
+        val outputFile = File(outputFilePath + fileName)
+        if (outputFile.exists() && !force) {
+            return Pair("[错误] 此文件名已存在：$fileName", 0)
         }
 
         var result = ""
@@ -39,7 +60,6 @@ object DownloadHelper {
 
                 if (connection.responseCode == HttpURLConnection.HTTP_OK) {
                     inputStream = connection.inputStream
-                    val outputFile = File(outputFilePath + fileName)
                     outputStream = FileOutputStream(outputFile)
 
                     val buffer = ByteArray(1024)
@@ -72,4 +92,23 @@ object DownloadHelper {
         val elapsedTime = System.currentTimeMillis() - startTime
         return Pair(result, ceil(elapsedTime / 1000.0).toLong())
     }
+
+    private fun isImageUrl(url: String): Boolean {
+        return try {
+            val connection = URL(url).openConnection() as HttpURLConnection
+            connection.requestMethod = "HEAD"
+            connection.connectTimeout = CONNECT_TIMEOUT
+            connection.readTimeout = READ_TIMEOUT
+            connection.connect()
+
+            val contentType = connection.contentType
+            connection.disconnect()
+
+            contentType?.startsWith("image/") == true
+        } catch (e: Exception) {
+            logger.warning("检测图片链接发生错误：${e::class.simpleName}(${e.message})")
+            true    // 连接超时跳过预检测
+        }
+    }
+
 }

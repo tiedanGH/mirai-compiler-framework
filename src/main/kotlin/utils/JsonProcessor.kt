@@ -1,21 +1,27 @@
 package utils
 
+import CommandRun.renderLatexOnline
+import JCompilerCollection
 import JCompilerCollection.logger
 import JCompilerCollection.save
-import utils.MarkdownImageProcessor.TIMEOUT
-import utils.MarkdownImageProcessor.folder
-import utils.MarkdownImageProcessor.processMarkdown
 import data.PastebinStorage
+import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.encodeToJsonElement
 import net.mamoe.mirai.console.command.CommandSender
+import net.mamoe.mirai.console.util.ConsoleExperimentalApi
 import net.mamoe.mirai.contact.Group
 import net.mamoe.mirai.message.data.At
 import net.mamoe.mirai.message.data.MessageChainBuilder
 import net.mamoe.mirai.utils.ExternalResource.Companion.toExternalResource
+import utils.DownloadHelper.downloadImage
+import utils.MarkdownImageProcessor.TIMEOUT
+import utils.MarkdownImageProcessor.folder
+import utils.MarkdownImageProcessor.processMarkdown
 import java.io.File
+import java.net.URI
 
 object JsonProcessor {
     val json = Json {
@@ -29,6 +35,7 @@ object JsonProcessor {
         val width: Int = 600,
         val content: String = "空消息",
         val messageList: List<JsonSingleMessage> = listOf(JsonSingleMessage()),
+        val active: ActiveMessage? = null,
         val storage: String? = null,
         val global: String? = null,
         val error: String = "",
@@ -51,6 +58,18 @@ object JsonProcessor {
         val global: String? = null,
     )
     @Serializable
+    data class ActiveMessage(
+        val group: Long? = null,
+        val content: String = "空消息",
+        val private: List<SinglePrivateMessage>? = null,
+    )
+    @Serializable
+    data class SinglePrivateMessage(
+        val userID: Long? = null,
+        val content: String = "空消息",
+    )
+
+    @Serializable
     data class JsonStorage(
         val global: String = "",
         val storage: String = "",
@@ -62,33 +81,33 @@ object JsonProcessor {
     fun processDecode(jsonOutput: String): JsonMessage {
         return try {
             json.decodeFromString<JsonMessage>(jsonOutput)
-        } catch (ex: Exception) {
-            JsonMessage(error = "JSON解析错误：\n${ex.message}")
+        } catch (e: Exception) {
+            JsonMessage(error = "JSON解析错误：\n${e.message}")
         }
     }
 
     fun processEncode(global: String, storage: String, userID: Long, nickname: String, from: String): String {
         return try {
             val jsonStorageObject = JsonStorage(global, storage, userID, nickname, from)
-            json.encodeToJsonElement<JsonStorage>(jsonStorageObject).toString()
-        } catch (ex: Exception) {
-            "JSON编码错误【严重错误，理论不可能发生】，请务必联系铁蛋排查bug：\n${ex.message}"
+            json.encodeToString<JsonStorage>(jsonStorageObject)
+        } catch (e: Exception) {
+            throw Exception("JSON编码错误【严重错误，理论不可能发生】，请务必联系铁蛋排查bug：\n${e.message}")
         }
     }
 
-    suspend fun generateMessageChain(ret: JsonMessage, sender: CommandSender, timeUsedRecord: Long = 0): Pair<MessageChainBuilder, Long> {
+    suspend fun generateMessageChain(jsonMessage: JsonMessage, sender: CommandSender, timeUsedRecord: Long = 0): Pair<MessageChainBuilder, Long> {
         val builder = MessageChainBuilder()
-        if (sender.subject is Group && ret.at) {
+        if (sender.subject is Group && jsonMessage.at) {
             builder.add(At(sender.user!!))
             builder.add("\n")
         }
         var timeUsed = timeUsedRecord
-        for ((index, m) in ret.messageList.withIndex()) {
+        for ((index, m) in jsonMessage.messageList.withIndex()) {
             if (index > 0) builder.add("\n")
             var content = m.content
             when (m.format) {
                 "text" -> {
-                    builder.add(if (content.isBlank()) "　" else if(index == 0) blockSensitiveContent(content, ret.at) else content)
+                    builder.add(if (content.isBlank()) "　" else if(index == 0) blockSensitiveContent(content, jsonMessage.at, sender.subject is Group) else content)
                 }
                 "markdown", "base64" -> {
                     if (m.format == "base64") content = "![base64image]($content)"
@@ -99,34 +118,37 @@ object JsonProcessor {
                         builder.add("[markdown2image错误] ${processResult.first}")
                         continue
                     }
-                    val file = File("${folder}/markdown.png")
-                    try {
-                        val image = file.toExternalResource().use { resource ->
-                            sender.subject!!.uploadImage(resource)
+                    builder.addImageFromFile("${folder}/markdown.png", sender)
+                }
+                "image"-> {
+                    if (content.startsWith("file:///")) {
+                        if (!File(URI(content)).exists()) {
+                            builder.add("[错误] 本地图片文件不存在，请检查路径")
+                            continue
                         }
-                        builder.add(image)      // 添加图片消息
-                    } catch (ex: Exception) {
-                        logger.warning(ex)
-                        builder.add("[错误] 图片文件异常：${ex.message}")
+                        builder.addImageFromFile(content, sender)
+                    } else {
+                        @OptIn(ConsoleExperimentalApi::class)
+                        val outputFilePath = "./data/${JCompilerCollection.dataHolderName}/"
+                        val pair = downloadImage(content, outputFilePath, "image.tmp", TIMEOUT - timeUsed, force = true)
+                        timeUsed += pair.second
+                        if (pair.first.startsWith("[错误]")) {
+                            builder.add(pair.first)
+                            continue
+                        }
+                        logger.info("图片下载完成，用时${pair.second}秒")
+                        builder.addImageFromFile("${folder}/image.tmp", sender)
                     }
                 }
                 "LaTeX"-> {
                     val renderResult = renderLatexOnline(content)
                     if (renderResult.startsWith("QuickLaTeX")) {
                         builder.add("[错误] $renderResult")
+                        continue
                     }
-                    val file = File("${folder}/latex.png")
-                    try {
-                        val image = file.toExternalResource().use { resource ->
-                            sender.subject!!.uploadImage(resource)
-                        }
-                        builder.add(image)      // 添加图片消息
-                    } catch (ex: Exception) {
-                        logger.warning(ex)
-                        builder.add("[错误] 图片文件异常：${ex.message}")
-                    }
+                    builder.addImageFromFile("${folder}/latex.png", sender)
                 }
-                "json", "ForwardMessage", "MessageChain" -> {
+                "json", "ForwardMessage", "MessageChain", "MultipleMessage" -> {
                     builder.add("[错误] 不支持在JsonSingleMessage内使用“${m.format}”输出格式")
                 }
                 else -> {
@@ -135,6 +157,111 @@ object JsonProcessor {
             }
         }
         return Pair(builder, timeUsed)
+    }
+
+    private suspend fun MessageChainBuilder.addImageFromFile(filePath: String, sender: CommandSender) {
+        val file = if (filePath.startsWith("file:///")) {
+            File(URI(filePath))
+        } else {
+            File(filePath)
+        }
+        try {
+            val image = file.toExternalResource().use { resource ->
+                sender.subject!!.uploadImage(resource)
+            }
+            add(image)      // 添加图片消息
+        } catch (e: Exception) {
+            logger.warning(e)
+            add("[错误] 图片文件异常：${e.message}")
+        }
+    }
+
+    suspend fun outputMultipleMessage(jsonMessage: JsonMessage, sender: CommandSender): String? {
+        try {
+            var timeUsed: Long = 0
+            for ((index, m) in jsonMessage.messageList.withIndex()) {
+                if (index >= 15) {
+                    return "单次执行消息上限为15条"
+                }
+                var content = m.content
+                when (m.format) {
+                    "text" -> {
+                        val builder = MessageChainBuilder()
+                        if (sender.subject is Group && jsonMessage.at) {
+                            builder.add(At(sender.user!!))
+                            builder.add("\n")
+                        }
+                        builder.add(if (content.isBlank()) "　" else blockSensitiveContent(content, jsonMessage.at, sender.subject is Group))
+                        sender.sendMessage(builder.build())
+                    }
+                    "markdown", "base64" -> {
+                        if (m.format == "base64") content = "![base64image]($content)"
+                        val processResult = processMarkdown(content, m.width.toString(), TIMEOUT - timeUsed)
+                        timeUsed += processResult.second
+                        if (processResult.first.startsWith("操作失败")) {
+                            sender.sendMessage("[markdown2image错误] ${processResult.first}")
+                            continue
+                        }
+                        sendLocalImage("${folder}/markdown.png", sender)
+                    }
+                    "image"-> {
+                        if (content.startsWith("file:///")) {
+                            if (!File(URI(content)).exists()) {
+                                sender.sendMessage("[错误] 本地图片文件不存在，请检查路径")
+                                continue
+                            }
+                            sendLocalImage(content, sender)
+                        } else {
+                            @OptIn(ConsoleExperimentalApi::class)
+                            val outputFilePath = "./data/${JCompilerCollection.dataHolderName}/"
+                            val pair = downloadImage(content, outputFilePath, "image.tmp", force = true)
+                            if (pair.first.startsWith("[错误]")) {
+                                sender.sendMessage(pair.first)
+                                continue
+                            }
+                            logger.info("图片下载完成，用时${pair.second}秒")
+                            sendLocalImage("${folder}/image.tmp", sender)
+                        }
+                    }
+                    "LaTeX"-> {
+                        val renderResult = renderLatexOnline(content)
+                        if (renderResult.startsWith("QuickLaTeX")) {
+                            sender.sendMessage("[错误] $renderResult")
+                            continue
+                        }
+                        sendLocalImage("${folder}/latex.png", sender)
+                    }
+                    "json", "ForwardMessage", "MessageChain", "MultipleMessage" -> {
+                        sender.sendMessage("[错误] 不支持在JsonSingleMessage内使用“${m.format}”输出格式")
+                    }
+                    else -> {
+                        sender.sendMessage("[错误] 无效的输出格式：${m.format}，请检查此条消息的format参数")
+                    }
+                }
+                delay(2000)
+            }
+            logger.info("MultipleMessage输出完成")
+            return null
+        } catch (e: Exception) {
+            return e.message
+        }
+    }
+
+    private suspend fun sendLocalImage(filePath: String, sender: CommandSender) {
+        val file = if (filePath.startsWith("file:///")) {
+            File(URI(filePath))
+        } else {
+            File(filePath)
+        }
+        try {
+            val image = file.toExternalResource().use { resource ->
+                sender.subject!!.uploadImage(resource)
+            }
+            sender.sendMessage(image)      // 发送图片
+        } catch (e: Exception) {
+            logger.warning(e)
+            sender.sendMessage("[错误] 图片文件异常：${e.message}")
+        }
     }
 
     // pastebin数据存储
@@ -159,14 +286,20 @@ object JsonProcessor {
     }
 
     // 检查json和MessageChain中的敏感内容，发现则返回覆盖文本
-    fun blockSensitiveContent(content: String, at: Boolean): String {
-        if (at) return content
-        val blockedContent = "[警告] 首条消息中检测到指令或易引发多bot冲突的高危内容，请开启`at`参数或修改内容来避免此警告。如发生误报请反馈给铁蛋"
-        if (content.trimStart().startsWith("/")) return blockedContent
-        val words = listOf("transfer", "转账", "new", "游戏", "join", "加入")
-        for (word in words)
-            if (word in content)
-                return blockedContent
-        return content
+    fun blockSensitiveContent(content: String, at: Boolean, isGroup: Boolean): String {
+        if (isGroup) {
+            if (at) return content
+            val blockedContent = "[警告] 首条消息中检测到指令或易引发多bot冲突的高危内容，请开启`at`参数或修改内容来避免此警告。如发生误报请反馈给铁蛋"
+            if (content.trimStart().startsWith("/")) return blockedContent
+            val words = listOf("transfer", "new", "join", " tiedan ", "新游戏")
+            for (word in words)
+                if (word in content)
+                    return blockedContent
+            return content
+        } else {
+            val blockedContent = "[警告] 私信输出中检测到被禁用的内容，请修改内容来避免此警告。如发生误报请反馈给铁蛋"
+            if (content.startsWith("新游戏积分")) return blockedContent
+            return content
+        }
     }
 }

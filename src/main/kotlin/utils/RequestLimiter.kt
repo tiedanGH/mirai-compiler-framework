@@ -1,14 +1,13 @@
 package utils
 
 import JCompilerCollection.save
-import data.BlackListData
+import data.ExtraData
 import java.util.concurrent.ConcurrentHashMap
 
-enum class WarningLevel {
-    NONE, FIRST, SECOND
-}
-
 object RequestLimiter {
+    enum class WarningLevel {
+        NONE, FIRST, SECOND
+    }
 
     /**
      * ### 代码请求限制
@@ -39,9 +38,9 @@ object RequestLimiter {
             // 加入黑名单
             recentRequests >= warningTime[2] &&
             currentWarningLevel == WarningLevel.SECOND -> {
-                BlackListData.BlackList.add(userID)
-                BlackListData.save()
-                return Pair("[警告无效处理]\n您已被加入bot执行代码黑名单，暂时无法再执行代码请求。请等待每日8点黑名单自动重置，或与铁蛋联系", true)
+                ExtraData.BlackList.add(userID)
+                ExtraData.save()
+                return Pair("[警告无效处理]\n您已被加入bot执行代码黑名单，暂时无法再执行代码请求。请等待每日8点黑名单自动重置", true)
             }
             // 二次警告
             recentRequests >= warningTime[1] &&
