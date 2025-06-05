@@ -1,3 +1,6 @@
+import commands.CommandGlot
+import commands.CommandPastebin
+import commands.CommandRun
 import config.MailConfig
 import config.PastebinConfig
 import data.*
@@ -8,6 +11,8 @@ import kotlinx.coroutines.launch
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.commandPrefix
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.register
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.unregister
+import net.mamoe.mirai.console.command.CommandSender
+import net.mamoe.mirai.console.command.CommandSenderOnMessage
 import net.mamoe.mirai.console.plugin.jvm.JvmPluginDescription
 import net.mamoe.mirai.console.plugin.jvm.KotlinPlugin
 import net.mamoe.mirai.contact.Contact
@@ -16,24 +21,26 @@ import net.mamoe.mirai.contact.User
 import net.mamoe.mirai.event.globalEventChannel
 import net.mamoe.mirai.event.subscribeMessages
 import net.mamoe.mirai.message.data.*
+import net.mamoe.mirai.utils.ExternalResource.Companion.DEFAULT_FORMAT_NAME
+import net.mamoe.mirai.utils.ExternalResource.Companion.toExternalResource
 import net.mamoe.mirai.utils.info
+import utils.*
 import utils.ForwardMessageGenerator.stringToForwardMessage
-import utils.GlotAPI
 import utils.JsonProcessor.blockSensitiveContent
-import utils.UbuntuPastebinHelper
-import utils.calculateNextClearDelay
-import utils.executeClearBlackList
+import java.io.File
 
-object JCompilerCollection : KotlinPlugin(
+object MiraiCompilerFramework : KotlinPlugin(
     JvmPluginDescription(
-        id = "top.jie65535.mirai-console-jcc-plugin",
-        name = "J Compiler Collection",
-        version = "1.1.0-pastebin",
+        id = "com.tiedan.mirai-compiler-framework",
+        name = "Mirai Compiler Framework",
+        version = "1.0.0",
     ) {
-        author("jie65535")
-        info("""在线编译器集合""")
+        author("tiedan")
+        info("""基于Glot接口的在线编译器框架""")
     }
 ) {
+    data class Command(val usage: String, val usageCN: String, val desc: String, val type: Int)
+
     const val CMD_PREFIX = "run"
     const val MSG_TRANSFER_LENGTH = 550
     private const val MSG_MAX_LENGTH = 800
@@ -41,14 +48,15 @@ object JCompilerCollection : KotlinPlugin(
     var THREAD = 0
 
     override fun onEnable() {
-        logger.info { "Plugin loaded" }
-        JccCommand.register()
-        JccPluginData.reload()
+        logger.info { "Mirai Compiler Framework loaded" }
 
+        CommandGlot.register()
         CommandPastebin.register()
         CommandRun.register()
+
         PastebinConfig.reload()
         MailConfig.reload()
+        GlotCache.reload()
         PastebinData.reload()
         ExtraData.reload()
         PastebinStorage.reload()
@@ -60,12 +68,12 @@ object JCompilerCollection : KotlinPlugin(
             .parentScope(this)
             .subscribeMessages {
                 content {
+                    if (ExtraData.BlackList.contains(sender.id)) {
+                        logger.info("${sender.id}已被拉黑，请求被拒绝")
+                        return@content false
+                    }
                     message.firstIsInstanceOrNull<PlainText>()?.content?.trimStart()?.startsWith(CMD_PREFIX) == true
                 } reply {
-                    if (ExtraData.BlackList.contains(sender.id)) {
-                        return@reply "${sender.id}已被拉黑，请求被拒绝"
-                    }
-
                     val msg = message.firstIsInstance<PlainText>().content.trimStart().removePrefix(CMD_PREFIX).trim()
                     if (msg.isBlank()) {
                         return@reply "请输入正确的命令！例如：\n$CMD_PREFIX python print(\"Hello world\")"
@@ -74,8 +82,9 @@ object JCompilerCollection : KotlinPlugin(
                     val index = msg.indexOfFirst(Char::isWhitespace)
                     val language = if (index >= 0) msg.substring(0, index) else msg
                     if (!GlotAPI.checkSupport(language))
-                        return@reply "不支持这种编程语言\n${commandPrefix}jcc list 列出所有支持的编程语言\n" +
-                                "如果要执行保存好的pastebin代码，请在指令前添加 $commandPrefix"
+                        return@reply "不支持这种编程语言\n" +
+                                "${commandPrefix}glot list　列出所有支持的编程语言\n" +
+                                "如果要执行保存好的pastebin代码，请在指令前添加“$commandPrefix”"
                     if (THREAD >= PastebinConfig.thread_limit) {
                         val builder = MessageChainBuilder()
                         if (subject is Group) {
@@ -114,13 +123,13 @@ object JCompilerCollection : KotlinPlugin(
                             code
                         }
                         // 如果参数是一个ubuntu pastebin的链接，则去获取具体代码
-                        if (UbuntuPastebinHelper.checkUrl(url)) {
+                        if (PastebinUrlHelper.checkUrl(url)) {
                             if (si > 0) {
                                 // 如果确实是一个链接，则链接后面跟的内容就是输入内容
                                 input = code.substring(si+1)
                             }
                             logger.info("从 $url 中获取代码")
-                            code = UbuntuPastebinHelper.get(url)
+                            code = PastebinUrlHelper.get(url)
                             if (code.isBlank()) {
                                 return@reply "未获取到有效代码"
                             }
@@ -200,19 +209,40 @@ object JCompilerCollection : KotlinPlugin(
         return builder
     }
 
+    suspend fun CommandSender.sendQuoteReply(msgToSend: String) {
+        if (this is CommandSenderOnMessage<*>) {
+            sendMessage(buildMessageChain {
+                +QuoteReply(fromEvent.message)
+                +PlainText(msgToSend)
+            })
+        } else {
+            sendMessage(msgToSend)
+        }
+    }
+
+    suspend fun Contact.uploadFileToImage(file: File): Image? {
+        return file.toExternalResource().use { resource ->     // 返回结果图片
+            if (resource.formatName == DEFAULT_FORMAT_NAME) {
+                return null
+            }
+            this.uploadImage(resource)
+        }
+    }
+
     private fun startTimer() {
         launch {
             while (true) {
                 val delayTime = calculateNextClearDelay()
-                logger.info { "已重新加载协程，下次清除剩余时间 ${delayTime / 1000} 秒" }
+                logger.info { "已重新加载协程，下次定时剩余时间 ${delayTime / 1000} 秒" }
                 delay(delayTime)
                 executeClearBlackList()
+                Statistics.dailyDecayScore()
             }
         }
     }
 
     override fun onDisable() {
-        JccCommand.unregister()
+        CommandGlot.unregister()
         CommandPastebin.unregister()
         CommandRun.unregister()
     }

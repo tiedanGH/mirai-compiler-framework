@@ -20,6 +20,6 @@ internal object PastebinData : AutoSavePluginData("PastebinData") {
     var alias: MutableMap<String, String> by value(mutableMapOf())
 
     @ValueName("pastebin代码数据")
-    var pastebin: MutableMap<String, MutableMap<String, String>> by value(mutableMapOf("example" to mutableMapOf("language" to "python", "pastebinUrl" to "https://pastebin.ubuntu.com/", "stdin" to "1")))
+    var pastebin: MutableMap<String, MutableMap<String, String>> by value(mutableMapOf("example" to mutableMapOf("language" to "python", "url" to "https://pastebin.ubuntu.com/", "stdin" to "1")))
 
 }

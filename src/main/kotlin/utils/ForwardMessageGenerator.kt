@@ -1,22 +1,20 @@
 package utils
 
-import CommandRun.renderLatexOnline
-import JCompilerCollection
-import JCompilerCollection.logger
+import commands.CommandRun.renderLatexOnline
+import MiraiCompilerFramework.logger
+import MiraiCompilerFramework.uploadFileToImage
 import kotlinx.serialization.decodeFromString
 import net.mamoe.mirai.console.command.CommandSender
-import net.mamoe.mirai.console.util.ConsoleExperimentalApi
 import net.mamoe.mirai.contact.Contact
 import net.mamoe.mirai.message.data.ForwardMessage
 import net.mamoe.mirai.message.data.RawForwardMessage
 import net.mamoe.mirai.message.data.buildForwardMessage
-import net.mamoe.mirai.utils.ExternalResource.Companion.toExternalResource
 import utils.DownloadHelper.downloadImage
 import utils.JsonProcessor.JsonForwardMessage
 import utils.JsonProcessor.generateMessageChain
 import utils.JsonProcessor.json
 import utils.MarkdownImageProcessor.TIMEOUT
-import utils.MarkdownImageProcessor.folder
+import utils.MarkdownImageProcessor.cacheFolder
 import utils.MarkdownImageProcessor.processMarkdown
 import java.io.File
 import java.net.URI
@@ -24,14 +22,14 @@ import java.net.URI
 object ForwardMessageGenerator {
 
     // 解析json并生成转发消息
-    suspend fun generateForwardMessage(forwardMessageOutput: String, sender: CommandSender): Triple<ForwardMessage, String?, String?> {
+    suspend fun generateForwardMessage(name: String, forwardMessageOutput: String, sender: CommandSender): Triple<ForwardMessage, String?, String?> {
         val result = try {
             json.decodeFromString<JsonForwardMessage>(forwardMessageOutput)
         } catch (e: Exception) {
             val forward = buildForwardMessage(sender.subject!!) {
                 displayStrategy = object : ForwardMessage.DisplayStrategy {
-                    override fun generateTitle(forward: RawForwardMessage): String = "JSON解析错误"
-                    override fun generatePreview(forward: RawForwardMessage): List<String> = listOf("[执行失败] 发生错误")
+                    override fun generateTitle(forward: RawForwardMessage): String = "输出解析错误"
+                    override fun generatePreview(forward: RawForwardMessage): List<String> = listOf("执行失败：JSON解析错误")
                 }
                 sender.subject!!.bot named "Error" says "[错误] JSON解析错误：\n${e.message}"
                 val (resultString, tooLong) = trimToMaxLength(forwardMessageOutput, 10000)
@@ -59,20 +57,18 @@ object ForwardMessageGenerator {
                         }
                         "markdown", "base64" -> {
                             if (m.format == "base64") content = "![base64image]($content)"
-                            val processResult = processMarkdown(content, m.width.toString(), TIMEOUT - timeUsed)
-                            timeUsed += processResult.second
-//                            sender.sendMessage("[DEBUG] timeUsed in ForwardMessageGenerator: $timeUsed")
-                            if (processResult.first.startsWith("操作失败")) {
-                                sender.subject!!.bot named "Error" says "[markdown2image错误] ${processResult.first}"
+                            val processResult = processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
+                            timeUsed += processResult.duration
+                            if (!processResult.success) {
+                                sender.subject!!.bot named "Error" says "[markdown2image错误] ${processResult.message}"
                                 continue
                             }
-                            val file = File("${folder}/markdown.png")
                             try {
-                                sender.subject!!.bot named result.name says {   // 添加图片消息
-                                    add(file.toExternalResource().use { resource ->
-                                        sender.subject!!.uploadImage(resource)
-                                    })
-                                }
+                                val image = sender.subject?.uploadFileToImage(File("${cacheFolder}markdown.png"))
+                                if (image == null)
+                                    sender.subject!!.bot named result.name says "[错误] 图片文件异常：ExternalResource上传失败"
+                                else
+                                    sender.subject!!.bot named result.name says image       // 添加图片消息
                             } catch (e: Exception) {
                                 logger.warning(e)
                                 sender.subject!!.bot named "Error" says "[错误] 图片文件异常：${e.message}"
@@ -82,27 +78,24 @@ object ForwardMessageGenerator {
                             val file = if (content.startsWith("file:///")) {
                                 File(URI(content))
                             } else {
-                                @OptIn(ConsoleExperimentalApi::class)
-                                val outputFilePath = "./data/${JCompilerCollection.dataHolderName}/"
-                                val pair = downloadImage(content, outputFilePath, "image.tmp", TIMEOUT - timeUsed, force = true)
-                                timeUsed += pair.second
-                                if (pair.first.startsWith("[错误]")) {
-                                    sender.subject!!.bot named "Error" says pair.first
+                                val downloadResult = downloadImage(name, content, cacheFolder, "image", TIMEOUT - timeUsed, force = true)
+                                timeUsed += downloadResult.duration
+                                if (!downloadResult.success) {
+                                    sender.subject!!.bot named "Error" says downloadResult.message
                                     continue
                                 }
-                                logger.info("图片下载完成，用时${pair.second}秒")
-                                File("${folder}/image.tmp")
+                                File("${cacheFolder}image")
                             }
                             try {
                                 if (!file.exists()) {
                                     sender.subject!!.bot named "Error" says "[错误] 本地图片文件不存在，请检查路径"
                                     continue
                                 }
-                                sender.subject!!.bot named result.name says {   // 添加图片消息
-                                    add(file.toExternalResource().use { resource ->
-                                        sender.subject!!.uploadImage(resource)
-                                    })
-                                }
+                                val image = sender.subject?.uploadFileToImage(file)
+                                if (image == null)
+                                    sender.subject!!.bot named result.name says "[错误] 图片文件异常：ExternalResource上传失败"
+                                else
+                                    sender.subject!!.bot named result.name says image       // 添加图片消息
                             } catch (e: Exception) {
                                 logger.warning(e)
                                 sender.subject!!.bot named "Error" says "[错误] 图片文件异常：${e.message}"
@@ -113,13 +106,12 @@ object ForwardMessageGenerator {
                             if (renderResult.startsWith("QuickLaTeX")) {
                                 sender.subject!!.bot named "Error" says "[错误] $renderResult"
                             }
-                            val file = File("${folder}/latex.png")
                             try {
-                                sender.subject!!.bot named result.name says {   // 添加图片消息
-                                    add(file.toExternalResource().use { resource ->
-                                        sender.subject!!.uploadImage(resource)
-                                    })
-                                }
+                                val image = sender.subject?.uploadFileToImage(File("${cacheFolder}latex.png"))
+                                if (image == null)
+                                    sender.subject!!.bot named result.name says "[错误] 图片文件异常：ExternalResource上传失败"
+                                else
+                                    sender.subject!!.bot named result.name says image       // 添加图片消息
                             } catch (e: Exception) {
                                 logger.warning(e)
                                 sender.subject!!.bot named "Error" says "[错误] 图片文件异常：${e.message}"
@@ -127,7 +119,7 @@ object ForwardMessageGenerator {
                         }
                         // json分支功能MessageChain
                         "MessageChain"-> {
-                            val pair = generateMessageChain(m, sender, timeUsed)
+                            val pair = generateMessageChain(name, m, sender, timeUsed)
                             timeUsed = pair.second
                             sender.subject!!.bot named result.name says pair.first.build()
                         }
@@ -149,7 +141,7 @@ object ForwardMessageGenerator {
             val forward = buildForwardMessage(sender.subject!!) {
                 displayStrategy = object : ForwardMessage.DisplayStrategy {
                     override fun generateTitle(forward: RawForwardMessage): String = "转发消息生成错误"
-                    override fun generatePreview(forward: RawForwardMessage): List<String> = listOf("[执行失败] 发生错误")
+                    override fun generatePreview(forward: RawForwardMessage): List<String> = listOf("执行失败：发生未知错误")
                 }
                 sender.subject!!.bot named "Error" says "[错误] 转发消息生成错误：\n${e.message}"
                 sender.subject!!.bot named "Error" says "程序原始输出：\n$forwardMessageOutput"
@@ -170,11 +162,11 @@ object ForwardMessageGenerator {
                 override fun generatePreview(forward: RawForwardMessage): List<String> =
                     if (tooLong) {
                         listOf(
-                            "提示: 输出内容超出消息最大上限15000字符（5000中文字符），多余部分已被截断",
-                            "输出内容: ${sb.take(30)}..."
+                            "提示: 输出内容超出消息最大上限30000字符",
+                            "（10000中文字符），多余部分已被截断"
                         )
                     } else {
-                        listOf("输出内容: ${sb.take(50)}...")
+                        listOf("输出内容: ${sb.take(30)}...")
                     }
                 override fun generateSummary(forward: RawForwardMessage): String =
                     "输出长度总计 ${sb.length} 字符"
@@ -183,7 +175,7 @@ object ForwardMessageGenerator {
         }
     }
 
-    fun trimToMaxLength(input: String, maxLength: Int = 15000): Pair<String, Boolean> {
+    fun trimToMaxLength(input: String, maxLength: Int = 30000): Pair<String, Boolean> {
         var currentCount = 0
         val sb = StringBuilder()
         for (ch in input) {

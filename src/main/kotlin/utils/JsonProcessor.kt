@@ -1,9 +1,9 @@
 package utils
 
-import CommandRun.renderLatexOnline
-import JCompilerCollection
-import JCompilerCollection.logger
-import JCompilerCollection.save
+import commands.CommandRun.renderLatexOnline
+import MiraiCompilerFramework.logger
+import MiraiCompilerFramework.save
+import MiraiCompilerFramework.uploadFileToImage
 import data.PastebinStorage
 import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
@@ -11,14 +11,12 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import net.mamoe.mirai.console.command.CommandSender
-import net.mamoe.mirai.console.util.ConsoleExperimentalApi
 import net.mamoe.mirai.contact.Group
 import net.mamoe.mirai.message.data.At
 import net.mamoe.mirai.message.data.MessageChainBuilder
-import net.mamoe.mirai.utils.ExternalResource.Companion.toExternalResource
 import utils.DownloadHelper.downloadImage
 import utils.MarkdownImageProcessor.TIMEOUT
-import utils.MarkdownImageProcessor.folder
+import utils.MarkdownImageProcessor.cacheFolder
 import utils.MarkdownImageProcessor.processMarkdown
 import java.io.File
 import java.net.URI
@@ -27,6 +25,7 @@ object JsonProcessor {
     val json = Json {
         encodeDefaults = true
         ignoreUnknownKeys = true
+        coerceInputValues = true
     }
     @Serializable
     data class JsonMessage(
@@ -95,7 +94,7 @@ object JsonProcessor {
         }
     }
 
-    suspend fun generateMessageChain(jsonMessage: JsonMessage, sender: CommandSender, timeUsedRecord: Long = 0): Pair<MessageChainBuilder, Long> {
+    suspend fun generateMessageChain(name: String, jsonMessage: JsonMessage, sender: CommandSender, timeUsedRecord: Long = 0): Pair<MessageChainBuilder, Long> {
         val builder = MessageChainBuilder()
         if (sender.subject is Group && jsonMessage.at) {
             builder.add(At(sender.user!!))
@@ -111,14 +110,13 @@ object JsonProcessor {
                 }
                 "markdown", "base64" -> {
                     if (m.format == "base64") content = "![base64image]($content)"
-                    val processResult = processMarkdown(content, m.width.toString(), TIMEOUT - timeUsed)
-                    timeUsed += processResult.second
-//                    sender.sendMessage("[DEBUG] timeUsed in MessageChainGenerator: $timeUsed")
-                    if (processResult.first.startsWith("操作失败")) {
-                        builder.add("[markdown2image错误] ${processResult.first}")
+                    val processResult = processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
+                    timeUsed += processResult.duration
+                    if (!processResult.success) {
+                        builder.add("[markdown2image错误] ${processResult.message}")
                         continue
                     }
-                    builder.addImageFromFile("${folder}/markdown.png", sender)
+                    builder.addImageFromFile("${cacheFolder}markdown.png", sender)
                 }
                 "image"-> {
                     if (content.startsWith("file:///")) {
@@ -128,16 +126,13 @@ object JsonProcessor {
                         }
                         builder.addImageFromFile(content, sender)
                     } else {
-                        @OptIn(ConsoleExperimentalApi::class)
-                        val outputFilePath = "./data/${JCompilerCollection.dataHolderName}/"
-                        val pair = downloadImage(content, outputFilePath, "image.tmp", TIMEOUT - timeUsed, force = true)
-                        timeUsed += pair.second
-                        if (pair.first.startsWith("[错误]")) {
-                            builder.add(pair.first)
+                        val downloadResult = downloadImage(name, content, cacheFolder, "image", TIMEOUT - timeUsed, force = true)
+                        timeUsed += downloadResult.duration
+                        if (!downloadResult.success) {
+                            builder.add(downloadResult.message)
                             continue
                         }
-                        logger.info("图片下载完成，用时${pair.second}秒")
-                        builder.addImageFromFile("${folder}/image.tmp", sender)
+                        builder.addImageFromFile("${cacheFolder}image", sender)
                     }
                 }
                 "LaTeX"-> {
@@ -146,7 +141,7 @@ object JsonProcessor {
                         builder.add("[错误] $renderResult")
                         continue
                     }
-                    builder.addImageFromFile("${folder}/latex.png", sender)
+                    builder.addImageFromFile("${cacheFolder}latex.png", sender)
                 }
                 "json", "ForwardMessage", "MessageChain", "MultipleMessage" -> {
                     builder.add("[错误] 不支持在JsonSingleMessage内使用“${m.format}”输出格式")
@@ -166,17 +161,18 @@ object JsonProcessor {
             File(filePath)
         }
         try {
-            val image = file.toExternalResource().use { resource ->
-                sender.subject!!.uploadImage(resource)
-            }
-            add(image)      // 添加图片消息
+            val image = sender.subject?.uploadFileToImage(file)
+            if (image == null)
+                add("[错误] 图片文件异常：ExternalResource上传失败")
+            else
+                add(image)      // 添加图片消息
         } catch (e: Exception) {
             logger.warning(e)
             add("[错误] 图片文件异常：${e.message}")
         }
     }
 
-    suspend fun outputMultipleMessage(jsonMessage: JsonMessage, sender: CommandSender): String? {
+    suspend fun outputMultipleMessage(name: String, jsonMessage: JsonMessage, sender: CommandSender): String? {
         try {
             var timeUsed: Long = 0
             for ((index, m) in jsonMessage.messageList.withIndex()) {
@@ -196,13 +192,13 @@ object JsonProcessor {
                     }
                     "markdown", "base64" -> {
                         if (m.format == "base64") content = "![base64image]($content)"
-                        val processResult = processMarkdown(content, m.width.toString(), TIMEOUT - timeUsed)
-                        timeUsed += processResult.second
-                        if (processResult.first.startsWith("操作失败")) {
-                            sender.sendMessage("[markdown2image错误] ${processResult.first}")
+                        val processResult = processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
+                        timeUsed += processResult.duration
+                        if (!processResult.success) {
+                            sender.sendMessage("[markdown2image错误] ${processResult.message}")
                             continue
                         }
-                        sendLocalImage("${folder}/markdown.png", sender)
+                        sendLocalImage("${cacheFolder}markdown.png", sender)
                     }
                     "image"-> {
                         if (content.startsWith("file:///")) {
@@ -212,15 +208,13 @@ object JsonProcessor {
                             }
                             sendLocalImage(content, sender)
                         } else {
-                            @OptIn(ConsoleExperimentalApi::class)
-                            val outputFilePath = "./data/${JCompilerCollection.dataHolderName}/"
-                            val pair = downloadImage(content, outputFilePath, "image.tmp", force = true)
-                            if (pair.first.startsWith("[错误]")) {
-                                sender.sendMessage(pair.first)
+                            val downloadResult = downloadImage(name, content, cacheFolder, "image", TIMEOUT - timeUsed, force = true)
+                            timeUsed += downloadResult.duration
+                            if (!downloadResult.success) {
+                                sender.sendMessage(downloadResult.message)
                                 continue
                             }
-                            logger.info("图片下载完成，用时${pair.second}秒")
-                            sendLocalImage("${folder}/image.tmp", sender)
+                            sendLocalImage("${cacheFolder}image", sender)
                         }
                     }
                     "LaTeX"-> {
@@ -229,7 +223,7 @@ object JsonProcessor {
                             sender.sendMessage("[错误] $renderResult")
                             continue
                         }
-                        sendLocalImage("${folder}/latex.png", sender)
+                        sendLocalImage("${cacheFolder}latex.png", sender)
                     }
                     "json", "ForwardMessage", "MessageChain", "MultipleMessage" -> {
                         sender.sendMessage("[错误] 不支持在JsonSingleMessage内使用“${m.format}”输出格式")
@@ -254,10 +248,11 @@ object JsonProcessor {
             File(filePath)
         }
         try {
-            val image = file.toExternalResource().use { resource ->
-                sender.subject!!.uploadImage(resource)
-            }
-            sender.sendMessage(image)      // 发送图片
+            val image = sender.subject?.uploadFileToImage(file)
+            if (image == null)
+                sender.sendMessage("[错误] 图片文件异常：ExternalResource上传失败")
+            else
+                sender.sendMessage(image)       // 发送图片
         } catch (e: Exception) {
             logger.warning(e)
             sender.sendMessage("[错误] 图片文件异常：${e.message}")

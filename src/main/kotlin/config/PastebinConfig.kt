@@ -8,6 +8,9 @@ internal object PastebinConfig : AutoSavePluginConfig("PastebinConfig") {
     @ValueDescription("API_TOKEN")
     val API_TOKEN: String by value()
 
+    @ValueDescription("Hastebin_TOKEN")
+    val Hastebin_TOKEN: String by value()
+
     @ValueDescription("pastebin指令权限")
     val admins: MutableList<Long> by value(mutableListOf(10000L))
 

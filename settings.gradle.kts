@@ -1,1 +1,1 @@
-rootProject.name = "mirai-console-jcc-plugin"
+rootProject.name = "mirai-compiler-framework"

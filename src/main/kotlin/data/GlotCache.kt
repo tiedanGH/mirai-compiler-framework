@@ -4,7 +4,7 @@ import utils.GlotAPI
 import net.mamoe.mirai.console.data.AutoSavePluginData
 import net.mamoe.mirai.console.data.value
 
-object JccPluginData: AutoSavePluginData("GlotCache") {
+object GlotCache: AutoSavePluginData("GlotCache") {
 
     /**
      * 支持的语言

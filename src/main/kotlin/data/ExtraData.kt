@@ -14,6 +14,6 @@ internal object ExtraData : AutoSavePluginData("ExtraData") {
     var private_allowTime: MutableMap<Long, Pair<Int, Int>> by value()
 
     @ValueDescription("数据统计")
-    var statistics: MutableMap<String, MutableMap<String, Long>> by value()
+    var statistics: MutableMap<String, MutableMap<String, Double>> by value()
 
 }

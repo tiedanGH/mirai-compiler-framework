@@ -1,15 +1,13 @@
 package utils
 
-import JCompilerCollection.logger
-import JCompilerCollection.save
+import MiraiCompilerFramework.logger
+import MiraiCompilerFramework.save
 import data.ExtraData
 import net.mamoe.mirai.utils.info
 import java.util.*
 
 fun executeClearBlackList() {
-    if (ExtraData.BlackList.isEmpty()) {
-        logger.info { "代码执行黑名单为空，无需清除" }
-    } else {
+    if (ExtraData.BlackList.isNotEmpty()) {
         logger.info { "已自动清除代码执行黑名单记录：${ExtraData.BlackList.joinToString(" ")}" }
         ExtraData.BlackList.clear()
         ExtraData.save()

@@ -1,6 +1,6 @@
 package utils
 
-import JCompilerCollection.save
+import MiraiCompilerFramework.save
 import data.ExtraData
 import java.util.concurrent.ConcurrentHashMap
 

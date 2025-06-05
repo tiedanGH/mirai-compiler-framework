@@ -1,8 +1,8 @@
 package utils
 
-import JCompilerCollection.logger
+import MiraiCompilerFramework.logger
 import config.PastebinConfig
-import data.JccPluginData
+import data.GlotCache
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 import net.mamoe.mirai.console.util.ConsoleExperimentalApi
@@ -29,7 +29,7 @@ object GlotAPI {
     private const val URL_LIST_LANGUAGES = URL_API + "run"
 
     @OptIn(ConsoleExperimentalApi::class)
-    val utilsFolder = "./data/${JCompilerCollection.dataHolderName}/utils"
+    val utilsFolder = "./data/${MiraiCompilerFramework.dataHolderName}/utils"
 
     @Serializable
     data class Language(val name: String, val url: String)
@@ -60,10 +60,10 @@ object GlotAPI {
      * ```
      */
     fun listLanguages(): List<Language> {
-        if (JccPluginData.languages.isEmpty()) {
-            JccPluginData.languages = Json.decodeFromString(HttpUtil.get(URL_LIST_LANGUAGES)) ?: throw Exception("未获取到任何数据")
+        if (GlotCache.languages.isEmpty()) {
+            GlotCache.languages = Json.decodeFromString(HttpUtil.get(URL_LIST_LANGUAGES)) ?: throw Exception("未获取到任何数据")
         }
-        return JccPluginData.languages
+        return GlotCache.languages
     }
 
     /**
@@ -79,7 +79,7 @@ object GlotAPI {
      * @return 返回语言请求地址
      * @exception Exception 不支持的语言
      */
-    fun getSupport(language: String): Language =
+    private fun getSupport(language: String): Language =
         listLanguages().find { it.name.equals(language, true) } ?: throw Exception("不支持的语言")
 
     /**
@@ -87,13 +87,13 @@ object GlotAPI {
      */
     fun getTemplateFile(language: String): CodeFile {
         val lang = getSupport(language)
-        if (JccPluginData.templateFiles.containsKey(lang.name))
-            return JccPluginData.templateFiles[lang.name]!!
+        if (GlotCache.templateFiles.containsKey(lang.name))
+            return GlotCache.templateFiles[lang.name]!!
         val document = HttpUtil.getDocument(URL_NEW + lang.name)
         val filename = HttpUtil.documentSelect(document, ".filename").firstOrNull()?.text() ?: throw Exception("无法获取文件名")
         val fileContent = HttpUtil.documentSelect(document, "#editor-1").text() ?: throw Exception("无法获取模板文件内容")
         val templateFile = CodeFile(filename, fileContent)
-        JccPluginData.templateFiles[lang.name] = templateFile
+        GlotCache.templateFiles[lang.name] = templateFile
         return templateFile
     }
 
@@ -169,7 +169,7 @@ object GlotAPI {
      * @return 返回运行结果 若执行了死循环或其它阻塞代码，
      * 导致程序无法在限定时间内返回，将会报告超时异常
      */
-    fun runCode(language: Language, requestData: RunCodeRequest): RunResult {
+    private fun runCode(language: Language, requestData: RunCodeRequest): RunResult {
         val response = HttpUtil.post(language.url + "/latest", Json.encodeToString(requestData), mapOf("Authorization" to PastebinConfig.API_TOKEN))
         return Json.decodeFromString(response) ?: throw Exception("未获取到任何数据")
     }
@@ -191,7 +191,8 @@ object GlotAPI {
     private fun getFiles(language: String, code: String, file: String?): List<CodeFile> {
         val mainFile = CodeFile(getTemplateFile(language).name, code)
         return if (file != null) {
-            val utilFile = File("${MarkdownImageProcessor.folder}/utils/$file").readText()
+            @OptIn(ConsoleExperimentalApi::class)
+            val utilFile = File("./data/${MiraiCompilerFramework.dataHolderName}/utils/$file").readText()
             logger.info("Upload Extra File: $file")
             listOf(mainFile, CodeFile(file, utilFile))
         } else {

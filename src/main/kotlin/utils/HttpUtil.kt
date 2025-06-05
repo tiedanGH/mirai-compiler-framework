@@ -16,13 +16,14 @@ object HttpUtil {
     private val JSON: MediaType? = "application/json; charset=utf-8".toMediaTypeOrNull()
     private val okHttpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
-            .readTimeout(18, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
             .build()
     }
 
     /**
      * ### 下载图片
      */
+    @Deprecated("已弃用")
     fun downloadImage(url: String, file: File): ByteArray {
         val request = Request.Builder().url(url).build()
         val imageByte = okHttpClient.newCall(request).execute().body!!.bytes()
@@ -36,7 +37,7 @@ object HttpUtil {
      * ### 发送GET请求
      */
     fun get(url: String): String {
-        val request = Request.Builder().url(url).build()
+        val request = Request.Builder().url(url).header("User-Agent", "Mozilla/5.0").build()
         return okHttpClient.newCall(request).execute().body!!.string()
     }
 
@@ -63,7 +64,7 @@ object HttpUtil {
     /**
      * ### 解析网页响应
      */
-    fun parseBody(responseBody: String): Document {
+    private fun parseBody(responseBody: String): Document {
         return Jsoup.parse(responseBody)
     }
 

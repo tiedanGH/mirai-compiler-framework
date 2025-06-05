@@ -1,9 +1,12 @@
 package utils
 
+import config.PastebinConfig
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
 
 /**
  * # ubuntu pastebin 帮助类
@@ -15,7 +18,7 @@ import java.io.IOException
  *
  * @author jie65535@github
  */
-object UbuntuPastebinHelper {
+object PastebinUrlHelper {
     private const val URL = "https://paste.ubuntu.com"
     private var syntaxList: Map<String, String>? = null
     /**
@@ -35,9 +38,19 @@ object UbuntuPastebinHelper {
         return map
     }
 
-    fun checkUrl(url: String): Boolean {
-        return url.startsWith("https://pastebin.ubuntu.com/p/") && url.endsWith('/') && url.length < 45 || url.startsWith("https://pastebin.com/raw/")
-    }
+    data class UrlInfo(val website: String, val url: String, val enableCache: Boolean)
+
+    val supportedUrls = arrayOf(
+        UrlInfo("https://pastebin.ubuntu.com/", "https://pastebin.ubuntu.com/p/", true),
+        UrlInfo("https://pastebin.com/ (raw)", "https://pastebin.com/raw/", false),
+        UrlInfo("https://gist.github.com/ (raw)", "https://gist.githubusercontent.com/", true),
+        UrlInfo("https://www.toptal.com/developers/hastebin/", "https://hastebin.com/share/", true),
+        UrlInfo("https://bytebin.lucko.me/", "https://bytebin.lucko.me/", true),
+        UrlInfo("https://pastes.dev/", "https://pastes.dev/", true),
+        UrlInfo("https://p.ip.fi/", "https://p.ip.fi/", true),
+    )
+
+    fun checkUrl(url: String): Boolean = supportedUrls.any { url.startsWith(it.url) }
 
     /**
      * 获取内容
@@ -45,13 +58,48 @@ object UbuntuPastebinHelper {
      * @return 返回链接中贴的内容
      */
     fun get(url: String): String {
-        if (!checkUrl(url))
-            throw Exception("非法的url")
-        val document = HttpUtil.getDocument(url)
-        if (url.startsWith("https://pastebin.com/raw/")) {
-            return document.wholeText()
+        return when {
+            url.startsWith("https://pastebin.ubuntu.com/p/") ->
+                HttpUtil.documentSelect(HttpUtil.getDocument(url), "#hidden-content").text()
+
+            url.startsWith("https://pastebin.com/raw/") -> getRawText(url)
+
+            url.startsWith("https://gist.githubusercontent.com/") -> getRawText(url)
+
+            url.startsWith("https://hastebin.com/share/") -> {
+                val request = Request.Builder()
+                    .url(url.replace("share", "raw"))
+                    .addHeader("Authorization", "Bearer ${PastebinConfig.Hastebin_TOKEN}")
+                    .get().build()
+                OkHttpClient().newCall(request).execute().use { response ->
+                    response.body?.string() ?: ""
+                }
+            }
+
+            url.startsWith("https://bytebin.lucko.me/") -> getRawText(url)
+
+            url.startsWith("https://pastes.dev/") -> getRawText(url.replace("pastes", "api.pastes"))
+
+            url.startsWith("https://p.ip.fi/") ->
+                HttpUtil.documentSelect(HttpUtil.getDocument(url), "pre.prettyprint.linenums").text()
+
+            else -> throw IllegalArgumentException("不支持的URL格式：$url")
         }
-        return HttpUtil.documentSelect(document, "#hidden-content").text()
+    }
+
+    private fun getRawText(url: String): String {
+        val connection = URL(url).openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 10000
+            connection.readTimeout = 10000
+            connection.setRequestProperty("Cache-Control", "no-cache")
+            connection.setRequestProperty("Pragma", "no-cache")
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0")
+            return connection.inputStream.bufferedReader().use { reader -> reader.readText() }
+        } finally {
+            connection.disconnect()
+        }
     }
 
     /**
