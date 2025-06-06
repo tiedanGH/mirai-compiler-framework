@@ -555,8 +555,8 @@ pastebin代码数据:
     author: 铁蛋
     userID: 2295824927
     language: text
-    url: 'https://gist.githubusercontent.com/tiedanGH/75087dcb03c1426a5457eaca96306f94/raw/c1a0db3eacab066b207bf9fb6123b5e9335280cf/pb_help.json'
-    stdin: 'markdown格式文档查看链接https://github.com/tiedanGH/mirai-console-jcc-plugin/blob/master/README_pb.md'
+    url: 'https://gist.githubusercontent.com/tiedanGH/75087dcb03c1426a5457eaca96306f94/raw/73357b302a3adbb64b981501e8bb378a0260e624/pb_help.json'
+    stdin: 'markdown格式文档查看链接https://github.com/tiedanGH/mirai-compiler-framework/blob/main/doc/pastebin.md'
     format: ForwardMessage
   base64: 
     author: 铁蛋
@@ -1460,8 +1460,8 @@ pastebin代码数据:
     author: Ya
     userID: 3415521417
     language: cpp
-    url: 'https://pastebin.ubuntu.com/p/MmhxfbmFZ7/'
-    stdin: 380 181 茉茉ab号 a=字 b=字
+    url: 'https://pastebin.ubuntu.com/p/gyCFycKVpK/'
+    stdin: 372 200 香草小ab a=字 b=字
   随机茉茉: 
     author: Mithril
     userID: 2984304052
@@ -1472,7 +1472,7 @@ pastebin代码数据:
     author: LetmeSleep
     userID: 2624078602
     language: Python
-    url: 'https://pastebin.ubuntu.com/p/rdjZwSzTKq/'
+    url: 'https://pastebin.ubuntu.com/p/pP7fGCJW9v/'
     stdin: ''
     format: json
     storage: true
@@ -1482,19 +1482,11 @@ pastebin代码数据:
     language: text
     url: 'https://pastebin.ubuntu.com/p/nRcCNn4mkR/'
     stdin: ''
-  test: 
-    author: test
-    userID: 2295824927
-    language: python
-    url: 'https://gist.githubusercontent.com/mithril2984/4bc5a61edac7b2e6dbfd1ebaa65de3bd/raw/ef068c665025c4b0cccbf9021eab44ab0f7e797a/hangman.py'
-    stdin: ''
-    format: json
-    storage: true
   whist1: 
     author: Ya
     userID: 3415521417
     language: python
-    url: 'https://pastebin.ubuntu.com/p/tMdWmM47rJ/'
+    url: 'https://pastebin.ubuntu.com/p/H4Tz2QH7kh/'
     stdin: ''
     format: json
     storage: true
