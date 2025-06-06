@@ -1,0 +1,1500 @@
+隐藏Url的名称: 
+  - 密码游戏
+  - 猜密码
+  - 猜密码解密
+  - 数字炸弹
+  - 股票
+仅限群聊运行的名称: 
+  - 溜冰棋
+  - 陨落双子星
+  - Nerduel
+  - wordle
+  - 股票
+待审核列表: []
+别名: 
+  comb: 拼装毁灭者
+  ncmr: 名字竞技：神话篇
+  rob: robb
+  靶心计算者: 靶心计算器
+  es: ExtremeSkydiving
+  latex: LaTeX
+  fiveofakind: 五条时刻
+  hm: hangman
+  oas: OASIS
+pastebin代码数据: 
+  死神之门: 
+    author: 管家
+    userID: 3507807523
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/XHRKFR89cs/'
+    stdin: 100
+  讨喜抽奖: 
+    author: 黑桃3
+    userID: 806707508
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/fKNwN5gr4g/'
+    stdin: 喜欢 8 1
+  牌运: 
+    author: 管家
+    userID: 3507807523
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/wKybVnNSfB/'
+    stdin: ''
+  起手: 
+    author: 丩卩夂忄
+    userID: 2661463334
+    language: javascript
+    url: 'https://pastebin.ubuntu.com/p/bMNtbyVbrk/'
+    stdin: ''
+  拼装毁灭者: 
+    author: 宽容
+    userID: 877367792
+    language: cpp
+    url: 'https://pastebin.ubuntu.com/p/Kh4HpZp4rj/'
+    stdin: card any 896 896 892 892 857 856 852 817 816 497 496 492 452 396 392 357 356 316 312
+  博饼: 
+    author: Li2CO3
+    userID: 295820878
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/DNrwVJ4CQh/'
+    stdin: 1
+  印加宝藏: 
+    author: 群友
+    userID: 2717802973
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/w87sMrVDzS/'
+    stdin: ''
+  电子四驱车: 
+    author: 宽容
+    userID: 877367792
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/KYfWnJNpQh/'
+    stdin: A
+  发牌: 
+    author: 宽容
+    userID: 877367792
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/Sqw8ZN9rm3/'
+    stdin: ''
+  听牌: 
+    author: 宽容
+    userID: 877367792
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/mMHCXYGYs3/'
+    stdin: 1112345678999
+  陨落双子星: 
+    author: dva
+    userID: 2446629225
+    language: cpp
+    url: 'https://pastebin.ubuntu.com/p/skpWcgypj7/'
+    stdin: 100 100
+  溜冰棋: 
+    author: Li2CO3
+    userID: 295820878
+    language: cpp
+    url: 'https://pastebin.ubuntu.com/p/h2HqHxQ2RS/'
+    stdin: 12 14 43 52 54 23
+  roll: 
+    author: 隐身鱼
+    userID: 3293762834
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/fgKHZxHJdG/'
+    stdin: '--help'
+  舌尖上的周期表: 
+    author: H3PO4
+    userID: 1904867790
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/bpT74zRdfq/'
+    stdin: ''
+  LIE: 
+    author: Li2CO3
+    userID: 295820878
+    language: cpp
+    url: 'https://pastebin.ubuntu.com/p/MQPhRp36gq/'
+    stdin: 111000 210210 4(最后一位为问题，默认为0即提问模式)
+  迷宫: 
+    author: 隐身鱼
+    userID: 3293762834
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/JgKkTN87Bk/'
+    stdin: 20 20
+    format: markdown
+    width: 20
+  脱裤子放屁: 
+    author: InvFish
+    userID: 3293762834
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/5JQFGXdk4c/'
+    stdin: '-- print(1)'
+  完美骰子: 
+    author: 三月七
+    userID: 1710445426
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/26gMrbf62z/'
+    stdin: 111999222222
+  靶心毁灭者: 
+    author: 三月七&群友
+    userID: 1710445426
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/BJkFpsYYTz/'
+    stdin: 0507081315
+  数阵计算器: 
+    author: 三月七
+    userID: 1710445426
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/dHDKXdn5gz/'
+    stdin: '[37,111,3,7]'
+  签到: 
+    author: 九九归一
+    userID: 1956607464
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/wx7425THHG/'
+    stdin: ''
+  遛鸟胜率: 
+    author: 黑桃3
+    userID: 806707508
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/7jznYxvKBt/'
+    stdin: '一哥·雄鹰+4/二哥·乌鸦5-6/三哥·瘟疫鸟/四哥·鹌鹑/五哥·无足鸟0-21 1000'
+  遛鸟: 
+    author: 黑桃3
+    userID: 806707508
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/djDnWRkY4j/'
+    stdin: '黑桃3·鹈鹕/黑桃4·燕子'
+  缤纷毁灭者: 
+    author: 三月七
+    userID: 1710445426
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/3jQqprfVbn/'
+    stdin: '[-5,4,7,3,-2,-1,3,1,2,-5]#在列表内依次输入第一行数字和第二行数字 +-*/=依次用-1~-5表示'
+  数拆计算器: 
+    author: 三月七
+    userID: 1710445426
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/6CJJHbsTcC/'
+    stdin: '[0,-5,1,2,1,2,0,-5,1,2,0]#首位表格式，0为默认1为仅输出现在2为仅输出原本。之后每两位表示一次提问和回答，前一位表示提问内容，减X输入-X，除X输入X，后一位表示对方回答，0为失败1为成功'
+  心跳水立方: 
+    author: Change
+    userID: 3357982517
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/gxqjjGPYw2/'
+    stdin: ''
+  魔女计算器1: 
+    author: 三月七
+    userID: 1710445426
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/Y4sXRvRjJB/'
+    stdin: '1076#输入xxx表示投入这个数值的战力，输入1xxx表示到达这个战力需要的投入'
+  魔女计算器2: 
+    author: 三月七
+    userID: 1710445426
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/CxbHxvzyKt/'
+    stdin: '[[[5,100],[3,120]],[[4,100]]]#总格式[(左玩家出战),(右玩家出战)]。出战格式[[第一门序号,第一门战力]《,[第二门(如有,没有则去掉书名号范围内所有内容)序号,第二门战力]》]。门派序号0~7依次表示 塑能,咒法,防护,预言,附魔,幻术,死灵,变化。双门默认80%，仅能计算基础胜负，不能计算有关各门派首次使用产生的技能效果，投入类技能请使用魔女计算器1算出战力后输入，其他效果需裁判自行判断是否触发，幻影魔杖的使用请拆分成两个单门运行两次后由裁判判断胜负'
+  色即是空: 
+    author: Anidlebrain
+    userID: 1219185633
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/wbfZykdkxN/'
+    stdin: ''
+  Nerduel: 
+    author: Li2CO3
+    userID: 295820878
+    language: cpp
+    url: 'https://pastebin.ubuntu.com/p/zBQS8GyH5R/'
+    stdin: "3\n46-5=41 1 2\n3-2*1=1 0 5\n8*12=96 1 2"
+  极限跳伞: 
+    author: Anidlebrain
+    userID: 1219185633
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/h6N2dDFTTW/'
+    stdin: ''
+    format: json
+    storage: true
+  wordle: 
+    author: 铁蛋
+    userID: 2295824927
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/mXmG9yKfNC/'
+    stdin: "-- 5 1\napple\nerror 12000\nbrave 02002\n-1 0"
+  怪物手册: 
+    author: 九九归一
+    userID: 1956607464
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/XB9dzF5wRD/'
+    stdin: '10(勇士攻击)/5(勇士防御) 20(怪物血量)/10(怪物攻击)/3(怪物防御)[/(怪物特性)]'
+  石之塔: 
+    author: Change
+    userID: 3357982517
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/YXcjy9BGmt/'
+    stdin: '#run 石之塔 名字 攻击 防御 运气 闪避 战斗概率 挑战boss 例：#run 石之塔 C 20 20 20 20 36 2 (前四项数字的和小于等于100，第五个数字大于等于30，小于等于100，第六个为1-3) 其余见https://pastebin.ubuntu.com/p/7mTqyZhBjr/'
+  抽数: 
+    author: Change
+    userID: 3357982517
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/5m8hpxkFVK/'
+    stdin: '#run 抽数 1000 1 1000 (第一个数字为范围，第二个为要抽的数字，第三个为抽的次数)'
+  矩阵得分: 
+    author: Li2CO3
+    userID: 295820878
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/QJCcv5Mr3q/'
+    stdin: 'm|/ k a sasksqstsj cac8c7cjc5 dah2d4h3s5 hadjh4dth5 s4s6s7s3c4'
+  联合计算器: 
+    author: 九九归一
+    userID: 1956607464
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/cwwwzQGWqx/'
+    stdin: 111 112 113 121 122 123 131 132 133
+  合成台: 
+    author: 三月七
+    userID: 1710445426
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/PTpzbDqCZT/'
+    stdin: '3037003007037103.50#3/037/003/007/037/1/03.50 依据上述分段方式，依次表示：需要材料稀有度(139绿蓝紫)/需要材料个数/持有紫个数/持有蓝个数/持有绿个数/是否允许分解(0否1是，例如原神为0绝区零为1)/每次刷本或消耗一定量体力所期望获得的绿色材料数(蓝/紫需要计入，分别按3/9个绿计算)。小数点后须补足两位。期望根据获取材料平均值计算(例:崩铁每消耗10开拓力刷行迹材料可期望获得0.15*9+1*3+1.4*1=5.75个绿)，对于期望未公示的游戏可以尝试通过此前数据大致估算'
+  刺杀海豚: 
+    author: Change
+    userID: 3357982517
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/XbYvKZYJ2Y/'
+    stdin: 10 20 (前者为炸弹安放数字，后者为炸弹范围)
+  彩虹生成器: 
+    author: 三月七
+    userID: 1710445426
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/y5GjHHCqkq/'
+    stdin: 红橙黄绿青蓝紫
+  24点计算: 
+    author: ChatGPT
+    userID: 3357982517
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/mRxmB9YDVP/'
+    stdin: 2 5 9 6
+  抽牌: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/dgdvcXqgR2/'
+    stdin: 玩家1 玩家2 玩家3 玩家4 玩家5
+  远征军: 
+    author: Anidlebrain
+    userID: 1219185633
+    language: cpp
+    url: 'https://pastebin.ubuntu.com/p/RM2WW5CDfr/'
+    stdin: 624531798
+  大海战查分: 
+    author: Li2CO3
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/htthrN45qm/'
+    stdin: 2 1 1 1 0
+  大海战查配置: 
+    author: 九九归一
+    userID: 1956607464
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/Xxvhv9h6N2/'
+    stdin: '<所查分数/所查分数下限> [所查分数上限](输入两项及以上时输出最后一列为该配置对应分数) [boss] [是否重叠] [要害] [连发数] [侦查点数](这5项为查询具体配置的限制，可输入-1表示跳过)'
+  相性: 
+    author: 桌游小黄鸭
+    userID: 550838367
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/nsz2CMG5hj/'
+    stdin: 张三 张四
+  猜数字: 
+    author: InvFish
+    userID: 3293762834
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/NVW8HbfGh6/'
+    stdin: 1 100
+  猜数字改: 
+    author: InvFish
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/47XtTS9j86/'
+    stdin: ''
+  三轮车: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/wVPtN84DKY/'
+    stdin: h
+  三轮: 
+    author: InvFish
+    userID: 3293762834
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/rDyxnH9nMr/'
+    stdin: 10
+  福袋不放回: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/T35zfQKjjh/'
+    stdin: h
+  随机: 
+    author: ChatGPT
+    userID: 3357982517
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/tdF2qD4qFP/'
+    stdin: (上界，下界，个数(大于240则用个数表示)，是否可以重复(1为可以))
+  《追光者》游戏抽卡: 
+    author: 纤光_
+    userID: 2648379526
+    language: c
+    url: 'https://pastebin.ubuntu.com/p/bhHkGvGJWP/'
+    stdin: 1～32 抽卡 0 查看程序信息
+  德州扑克: 
+    author: 西二旗四惠东
+    userID: 2691677959
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/s8N4xYkJHz/'
+    stdin: 3
+  神秘符号旧版: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/gWzQtHzdfZ/'
+    stdin: h
+  神秘符号: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/rmM7TWYMwn/'
+    stdin: h
+    storage: true
+    format: json
+  麻将发牌: 
+    author: 铁蛋
+    userID: 2295824927
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/5dtJ6pjhTq/'
+    stdin: ''
+  跳连环: 
+    author: 桌游小黄鸭
+    userID: 550838367
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/Btp3trdNdn/'
+    stdin: '棋子名（马/车/象/卒/王/后）'
+  刷连环: 
+    author: Ya
+    userID: 3415521417
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/3GPDSG3SbX/'
+    stdin: 车
+  扩散捕捉: 
+    author: saiwei
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/qfjxGsV4tQ/'
+    stdin: 1000
+  赛博斗蛐蛐: 
+    author: 鱼头
+    userID: 3354678595
+    language: cpp
+    url: 'https://pastebin.ubuntu.com/p/Jshkpt3Cdf/'
+    stdin: 'GAB-铁蛋 D-鱼头'
+  名字竞技场: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/4Gpvxd2XKc/'
+    stdin: info
+  名字竞技场内战: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/xy2FtDJS7n/'
+    stdin: '<bot数量> <bot前缀> <额外添加的人名> 只有人名无bot则不需要输入bot数量和前缀 第一个人名前可以加seed_来修改种子'
+  密码游戏: 
+    author: 九九归一
+    userID: 1956607464
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/gBMptgcnbf/'
+    stdin: ''
+  低俗辱骂不合规: 
+    author: 齐齐
+    userID: 416390650
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/vz56SFd4Wz/'
+    stdin: ''
+  两两相性: 
+    author: 桌游小黄鸭
+    userID: 550838367
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/RZSM32fmMB/'
+    stdin: 张三 张四 张五 张六
+  占卜: 
+    author: 齐齐
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/mdr3zpvvKW/'
+    stdin: 齐齐
+  掷骰利息: 
+    author: 桌游小黄鸭
+    userID: 550838367
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/CKzQbCRBWJ/'
+    stdin: ''
+  摊子测试: 
+    author: 隐身鱼
+    userID: 3293762834
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/Jz4TZQdMDK/'
+    stdin: "--\n#《猜数字》 (@隐身鱼) 测试 By @隐身鱼\n\n# 摊子游戏规则：玩家在0，1，2中选定一个数字（记为N），然后随机从这三个数里抽一个，\n# 抽中玩家选的数N，玩家赢得(100*N)积分，否则裁判赢，玩家支付裁判100积分\n\nfrom random import randint\n\ndef play(number=0):\n    num = randint(0, 2)\n    if num == number:\n        return (True, 100 * number)\n    else:\n        return (False, -100)\n\nCONFIG = {\n    'total': 300000, # 自定义测试次数三十万次\n    'args': {\n        'number': range(0, 3) # 可用策略：选0、选1、选2\n    }\n}"
+    storage: true
+    format: json
+  bf: 
+    author: 九九归一
+    userID: 1956607464
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/WgGBGCcChs/'
+    stdin: help
+    format: json
+    storage: true
+  一言: 
+    author: 隐身鱼
+    userID: 3293762834
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/8wGHkX2YQz/'
+    stdin: ''
+    storage: true
+    format: json
+  斐波那契数列: 
+    author: 桌游小黄鸭
+    userID: 550838367
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/fwM9KWJtKQ/'
+    stdin: 13
+  我想: 
+    author: 隐身鱼
+    userID: 3293762834
+    language: pytHon
+    url: 'https://pastebin.ubuntu.com/p/qxF5v8pgHk/'
+    stdin: 巢
+  绝命登山: 
+    author: 铁蛋
+    userID: 2295824927
+    language: java
+    url: 'https://pastebin.ubuntu.com/p/3CN7JYVYSd/'
+    stdin: ''
+  规则: 
+    author: 铁蛋
+    userID: 2295824927
+    language: python
+    url: 'https://pastebin.com/raw/7ZHHNMCs'
+    stdin: '<游戏名称>'
+    format: json
+  完美战斗: 
+    author: spade3
+    userID: 806707508
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/wx8DzVNW2c/'
+    stdin: 蓄重挡重 轻重轻挡
+  重复登山: 
+    author: 鱼头
+    userID: 3354678595
+    language: cpp
+    url: 'https://pastebin.ubuntu.com/p/GWJd7fPd8n/'
+    stdin: 次数
+  龟兔赛跑: 
+    author: 桌游小黄鸭
+    userID: 550838367
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/9tX2qNDGVt/'
+    stdin: ''
+    storage: true
+    format: json
+  描述: 
+    author: Change
+    userID: 3357982517
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/4KbBkthBMW/'
+    stdin: 3 2
+  句子生成: 
+    author: xiaogt
+    userID: 551156721
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/qx2RSr4YdG/'
+    stdin: 5
+  Nerduel比较: 
+    author: 鱼头
+    userID: 3354678595
+    language: cpp
+    url: 'https://pastebin.ubuntu.com/p/gvkCBrWSWh/'
+    stdin: '96/12=8 9/1-7=2'
+  上山容易下山难: 
+    author: saiwei
+    userID: 3293762834
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/D4TgM8gPqT/'
+    stdin: ''
+  魔方墙: 
+    author: 隐身鱼
+    userID: 3293762834
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/3rm2jqf39F/'
+    stdin: ''
+    format: json
+  md: 
+    author: 隐身鱼
+    userID: 3293762834
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/n98JSd7Ypk/'
+    stdin: "-- \n# 一级标题\n## 二级标题\r---\r\n### 三级标题\n - 内容<br>换行内容\n    - 二级内容\n - 第二段内容 \n    1. **加粗部分(双星号)**\n    2. *斜体部分(单星号)*\n    3. <del>删除线部分</del>"
+    format: markdown
+    width: 750
+  ForwardMessage: 
+    author: 铁蛋
+    userID: 2295824927
+    language: text
+    url: 'https://pastebin.ubuntu.com/p/gxykmRrsF8/'
+    stdin: ''
+    format: ForwardMessage
+  帮助文档: 
+    author: 铁蛋
+    userID: 2295824927
+    language: text
+    url: 'https://gist.githubusercontent.com/tiedanGH/75087dcb03c1426a5457eaca96306f94/raw/c1a0db3eacab066b207bf9fb6123b5e9335280cf/pb_help.json'
+    stdin: 'markdown格式文档查看链接https://github.com/tiedanGH/mirai-console-jcc-plugin/blob/master/README_pb.md'
+    format: ForwardMessage
+  base64: 
+    author: 铁蛋
+    userID: 2295824927
+    language: text
+    url: 'https://pastebin.ubuntu.com/p/3yRmWnXdGV/'
+    stdin: ''
+    format: base64
+  storage: 
+    author: 铁蛋
+    userID: 2295824927
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/8dBPp9KJkj/'
+    stdin: '测试输入/clear（测试清除数据）'
+    storage: true
+    format: json
+  限界比大小: 
+    author: 桌游小黄鸭
+    userID: 550838367
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/p2nrRZw9Kd/'
+    stdin: 0.5
+    format: json
+    storage: true
+  MessageChain: 
+    author: 铁蛋
+    userID: 2295824927
+    language: text
+    url: 'https://pastebin.ubuntu.com/p/Xgp2dYPvRp/'
+    stdin: ''
+    format: json
+  全地形遛鸟: 
+    author: 黑桃3
+    userID: 806707508
+    language: python
+    url: 'https://pastebin.com/raw/zCK1TG5g'
+    stdin: '[鸟类/地形/指令]'
+    storage: true
+    format: json
+  看图: 
+    author: 隐身鱼
+    userID: 3293762834
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/Jr6FJSP3yZ/'
+    stdin: help
+    storage: true
+    format: json
+  有没有: 
+    author: 纤光_
+    userID: 2648379526
+    language: cpp
+    url: 'https://pastebin.ubuntu.com/p/rhhT2GK2Wb/'
+    stdin: 巢
+  猜密码: 
+    author: Change
+    userID: 3357982517
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/3nD8SWhBdB/'
+    stdin: 种子(无请输入0) 验证密码
+  猜密码解密: 
+    author: Change
+    userID: 3357982517
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/dK9tggdJw2/'
+    stdin: 种子
+  2048: 
+    author: 九九归一
+    userID: 1956607464
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/nkfTQ4Pnty/'
+    stdin: ''
+    storage: true
+    format: json
+  2048测试: 
+    author: 九九归一
+    userID: 1956607464
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/ggZNXrkFwT/'
+    stdin: ''
+    storage: true
+    format: json
+  靶心计算器: 
+    author: 三月七
+    userID: 1710445426
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/VCdzNrZ2FB/'
+    stdin: 0370507081315
+  json: 
+    author: 铁蛋
+    userID: 2295824927
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/BkfSYXswyT/'
+    stdin: '-- {"content":"测试输入"}'
+    format: json
+    storage: true
+  color: 
+    author: 隐身鱼
+    userID: 3293762834
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/vs4P9pcNsn/'
+    stdin: 给你点颜色看看
+    format: markdown
+    width: 1000
+  sign: 
+    author: 隐身鱼
+    userID: 3293762834
+    language: text
+    url: 'https://pastebin.ubuntu.com/p/z28b2hKX5b/'
+    stdin: ''
+    format: markdown
+  botsign: 
+    author: 隐身鱼
+    userID: 3293762834
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/wWtRZXP4DT/'
+    stdin: ''
+    format: json
+    storage: true
+  办公软件: 
+    author: 纤光_
+    userID: 2648379526
+    language: cpp
+    url: 'https://pastebin.ubuntu.com/p/bsXHB5VmKn/'
+    stdin: ''
+  2048疯狂版: 
+    author: 九九归一
+    userID: 1956607464
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/kQ9FV2x8Qv/'
+    stdin: ''
+    storage: true
+    format: json
+  大数库: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/94SYzc6KWn/'
+    stdin: 自编大数库,不可运行但可以使用
+  质因数分解: 
+    author: 九九归一
+    userID: 1956607464
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/b7fJ3SG4Mf/'
+    stdin: 114514
+  扫雷: 
+    author: 九九归一
+    userID: 1956607464
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/7HMVpSzfcH/'
+    stdin: help
+    storage: true
+    format: json
+  幸运: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/ttzrNbf4S7/'
+    stdin: h
+    storage: true
+    format: json
+  井字棋: 
+    author: 齐齐
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/7hjm9KHzfg/'
+    stdin: 000000000 左上
+  记事本: 
+    author: 齐齐
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/zGQrWXRpdf/'
+    stdin: ''
+    storage: true
+    format: json
+  幸运对决: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/MFVdR6Hjkh/'
+    stdin: h
+  cppStorage: 
+    author: 铁蛋
+    userID: 2295824927
+    language: cpp
+    url: 'https://pastebin.ubuntu.com/p/qXMJcBdGFt/'
+    stdin: ''
+    util: json.h
+    storage: true
+    format: json
+  字符串工具: 
+    author: 铁蛋
+    userID: 2295824927
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/BZK84N5MWf/'
+    stdin: '<模式> <输入>'
+  猜数: 
+    author: 齐齐
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/f3tZbhj8xM/'
+    stdin: ''
+    format: json
+    storage: true
+  数字炸弹: 
+    author: 齐齐
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/Ry2hfMXWqB/'
+    stdin: h
+  数字炸弹2: 
+    author: 齐齐
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/b9SdB7sCky/'
+    stdin: ''
+    format: json
+    storage: true
+  数字炸弹3: 
+    author: 齐齐
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/s8DPydh9vH/'
+    stdin: ''
+    storage: true
+    format: json
+  猜拳: 
+    author: 齐齐
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/7v6xnTqHWb/'
+    stdin: ''
+    format: json
+    storage: true
+  差值投标: 
+    author: 齐齐
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/s4mV7J9swg/'
+    stdin: ''
+    storage: true
+    format: json
+  重炮发球机: 
+    author: saiwei
+    userID: 3507807523
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/zdfX3JT6dQ/'
+    stdin: ''
+  出题: 
+    author: 齐齐
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/Zxn8MFtY87/'
+    stdin: ''
+    storage: true
+    format: json
+  选项个数: 
+    author: 齐齐
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/Zxn8MFtY87/'
+    stdin: ''
+    format: json
+    storage: true
+  A选项: 
+    author: 齐齐
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/Zxn8MFtY87/'
+    stdin: ''
+    format: json
+    storage: true
+  B选项: 
+    author: 齐齐
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/Zxn8MFtY87/'
+    stdin: ''
+    format: json
+    storage: true
+  C选项: 
+    author: 齐齐
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/Zxn8MFtY87/'
+    stdin: ''
+    format: json
+    storage: true
+  D选项: 
+    author: 齐齐
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/Zxn8MFtY87/'
+    stdin: ''
+    format: json
+    storage: true
+  htmlSample: 
+    author: 铁蛋
+    userID: 2295824927
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/mfBGHbyS6T/'
+    stdin: ''
+    format: markdown
+    width: 300
+    util: htmlTools.py
+  心有灵犀: 
+    author: 齐齐
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/gwXMq3P6RV/'
+    stdin: help
+    format: json
+    storage: true
+  短语生成器: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/dw6nGMkSxv/'
+    stdin: h
+  大神币系统: 
+    author: 齐齐
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/cN6mBDMnW4/'
+    stdin: 帮助
+    format: json
+    storage: true
+  加密: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/JJq9FRzVc2/'
+    stdin: '<加密内容或密文> <密钥>'
+  HP杀谜题: 
+    author: spade3
+    userID: 806707508
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/sTMX7XBQZx/'
+    stdin: ''
+    format: markdown
+    width: 400
+  LaTeX: 
+    author: 铁蛋
+    userID: 2295824927
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/Pv7JBk5sn5/'
+    stdin: "--\n\\int^{\\pi\\over 2}_0\\sin(x)\\mathrm{d}x"
+    format: LaTeX
+  latexSample: 
+    author: 铁蛋
+    userID: 2295824927
+    language: text
+    url: 'https://pastebin.ubuntu.com/p/3s3rS6ktDK/'
+    stdin: ''
+    format: LaTeX
+  新游戏HP杀: 
+    author: 铁蛋
+    userID: 2295824927
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/BW8z3BFvqt/'
+    stdin: ''
+  HP杀: 
+    author: spade3
+    userID: 806707508
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/XrZYnH6BgR/'
+    stdin: ''
+    format: json
+    storage: true
+  Logint: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/22S7jB8mc2/'
+    stdin: '存对数的大数库,范围±e1.79e308,精度13~14位,可直接输入调试'
+  三国杀: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/srXRttmw5W/'
+    stdin: ''
+  名人守擂赛: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/McQ5mbtWWR/'
+    stdin: ''
+  摊子: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/9JQ5qFVjQr/'
+    stdin: h
+    storage: true
+    format: json
+  表格: 
+    author: 铁蛋
+    userID: 2295824927
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/YM6VzH6cZd/'
+    stdin: 2 3 第一项为长度 第二项为高度 内容不足会用空格补齐
+    util: htmlTools.py
+    format: markdown
+    width: 500
+  开放蜂巢: 
+    author: 铁蛋
+    userID: 2295824927
+    language: cpp
+    url: 'https://pastebin.ubuntu.com/p/9CYXPs5crQ/'
+    stdin: 混乱 3589873865637145146
+    util: json.h
+    format: json
+  位置计算器: 
+    author: 鱼头
+    userID: 3354678595
+    language: cpp
+    url: 'https://pastebin.ubuntu.com/p/8CyJFNcg7k/'
+    stdin: 1 1 1 1
+  大不六: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/FHJ6nqkCvY/'
+    stdin: ''
+  零和计算: 
+    author: 九九归一
+    userID: 1956607464
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/ds7wFSN4DT/'
+    stdin: '<倍率> <分数1> <分数2> [分数3] [分数4] [……]'
+  银行: 
+    author: 齐齐
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/QSvH7dhkm9/'
+    stdin: ''
+    storage: true
+    format: json
+  股票: 
+    author: 齐齐
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/2N7mPYh6pF/'
+    stdin: ''
+    format: json
+    storage: true
+  日志: 
+    author: 齐齐
+    userID: 416390650
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/zGQrWXRpdf/'
+    stdin: ''
+    storage: true
+    format: json
+  相加的数字: 
+    author: 月影
+    userID: 1273300377
+    language: python
+    url: 'https://pastebin.com/raw/uMivqswk'
+    stdin: ''
+  云顶之巢: 
+    author: 星星
+    userID: 2295824927
+    language: java
+    url: 'https://pastebin.ubuntu.com/p/cksVpgT52B/'
+    stdin: '<种子> [人数]'
+    format: markdown
+    width: 400
+  狼币系统: 
+    author: 西海
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/tqYfsxFsQp/'
+    stdin: ''
+    format: json
+    storage: true
+  开巢算分: 
+    author: 铁蛋
+    userID: 2295824927
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/BM8Gv4GM9f/'
+    stdin: 帮助
+  模拟足球赛: 
+    author: Anidlebrain
+    userID: 1219185633
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/5mHDGDKPpm/'
+    stdin: ''
+    format: json
+  跳伞测试: 
+    author: Anidlebrain
+    userID: 1219185633
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/cRPy5qGKKM/'
+    stdin: ''
+    format: json
+    storage: true
+  Farkle: 
+    author: 桌游小黄鸭
+    userID: 550838367
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/SnXzgHjhcN/'
+    stdin: help
+    storage: true
+    format: json
+  跳伞: 
+    author: Anidlebrain
+    userID: 1219185633
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/s4WrTDbGnB/'
+    stdin: ''
+  MultipleMessage: 
+    author: 铁蛋
+    userID: 2295824927
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/cRhvqsvtCd/'
+    stdin: 第一条消息 第二条消息 第三条消息
+    format: json
+  传话筒: 
+    author: 铁蛋
+    userID: 2295824927
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/ttWnMQxFKq/'
+    stdin: 帮助
+    format: json
+    storage: true
+  匿名消息: 
+    author: 齐齐
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/Y7jGNKbXK2/'
+    stdin: ''
+    storage: true
+    format: json
+  FarkleEL: 
+    author: 桌游小黄鸭
+    userID: 550838367
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/gXZhSnmW7S/'
+    stdin: help
+    format: json
+    storage: true
+  冰雹猜想: 
+    author: 宽容
+    userID: 877367792
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/qwKPMWhh7z/'
+    stdin: ''
+  蛋生蛋: 
+    author: 桌游小黄鸭
+    userID: 550838367
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/MzdccfWN5T/'
+    stdin: ''
+    storage: true
+    format: json
+  选举: 
+    author: 齐齐
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/sQDfKy4Xpv/'
+    stdin: ''
+    storage: true
+    format: json
+  forward: 
+    author: 铁蛋
+    userID: 2295824927
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/BkfSYXswyT/'
+    stdin: '-- {"title":"自定义标题","brief":"[消息列表预览]","preview":["预览文字1","预览文字2"],"messages":[{"content":"测试消息1"},{"content":"测试消息2"}]}'
+    format: ForwardMessage
+    storage: true
+  骰子: 
+    author: 桌游小黄鸭
+    userID: 550838367
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/wf8JR5rDXy/'
+    stdin: help
+    storage: true
+    format: json
+  谜语猜数字: 
+    author: 桌游小黄鸭
+    userID: 550838367
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/9xxCrw28GM/'
+    stdin: help
+    format: json
+    storage: true
+  月影跳伞: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/JRPHYQcW9v/'
+    stdin: 1000
+  echo: 
+    author: 隐身鱼
+    userID: 3293762834
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/jc7NNN2KNY/'
+    stdin: 嗷～
+  rd: 
+    author: 隐身鱼
+    userID: 3293762834
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/xMJ3KFthJB/'
+    stdin: ''
+  批量rd: 
+    author: 铁蛋
+    userID: 2295824927
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/cMsMKSQ35J/'
+    stdin: 'd5*(3d6+2)+sin(pi/2) 20'
+  掐表: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/CtTyqHwbwj/'
+    stdin: h
+    format: json
+    storage: true
+  震荡捕捉: 
+    author: Anidlebrain
+    userID: 1219185633
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/4zVgXSZKcY/'
+    stdin: ''
+    format: json
+    storage: true
+  震荡测试: 
+    author: Anidlebrain
+    userID: 1219185633
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/4zVgXSZKcY/'
+    stdin: ''
+    format: json
+    storage: true
+  佩尔方程: 
+    author: 桌游小黄鸭
+    userID: 550838367
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/vpw6pByqH4/'
+    stdin: 67
+  cointosser: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/SSJgmkrfzp/'
+    stdin: h
+    format: json
+    storage: true
+  神抽助手: 
+    author: gemini
+    userID: 1042439327
+    language: python
+    url: 'https://pastebin.com/raw/Ec6NEkZ6'
+    stdin: 0843
+  进制转换: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/9hZ4bgBq55/'
+    stdin: '<b:数值转字符,c:字符转数值> <数值/字符> <所用字符>'
+  素数扩散: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/QYGH6cF566/'
+    stdin: '<扩散倍率,默认5> <初始数值,空格分割,默认2~10各一个>'
+  狼人杀: 
+    author: 齐齐
+    userID: 416390650
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/TmJwSBZsZ3/'
+    stdin: ''
+    storage: true
+    format: json
+  柏青哥: 
+    author: ZY
+    userID: 504572608
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/XcS7G68Vxr/'
+    stdin: 10
+    format: json
+  已读乱回: 
+    author: DS
+    userID: 3182618911
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/Ryph8fsHdB/'
+    stdin: 客户有个软件要开发...
+  名字竞技场测试: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/MhbTtSXFfT/'
+    stdin: '<(可选)s简化输出> <名字,空格分割>'
+  n: 
+    author: m
+    userID: 3182618911
+    language: python
+    url: 'https://pastebin.com/raw/YC6mGAGz'
+    stdin: ''
+    storage: true
+    format: json
+  saiwei竞技场: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/88SgfkmPXd/'
+    stdin: info
+  塔罗牌: 
+    author: 铁蛋
+    userID: 2295824927
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/GjnbxXsMjb/'
+    stdin: 3 all
+  测武魂: 
+    author: Ya
+    userID: 3415521417
+    language: text
+    url: 'https://pastebin.ubuntu.com/p/M5dsqnbJMr/'
+    stdin: ''
+  不知道是什么: 
+    author: DS
+    userID: 3507807523
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/f86fSncpXk/'
+    stdin: ''
+    storage: true
+    format: json
+  ？？？: 
+    author: DS
+    userID: 3507807523
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/hjmpmy7T9j/'
+    stdin: ''
+    storage: true
+    format: json
+  bh: 
+    author: 让我睡觉
+    userID: 2624078602
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/qp9t6Hj6Bt/'
+    stdin: ''
+  极限抢银行: 
+    author: 让我睡觉
+    userID: 2624078602
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/2mYQygvJfd/'
+    stdin: ''
+  bankheist: 
+    author: 让我睡觉
+    userID: 2624078602
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/zVd5VFPHzM/'
+    stdin: ''
+  测灵根: 
+    author: DS
+    userID: 3162471725
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/sxnfwfskMb/'
+    stdin: ''
+    storage: true
+  算卦: 
+    author: DS
+    userID: 3162471725
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/6GMrmNfRBK/'
+    stdin: ''
+  名字竞技：神话篇: 
+    author: 让我睡觉
+    userID: 2624078602
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/kz6rwvBhHF/'
+    stdin: ncmr
+  QQ头像: 
+    author: Ya
+    userID: 3415521417
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/xgdgNBd2wX/'
+    stdin: 3415521417
+    format: image
+  yamine1: 
+    author: Ya
+    userID: 3415521417
+    language: cpp
+    url: 'https://pastebin.ubuntu.com/p/jrGyNZrsQV/'
+    stdin: '370 5 *头龙'
+  摸鱼人日历: 
+    author: Ya
+    userID: 3415521417
+    language: text
+    url: 'https://pastebin.ubuntu.com/p/vVCRgyXmRw/'
+    stdin: ''
+    format: image
+  yamine1d: 
+    author: Ya
+    userID: 3415521417
+    language: cpp
+    url: 'https://pastebin.ubuntu.com/p/xM7JjkpnhF/'
+    stdin: '192 5 慕容熙*'
+  robb: 
+    author: 让我睡觉
+    userID: 2624078602
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/vNDPQMRQ4p/'
+    stdin: ''
+    storage: true
+    format: json
+  新游戏: 
+    author: Ya
+    userID: 3415521417
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/3VtHGtdYYN/'
+    stdin: 数字蜂巢
+  牌理: 
+    author: 西二旗四惠东
+    userID: 2691677959
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/ZgYMXQqk8t/'
+    stdin: h
+  穿越: 
+    author: DS
+    userID: 3162471725
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/xsR22rjvNY/'
+    stdin: ''
+    storage: true
+  ExtremeSkydiving: 
+    author: 让我睡觉
+    userID: 2624078602
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/GV3Kj3gf6G/'
+    stdin: ''
+  yamine2: 
+    author: Ya
+    userID: 3415521417
+    language: text
+    url: 'https://pastebin.ubuntu.com/p/zMkqMCXQ9J/'
+    stdin: ''
+    format: json
+  小游戏广场: 
+    author: 九九归一
+    userID: 1956607464
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/CTJBy4XHVv/'
+    stdin: help
+    format: json
+    storage: true
+  幸运颜色: 
+    author: DS
+    userID: 3162471725
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/hPp9PsQbPY/'
+    stdin: ''
+    format: markdown
+    width: 200
+  pbtest: 
+    author: 隐身鱼
+    userID: 3293762834
+    language: text
+    url: 'https://pastebin.ubuntu.com/p/HWgjbpZh3K/'
+    stdin: ''
+    format: markdown
+    width: 2000
+  yaya: 
+    author: Ya
+    userID: 3415521417
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/f4Hs5hNCBq/'
+    stdin: 1314 2001 3003 4001 5004 1
+    format: json
+  yaya21: 
+    author: Ya
+    userID: 3415521417
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/NB2bQ4HFmM/'
+    stdin: help
+    storage: true
+    format: json
+  yayapk: 
+    author: Ya
+    userID: 3415521417
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/6JMTJrBmtV/'
+    stdin: 114514
+    format: json
+  五条时刻: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/jNgvg6KMFB/'
+    stdin: '<显示个数,默认5个>'
+  hangman: 
+    author: Mithril
+    userID: 2984304052
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/kJjvgQBqPF/'
+    stdin: help
+    format: json
+    storage: true
+  yamine3: 
+    author: Ya
+    userID: 3415521417
+    language: cpp
+    url: 'https://pastebin.ubuntu.com/p/MmhxfbmFZ7/'
+    stdin: 380 181 茉茉ab号 a=字 b=字
+  随机茉茉: 
+    author: Mithril
+    userID: 2984304052
+    language: text
+    url: 'https://pastebin.com/raw/fjs0aApa'
+    stdin: ''
+  OASIS: 
+    author: LetmeSleep
+    userID: 2624078602
+    language: Python
+    url: 'https://pastebin.ubuntu.com/p/rdjZwSzTKq/'
+    stdin: ''
+    format: json
+    storage: true
+  yamine4: 
+    author: Ya
+    userID: 3415521417
+    language: text
+    url: 'https://pastebin.ubuntu.com/p/nRcCNn4mkR/'
+    stdin: ''
+  test: 
+    author: test
+    userID: 2295824927
+    language: python
+    url: 'https://gist.githubusercontent.com/mithril2984/4bc5a61edac7b2e6dbfd1ebaa65de3bd/raw/ef068c665025c4b0cccbf9021eab44ab0f7e797a/hangman.py'
+    stdin: ''
+    format: json
+    storage: true
+  whist1: 
+    author: Ya
+    userID: 3415521417
+    language: python
+    url: 'https://pastebin.ubuntu.com/p/tMdWmM47rJ/'
+    stdin: ''
+    format: json
+    storage: true
