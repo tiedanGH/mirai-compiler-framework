@@ -4,6 +4,7 @@ import commands.CommandRun.Image_Path
 import MiraiCompilerFramework
 import MiraiCompilerFramework.logger
 import com.sun.management.OperatingSystemMXBean
+import config.SystemConfig
 import data.ExtraData
 import data.PastebinData
 import kotlinx.coroutines.CoroutineScope
@@ -30,7 +31,6 @@ object MarkdownImageProcessor {
     private val MarkdownLock = Mutex()
     // 操作系统相关信息
     private val osBean = ManagementFactory.getOperatingSystemMXBean() as OperatingSystemMXBean
-    private val memoryLimit: Long = if (System.getProperty("os.name").lowercase().contains("windows")) 20480 else 4096
 
     data class MarkdownResult(val success: Boolean, val message: String, val duration: Long)
 
@@ -70,10 +70,10 @@ object MarkdownImageProcessor {
                         val physicalUsage = osBean.totalPhysicalMemorySize - osBean.freePhysicalMemorySize
                         val swapUsage = osBean.totalSwapSpaceSize - osBean.freeSwapSpaceSize
                         val totalUsage = physicalUsage + swapUsage
-                        if (totalUsage > memoryLimit * 1024 * 1024) {
+                        if (totalUsage > SystemConfig.memoryLimit * 1024 * 1024) {
                             seconds++
                             if (seconds >= 5) {
-                                logger.warning("监测到系统总内存使用超过${memoryLimit}MB达到5秒，当前总内存：${totalUsage / 1024 / 1024}MB，程序进程被中断")
+                                logger.warning("监测到系统总内存使用超过${SystemConfig.memoryLimit}MB达到5秒，当前总内存：${totalUsage / 1024 / 1024}MB，程序进程被中断")
                                 process.destroyForcibly()
                                 break
                             }
@@ -86,7 +86,7 @@ object MarkdownImageProcessor {
                     duration = timeout.toDouble()
                     if (timeout == TIMEOUT) {
                         saveErrorRecord(content, "TimeoutError($timeout)")
-                        return@run MarkdownResult(false, "执行超时：执行超出最大时间${timeout}秒限制，图片生成被中断。如需查看详细内容请联系铁蛋", timeout)
+                        return@run MarkdownResult(false, "执行超时：执行超出最大时间${timeout}秒限制，图片生成被中断。如需查看内容请联系管理员", timeout)
                     } else {
                         return@run MarkdownResult(false, "执行超时：执行超出剩余时间${timeout}秒限制，图片生成被中断", timeout)
                     }
@@ -95,9 +95,9 @@ object MarkdownImageProcessor {
                     val endTime = Instant.now()     // 记录结束时间
                     duration = Duration.between(startTime, endTime).toMillis() / 1000.0
                     if (process.exitValue() == 137) {
-                        return@run MarkdownResult(false, "操作失败：因内存占用过大被中断，超出服务器安全内存限制。exitValue：137", ceil(duration).toLong())
+                        return@run MarkdownResult(false, "操作失败：因内存占用过大被中断，超出系统安全内存限制。exitValue：137", ceil(duration).toLong())
                     }
-                    return@run MarkdownResult(false, "操作失败：程序执行异常，请联系铁蛋查看后台报错记录。exitValue：${process.exitValue()}", ceil(duration).toLong())
+                    return@run MarkdownResult(false, "操作失败：程序执行异常，请联系管理员查看后台报错记录。exitValue：${process.exitValue()}", ceil(duration).toLong())
                 }
                 tempFile.delete()
 
@@ -108,7 +108,7 @@ object MarkdownImageProcessor {
             } catch (e: Exception) {
                 logger.warning(e)
                 saveErrorRecord("$e\n\n$content", "${e::class.simpleName}")
-                return@run MarkdownResult(false, "操作失败：Kotlin运行错误【严重错误，理论不可能发生】，请务必联系铁蛋排查bug\n${e::class.simpleName}(${e.message})", 0L)
+                return@run MarkdownResult(false, "操作失败：Kotlin运行错误【严重错误，理论不可能发生】，请提供日志反馈问题\n${e::class.simpleName}(${e.message})", 0L)
             } finally {
                 if (name != null) Statistics.countMarkdown(name, duration)
             }

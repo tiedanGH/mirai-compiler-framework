@@ -1,8 +1,7 @@
-import commands.CommandGlot
-import commands.CommandPastebin
-import commands.CommandRun
+import commands.*
 import config.MailConfig
 import config.PastebinConfig
+import config.SystemConfig
 import data.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -56,6 +55,7 @@ object MiraiCompilerFramework : KotlinPlugin(
 
         PastebinConfig.reload()
         MailConfig.reload()
+        SystemConfig.reload()
         GlotCache.reload()
         PastebinData.reload()
         ExtraData.reload()

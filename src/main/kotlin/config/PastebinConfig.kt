@@ -12,7 +12,7 @@ internal object PastebinConfig : AutoSavePluginConfig("PastebinConfig") {
     val Hastebin_TOKEN: String by value()
 
     @ValueDescription("pastebin指令权限")
-    val admins: MutableList<Long> by value(mutableListOf(10000L))
+    val admins: List<Long> by value(listOf(10000L))
 
     @ValueDescription("最多进程数限制")
     val thread_limit: Int by value(3)

@@ -4,6 +4,7 @@ import commands.CommandRun.renderLatexOnline
 import MiraiCompilerFramework.logger
 import MiraiCompilerFramework.save
 import MiraiCompilerFramework.uploadFileToImage
+import config.SystemConfig
 import data.PastebinStorage
 import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
@@ -90,7 +91,7 @@ object JsonProcessor {
             val jsonStorageObject = JsonStorage(global, storage, userID, nickname, from)
             json.encodeToString<JsonStorage>(jsonStorageObject)
         } catch (e: Exception) {
-            throw Exception("JSON编码错误【严重错误，理论不可能发生】，请务必联系铁蛋排查bug：\n${e.message}")
+            throw Exception("JSON编码错误【严重错误，理论不可能发生】，请提供日志反馈问题：\n${e.message}")
         }
     }
 
@@ -280,20 +281,21 @@ object JsonProcessor {
         PastebinStorage.save()
     }
 
-    // 检查json和MessageChain中的敏感内容，发现则返回覆盖文本
+    // 检查json和MessageChain中的禁用内容，发现则返回覆盖文本
     fun blockSensitiveContent(content: String, at: Boolean, isGroup: Boolean): String {
         if (isGroup) {
             if (at) return content
-            val blockedContent = "[警告] 首条消息中检测到指令或易引发多bot冲突的高危内容，请开启`at`参数或修改内容来避免此警告。如发生误报请反馈给铁蛋"
+            val blockedContent = "[警告] 首条消息中检测到指令或易引发多bot冲突的高危内容，请开启`at`参数或修改内容来避免此警告"
             if (content.trimStart().startsWith("/")) return blockedContent
-            val words = listOf("transfer", "new", "join", " tiedan ", "新游戏")
-            for (word in words)
+            for (word in SystemConfig.groupBlackList)
                 if (word in content)
                     return blockedContent
             return content
         } else {
-            val blockedContent = "[警告] 私信输出中检测到被禁用的内容，请修改内容来避免此警告。如发生误报请反馈给铁蛋"
-            if (content.startsWith("新游戏积分")) return blockedContent
+            val blockedContent = "[警告] 私信输出中检测到被禁用的内容，请修改内容来避免此警告"
+            for (word in SystemConfig.privateBlackList)
+                if (word in content)
+                    return blockedContent
             return content
         }
     }

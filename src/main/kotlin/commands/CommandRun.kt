@@ -120,26 +120,34 @@ object CommandRun : RawCommand(
             var outputStorage: String? = null
 
             // 从url或缓存获取代码
-            val code: String = if (PastebinUrlHelper.supportedUrls.any { url.startsWith(it.url) && it.enableCache }) {
-                if (CodeCache.CodeCache.contains(name)) {
-                    logger.debug("从 CodeCache: $name 中获取代码")
-                    CodeCache.CodeCache[name]!!
+            val code: String = try {
+                if (PastebinUrlHelper.supportedUrls.any { url.startsWith(it.url) && it.enableCache }) {
+                    if (CodeCache.CodeCache.contains(name)) {
+                        logger.debug("从 CodeCache: $name 中获取代码")
+                        CodeCache.CodeCache[name]!!
+                    } else {
+                        logger.info("从 $url 中获取代码")
+                        val cache = PastebinUrlHelper.get(url)
+                        if (cache.isNotBlank()) {
+                            CodeCache.CodeCache[name] = cache
+                            CodeCache.save()
+                            sendMessage("【$name】已保存至缓存，下次执行时将从缓存中获取代码")
+                            cache
+                        } else {
+                            sendMessage("【$name】保存至缓存失败且无法执行：获取代码失败或代码为空，请联系代码创建者")
+                            return
+                        }
+                    }
                 } else {
                     logger.info("从 $url 中获取代码")
-                    val cache = PastebinUrlHelper.get(url)
-                    if (cache.isNotBlank()) {
-                        CodeCache.CodeCache[name] = cache
-                        CodeCache.save()
-                        sendMessage("【$name】已保存至缓存，下次执行时将从缓存中获取代码")
-                        cache
-                    } else {
-                        sendMessage("【$name】保存至缓存失败且无法执行：获取代码失败或代码为空，请联系代码创建者")
-                        return
-                    }
+                    PastebinUrlHelper.get(url)
                 }
-            } else {
-                logger.info("从 $url 中获取代码")
-                PastebinUrlHelper.get(url)
+            } catch (e: Exception) {
+                sendQuoteReply("[获取代码失败] 请重新尝试\n" +
+                        "报错类别：${e::class.simpleName}\n" +
+                        "报错信息：${trimToMaxLength(e.message.toString(), 300).first}"
+                )
+                return
             }
 
             if (code.isBlank()) {
@@ -161,7 +169,7 @@ object CommandRun : RawCommand(
                 logger.info("输入Storage数据: global{${global.length}} storage{${storage.length}} $nickname($userID) $from")
             }
 
-            logger.debug("[DEBUG]input: $input")
+            logger.debug("[DEBUG] input:\n$input")
 
             // 特殊格式在这里执行代码，返回字符串输出
             if (listOf("markdown", "base64", "image", "LaTeX", "json", "ForwardMessage").contains(format)) {
@@ -325,7 +333,7 @@ object CommandRun : RawCommand(
                         sendQuoteReply("【输出多条消息时出错】$ret")
                     }
                 }
-                else -> sendQuoteReply("[处理消息失败] 不识别的输出消息类型或内容，请联系铁蛋：$builder")
+                else -> sendQuoteReply("[处理消息失败] 不识别的输出消息类型或内容，请联系管理员：$builder")
             }
             // 原始格式为json、ForwardMessage且开启存档：在程序执行和输出均无错误，且发送消息成功时才进行保存
             if ((format == "json" || format == "ForwardMessage") && storageMode == "true") {

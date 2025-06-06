@@ -2,17 +2,14 @@ package data
 
 import utils.GlotAPI
 import net.mamoe.mirai.console.data.AutoSavePluginData
+import net.mamoe.mirai.console.data.ValueDescription
 import net.mamoe.mirai.console.data.value
 
 object GlotCache: AutoSavePluginData("GlotCache") {
 
-    /**
-     * 支持的语言
-     */
+    @ValueDescription("支持的语言")
     var languages: List<GlotAPI.Language> by value()
 
-    /**
-     * 模板文件
-     */
+    @ValueDescription("模板文件")
     val templateFiles: MutableMap<String, GlotAPI.CodeFile> by value()
 }

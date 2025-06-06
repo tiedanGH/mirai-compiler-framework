@@ -87,7 +87,7 @@ object CommandGlot : RawCommand(
             sendQuoteReply("[参数不足]\n请使用「${commandPrefix}glot help」来查看指令帮助")
         } catch (e: Exception) {
             logger.warning(e)
-            sendQuoteReply("[指令执行未知错误]\n可能由于bot发消息出错，请联系铁蛋查看后台：${e::class.simpleName}(${e.message})")
+            sendQuoteReply("[指令执行未知错误]\n请联系管理员查看后台：${e::class.simpleName}(${e.message})")
         }
     }
 }

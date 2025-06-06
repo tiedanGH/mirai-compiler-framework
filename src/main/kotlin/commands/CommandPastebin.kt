@@ -7,12 +7,8 @@ import MiraiCompilerFramework.reload
 import MiraiCompilerFramework.save
 import MiraiCompilerFramework.sendQuoteReply
 import MiraiCompilerFramework.uploadFileToImage
-import config.MailConfig
-import config.PastebinConfig
-import data.CodeCache
-import data.ExtraData
-import data.PastebinData
-import data.PastebinStorage
+import config.*
+import data.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.commandPrefix
@@ -30,11 +26,9 @@ import utils.GlotAPI
 import utils.MarkdownImageProcessor.cacheFolder
 import utils.MarkdownImageProcessor.generatePastebinHtml
 import utils.MarkdownImageProcessor.processMarkdown
-import utils.Statistics
 import utils.PastebinUrlHelper.checkUrl
 import utils.PastebinUrlHelper.supportedUrls
-import utils.buildMailContent
-import utils.buildMailSession
+import utils.*
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -115,7 +109,7 @@ object CommandPastebin : RawCommand(
                     sendQuoteReply(
                         "🌐 目前pb支持粘贴代码的网站：\n" +
                             supportedUrls.joinToString(separator = "") { "${it.website}\n" } +
-                                "💡 如有其他好用的网站请联系铁蛋")
+                                "💡 如有更多好用的网站欢迎推荐")
                 }
 
                 "profile", "简介"-> {   // 查看个人信息
@@ -168,7 +162,7 @@ object CommandPastebin : RawCommand(
                         |
                         |$help
                         |
-                        |·如有疑问或需要帮助，请联系铁蛋(2295824927)。
+                        |·如有疑问或需要帮助，请联系管理员。
                     """.trimMargin()
                     val option = args.getOrNull(1)?.content
                     if (option == null) {
@@ -308,7 +302,7 @@ object CommandPastebin : RawCommand(
                                 sendMessage(forward)
                             } catch (e: Exception) {
                                 logger.warning(e)
-                                sendQuoteReply("[转发消息错误]\n处理列表或发送转发消息时发生错误，请联系铁蛋查看后台，简要错误信息：${e.message}")
+                                sendQuoteReply("[转发消息错误]\n处理列表或发送转发消息时发生错误，请联系管理员查看后台，简要错误信息：${e.message}")
                                 return
                             }
                         } else {
@@ -340,9 +334,9 @@ object CommandPastebin : RawCommand(
                         appendLine(
                             when {
                                 PastebinConfig.enable_censor ->
-                                    "审核功能已开启，链接无法查看，如有需求请联系铁蛋"
+                                    "审核功能已开启，链接无法查看，如有需求请联系管理员"
                                 !PastebinData.hiddenUrl.contains(name) || showAll ->
-                                    data["url"].orEmpty()
+                                    "\n${data["url"].orEmpty()}"
                                 else ->
                                     "链接被隐藏"
                             }
@@ -717,7 +711,7 @@ object CommandPastebin : RawCommand(
                             imageUrl = args[2].content
                             isImage = false
                         } else {
-                            sendQuoteReply("转换图片失败，您发送的消息可能无法转换为图片，请尝试更换图片或联系铁蛋寻求帮助。如果使用URL上传，请以\"https://\"开头")
+                            sendQuoteReply("转换图片失败，您发送的消息可能无法转换为图片，请尝试更换图片或联系管理员寻求帮助。如果使用URL上传，请以\"https://\"开头")
                             return
                         }
                     } catch (e: Exception) {
@@ -819,7 +813,7 @@ object CommandPastebin : RawCommand(
                                 "${commandPrefix}pb storage $name mail\n将结果发送邮件至您的邮箱")
                     } catch (e: Exception) {
                         logger.warning(e)
-                        sendQuoteReply("[转发消息错误]\n生成或发送转发消息时发生错误，请联系铁蛋查看后台，简要错误信息：${e.message}")
+                        sendQuoteReply("[转发消息错误]\n生成或发送转发消息时发生错误，请联系管理员查看后台，简要错误信息：${e.message}")
                     }
                 }
 
@@ -887,6 +881,8 @@ object CommandPastebin : RawCommand(
                     try {
                         PastebinConfig.reload()
                         MailConfig.reload()
+                        SystemConfig.reload()
+                        GlotCache.reload()
                         PastebinData.reload()
                         ExtraData.reload()
                         PastebinStorage.reload()
@@ -908,7 +904,7 @@ object CommandPastebin : RawCommand(
             sendQuoteReply("[参数不足]\n请使用「${commandPrefix}pb help」来查看指令帮助")
         } catch (e: Exception) {
             logger.warning(e)
-            sendQuoteReply("[指令执行未知错误]\n可能由于bot发消息出错，请联系铁蛋查看后台：${e::class.simpleName}(${e.message})")
+            sendQuoteReply("[指令执行未知错误]\n请联系管理员查看后台：${e::class.simpleName}(${e.message})")
         }
     }
 
@@ -941,7 +937,7 @@ object CommandPastebin : RawCommand(
                 append("※※※使用此服务表示您知晓并遵守以下注意事项※※※\n")
                 append("1、不能在短时间内频繁使用此邮件发送服务\n")
                 append("2、不能在查询名称、查询ID、存储数据中添加任何违规内容\n")
-                append("3、此邮件为自动发送，请不要回复。如遇到问题请直接联系铁蛋\n")
+                append("3、此邮件为自动发送，请不要回复。如遇到问题请直接联系管理员\n")
                 append("\n\n")
                 append("【查询名称】$name\n\n")
                 append("·查询的结果数据请查看附件")
