@@ -57,6 +57,7 @@
 
 ## Pastebin指令
 查看和添加pastebin代码、个人信息、查看统计、高级功能配置
+
 ```text
 📋 pastebin查看运行帮助：
 /pb support　目前pb支持的网站
@@ -65,10 +66,12 @@
 /pb stats [名称]　查看统计
 /pb list [页码/作者]　查看完整列表
 /pb info <名称>　查看信息&运行示例
+
 ✏️ pastebin更新数据帮助：
 /pb add <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]　添加pastebin数据
 /pb set <名称> <参数名> <内容>　修改程序属性
 /pb delete <名称>　删除一条数据
+
 ⚙️ pastebin高级功能帮助：
 /pb set <名称> format <输出格式> [宽度/存储]　修改输出格式
 /pb upload <图片名称(需要包含拓展名)> <【图片/URL】>　上传图片至缓存
@@ -81,13 +84,14 @@
 
 ## Run指令
 运行pastebin中的代码
+
 ```text
 /run <名称> [stdin]    运行保存的pastebin代码
 ```
 
 # 支持上传代码的网站
 - [https://pastebin.ubuntu.com/](https://pastebin.ubuntu.com/) （需要登录，支持缓存）
-- [https://pastebin.com/](https://pastebin.com/) （需要raw，更新无需修改链接）
+- [https://pastebin.com/](https://pastebin.com/) （需要`raw`，更新无需修改链接）
 - [https://gist.github.com/](https://gist.github.com/) （需登录GitHub，支持修改+缓存）
 - [https://www.toptal.com/developers/hastebin/](https://www.toptal.com/developers/hastebin/)（支持缓存）
 - [https://bytebin.lucko.me/](https://bytebin.lucko.me/)（支持缓存）
