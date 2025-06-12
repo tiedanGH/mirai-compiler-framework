@@ -1,6 +1,6 @@
 package utils
 
-import commands.CommandRun.Image_Path
+import command.CommandRun.Image_Path
 import MiraiCompilerFramework
 import MiraiCompilerFramework.logger
 import com.sun.management.OperatingSystemMXBean

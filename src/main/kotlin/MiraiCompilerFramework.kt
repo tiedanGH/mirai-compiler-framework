@@ -1,4 +1,4 @@
-import commands.*
+import command.*
 import config.MailConfig
 import config.PastebinConfig
 import config.SystemConfig
