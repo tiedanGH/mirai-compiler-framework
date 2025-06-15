@@ -80,7 +80,7 @@ object GlotAPI {
      * @exception Exception 不支持的语言
      */
     private fun getSupport(language: String): Language =
-        listLanguages().find { it.name.equals(language, true) } ?: throw Exception("不支持的语言")
+        listLanguages().find { it.name.equals(language, true) } ?: throw Exception("不支持的语言 $language")
 
     /**
      * 获取指定编程语言的模板文件（缓存）
