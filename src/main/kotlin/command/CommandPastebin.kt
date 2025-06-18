@@ -1,4 +1,4 @@
-package commands
+package command
 
 import MiraiCompilerFramework
 import MiraiCompilerFramework.Command
@@ -32,7 +32,6 @@ import utils.*
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.util.*
 import kotlin.io.path.inputStream
 import kotlin.math.ceil
 
@@ -415,7 +414,7 @@ object CommandPastebin : RawCommand(
 
                 "set", "修改", "设置"-> {   // 修改数据中某一项的参数
                     val name = args[1].content
-                    var option = args[2].content.lowercase(Locale.getDefault())
+                    var option = args[2].content
                     var content = args.drop(3).joinToString(separator = " ")
                     var additionalOutput = ""
                     if (PastebinData.pastebin.containsKey(name).not()) {

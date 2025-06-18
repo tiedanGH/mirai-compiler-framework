@@ -2,6 +2,7 @@ package utils
 
 import MiraiCompilerFramework.logger
 import MiraiCompilerFramework.save
+import data.CodeCache
 import data.ExtraData
 import data.PastebinData
 import data.PastebinStorage
@@ -92,6 +93,12 @@ object Statistics {
         return buildString {
             appendLine("📈 总执行次数：$run")
             appendLine("🔥 热度指数：${"%.2f".format(score)}")
+            val cache = CodeCache.CodeCache[name]
+            if (cache != null) {
+                val length = cache.replace("\r\n", "\n").length
+                val emoji = if (length < 800_000) "📄" else "⚠️"
+                appendLine("$emoji 代码字符数：$length")
+            }
             if (markdown != null) {
                 appendLine("·调用markdown：$markdown")
                 if (mdTime != null && markdown > 0) {
@@ -109,14 +116,19 @@ object Statistics {
                 }
             }
             if (storage != null) {
+                var lengthTotal = storage[0]?.length ?: 0
                 appendLine()
                 appendLine("·全局存储大小：${storage[0]?.length}")
                 appendLine("·用户存储数量：${storage.size - 1}")
                 if (storage.size > 1) {
                     val userTotal = getUserStorageSize(storage)
-                    val average = String.format("%.2f", userTotal.toDouble() / (storage.size - 1))
+                    val avg = userTotal.toDouble() / (storage.size - 1)
+                    lengthTotal += avg.toInt()
                     appendLine("·用户存储大小：$userTotal")
-                    appendLine("·用户存储平均：$average")
+                    appendLine("·用户存储平均：${"%.2f".format(avg)}")
+                }
+                if (lengthTotal >= 800_000) {
+                    appendLine("⚠️ 存储过大警告：单次存储调用接近最大输出限制，可能影响程序执行")
                 }
             }
         }

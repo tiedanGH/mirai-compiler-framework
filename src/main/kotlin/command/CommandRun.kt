@@ -1,4 +1,4 @@
-package commands
+package command
 
 import MiraiCompilerFramework
 import MiraiCompilerFramework.MSG_TRANSFER_LENGTH

@@ -1,6 +1,6 @@
 package utils
 
-import commands.CommandRun.renderLatexOnline
+import command.CommandRun.renderLatexOnline
 import MiraiCompilerFramework.logger
 import MiraiCompilerFramework.save
 import MiraiCompilerFramework.uploadFileToImage
