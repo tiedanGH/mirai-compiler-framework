@@ -95,7 +95,7 @@ object Statistics {
             appendLine("🔥 热度指数：${"%.2f".format(score)}")
             val cache = CodeCache.CodeCache[name]
             if (cache != null) {
-                val length = normalizedLength(cache)
+                val length = cache.replace("\r\n", "\n").length
                 val emoji = if (length < 800_000) "📄" else "⚠️"
                 appendLine("$emoji 代码字符数：$length")
             }
@@ -211,15 +211,6 @@ object Statistics {
         if (!ExtraData.statistics.containsKey(name)) {
             ExtraData.statistics[name] = mutableMapOf()
         }
-    }
-
-    private fun normalizedLength(str: String): Int {
-        val decoded = str
-            .replace("""\\r\\n""".toRegex(), "\r\n")
-            .replace("""\\n""".toRegex(), "\n")
-            .replace("""\\r""".toRegex(), "\r")
-        val normalized = decoded.replace("\r\n", "\n")
-        return normalized.length
     }
 
     fun Double.roundTo2(): Double = BigDecimal(this).setScale(2, RoundingMode.HALF_UP).toDouble()
