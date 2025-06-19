@@ -1,4 +1,4 @@
-package utils
+package format
 
 import command.CommandRun.renderLatexOnline
 import MiraiCompilerFramework.logger
@@ -16,9 +16,9 @@ import net.mamoe.mirai.contact.Group
 import net.mamoe.mirai.message.data.At
 import net.mamoe.mirai.message.data.MessageChainBuilder
 import utils.DownloadHelper.downloadImage
-import utils.MarkdownImageProcessor.TIMEOUT
-import utils.MarkdownImageProcessor.cacheFolder
-import utils.MarkdownImageProcessor.processMarkdown
+import format.MarkdownImageProcessor.TIMEOUT
+import format.MarkdownImageProcessor.cacheFolder
+import format.MarkdownImageProcessor.processMarkdown
 import java.io.File
 import java.net.URI
 

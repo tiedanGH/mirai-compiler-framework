@@ -1,8 +1,9 @@
 package utils
 
 import MiraiCompilerFramework.logger
-import utils.MarkdownImageProcessor.TIMEOUT
-import utils.Statistics.roundTo2
+import module.Statistics
+import format.MarkdownImageProcessor.TIMEOUT
+import module.Statistics.roundTo2
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection

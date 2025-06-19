@@ -24,8 +24,11 @@ import net.mamoe.mirai.utils.ExternalResource.Companion.DEFAULT_FORMAT_NAME
 import net.mamoe.mirai.utils.ExternalResource.Companion.toExternalResource
 import net.mamoe.mirai.utils.info
 import utils.*
-import utils.ForwardMessageGenerator.stringToForwardMessage
-import utils.JsonProcessor.blockSensitiveContent
+import format.ForwardMessageGenerator.stringToForwardMessage
+import format.JsonProcessor.blockSensitiveContent
+import utils.PastebinUrlHelper
+import module.GlotAPI
+import module.Statistics
 import java.io.File
 
 object MiraiCompilerFramework : KotlinPlugin(

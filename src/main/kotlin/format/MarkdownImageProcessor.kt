@@ -1,4 +1,4 @@
-package utils
+package format
 
 import command.CommandRun.Image_Path
 import MiraiCompilerFramework
@@ -14,7 +14,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import net.mamoe.mirai.console.util.ConsoleExperimentalApi
-import utils.Statistics.roundTo2
+import module.Statistics
+import module.Statistics.roundTo2
 import java.io.File
 import java.lang.management.ManagementFactory
 import java.time.Duration

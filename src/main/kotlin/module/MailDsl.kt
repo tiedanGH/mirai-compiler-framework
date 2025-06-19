@@ -1,4 +1,4 @@
-package utils
+package module
 
 import jakarta.activation.*
 import jakarta.mail.*

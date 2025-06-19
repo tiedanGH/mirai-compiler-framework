@@ -72,7 +72,7 @@ object PastebinUrlHelper {
                     .addHeader("Authorization", "Bearer ${PastebinConfig.Hastebin_TOKEN}")
                     .get().build()
                 OkHttpClient().newCall(request).execute().use { response ->
-                    response.body?.string() ?: ""
+                    response.body.string()
                 }
             }
 

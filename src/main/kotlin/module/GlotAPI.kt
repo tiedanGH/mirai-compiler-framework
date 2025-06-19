@@ -1,4 +1,4 @@
-package utils
+package module
 
 import MiraiCompilerFramework.logger
 import config.PastebinConfig
@@ -6,6 +6,7 @@ import data.GlotCache
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 import net.mamoe.mirai.console.util.ConsoleExperimentalApi
+import utils.HttpUtil
 import java.io.File
 
 /**
@@ -91,7 +92,7 @@ object GlotAPI {
             return GlotCache.templateFiles[lang.name]!!
         val document = HttpUtil.getDocument(URL_NEW + lang.name)
         val filename = HttpUtil.documentSelect(document, ".filename").firstOrNull()?.text() ?: throw Exception("无法获取文件名")
-        val fileContent = HttpUtil.documentSelect(document, "#editor-1").text() ?: throw Exception("无法获取模板文件内容")
+        val fileContent = HttpUtil.documentSelect(document, "#editor-1").firstOrNull()?.text() ?: throw Exception("无法获取模板文件内容")
         val templateFile = CodeFile(filename, fileContent)
         GlotCache.templateFiles[lang.name] = templateFile
         return templateFile

@@ -26,7 +26,7 @@ object HttpUtil {
     @Deprecated("已弃用")
     fun downloadImage(url: String, file: File): ByteArray {
         val request = Request.Builder().url(url).build()
-        val imageByte = okHttpClient.newCall(request).execute().body!!.bytes()
+        val imageByte = okHttpClient.newCall(request).execute().body.bytes()
         val fileParent = file.parentFile
         if (!fileParent.exists()) fileParent.mkdirs()
         file.writeBytes(imageByte)
@@ -38,7 +38,7 @@ object HttpUtil {
      */
     fun get(url: String): String {
         val request = Request.Builder().url(url).header("User-Agent", "Mozilla/5.0").build()
-        return okHttpClient.newCall(request).execute().body!!.string()
+        return okHttpClient.newCall(request).execute().body.string()
     }
 
     /**
@@ -47,7 +47,7 @@ object HttpUtil {
     fun post(url: String, json: String): String {
         val requestBody = json.toRequestBody(JSON)
         val request = Request.Builder().url(url).post(requestBody).build()
-        return okHttpClient.newCall(request).execute().body!!.string()
+        return okHttpClient.newCall(request).execute().body.string()
     }
     /**
      * ### 发送带Header与Json参数的POST请求
@@ -58,7 +58,7 @@ object HttpUtil {
         for (param in params)
             requestBuilder.addHeader(param.key, param.value)
         val request = requestBuilder.post(requestBody).build()
-        return okHttpClient.newCall(request).execute().body!!.string()
+        return okHttpClient.newCall(request).execute().body.string()
     }
 
     /**

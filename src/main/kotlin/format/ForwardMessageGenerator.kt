@@ -1,4 +1,4 @@
-package utils
+package format
 
 import command.CommandRun.renderLatexOnline
 import MiraiCompilerFramework.logger
@@ -10,12 +10,12 @@ import net.mamoe.mirai.message.data.ForwardMessage
 import net.mamoe.mirai.message.data.RawForwardMessage
 import net.mamoe.mirai.message.data.buildForwardMessage
 import utils.DownloadHelper.downloadImage
-import utils.JsonProcessor.JsonForwardMessage
-import utils.JsonProcessor.generateMessageChain
-import utils.JsonProcessor.json
-import utils.MarkdownImageProcessor.TIMEOUT
-import utils.MarkdownImageProcessor.cacheFolder
-import utils.MarkdownImageProcessor.processMarkdown
+import format.JsonProcessor.JsonForwardMessage
+import format.JsonProcessor.generateMessageChain
+import format.JsonProcessor.json
+import format.MarkdownImageProcessor.TIMEOUT
+import format.MarkdownImageProcessor.cacheFolder
+import format.MarkdownImageProcessor.processMarkdown
 import java.io.File
 import java.net.URI
 
