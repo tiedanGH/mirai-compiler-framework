@@ -4,7 +4,7 @@
 
 _基于 Glot 接口的 Mirai Console 在线编译器框架_
 
-[简体中文](README.md) | [English](README_en.md)
+[简体中文](README.md) | [English](doc/README_en.md)
 
 </div>
 
@@ -46,10 +46,13 @@ _基于 Glot 接口的 Mirai Console 在线编译器框架_
 ---
 
 ## 反馈
-- 如安装或使用插件过程中遇到任何问题，欢迎添加QQ群 1059834024 讨论和测试，您也可以直接添加QQ联系我：铁蛋（[2295824927](https://qm.qq.com/q/hAIXBftS12)）
-- 您也可以在 [issue](https://github.com/tiedanGH/mirai-compiler-framework/issues) 页面反馈遇到的问题。如果您具备相应能力并愿意参与改进，欢迎通过 [Pull Request](https://github.com/tiedanGH/mirai-compiler-framework/pulls) 提交修改建议。
+如安装或使用插件过程中遇到任何问题，欢迎添加QQ群 1059834024 讨论和测试，您也可以直接添加QQ联系我：铁蛋（[2295824927](https://qm.qq.com/q/hAIXBftS12)）
+
+您也可以在 [issue](https://github.com/tiedanGH/mirai-compiler-framework/issues) 页面反馈遇到的问题。如果您具备相应能力并愿意参与改进，欢迎通过 [Pull Request](https://github.com/tiedanGH/mirai-compiler-framework/pulls) 提交修改建议。
 
 ## 致谢
-- 感谢对本框架提供项目代码的所有开发者。截止至 2025/06/06，本框架内已有 **217** 个独立的项目
-- 感谢原项目 [jie65535/**mirai-console-jcc-plugin**](https://github.com/jie65535/mirai-console-jcc-plugin/) 提供的源代码和灵感
-- 感谢 Ubuntu Pastebin、pastebin.com、Gist 等共[7个网站/平台](doc/commands.md#支持上传代码的网站)提供的粘贴代码服务。
+感谢对本框架提供项目代码的所有开发者。截止至 2025/06/06，本框架内已有 **217** 个独立的项目
+
+感谢原项目 [jie65535/**mirai-console-jcc-plugin**](https://github.com/jie65535/mirai-console-jcc-plugin/) 提供的源代码和灵感
+
+感谢 Ubuntu Pastebin、pastebin.com、Gist 等共[7个网站/平台](doc/commands.md#支持上传代码的网站)提供的粘贴代码服务。
