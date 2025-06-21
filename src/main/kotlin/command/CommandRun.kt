@@ -173,7 +173,7 @@ object CommandRun : RawCommand(
             logger.debug("[DEBUG] input:\n$input")
 
             // 特殊格式在这里执行代码，返回字符串输出
-            if (listOf("markdown", "base64", "image", "LaTeX", "json", "ForwardMessage").contains(format)) {
+            if (format != "text") {
                 val pair = runCodeToString(language, code, util, input, name, userInput)      // 特殊格式限制一个执行
                 output = pair.first
                 if (pair.second) {
@@ -321,7 +321,7 @@ object CommandRun : RawCommand(
                 }
                 // TTS音频消息生成（JSON在内部进行解析）
                 "Audio"-> {
-                    val audioData = generateAudio(name, output, this)
+                    val audioData = generateAudio(output, this)
                     if (!audioData.success) {
                         sendQuoteReply(audioData.error)
                         return
@@ -351,7 +351,7 @@ object CommandRun : RawCommand(
                         trimToMaxLength(builder.toString(), 300).first
                 )
             }
-            // 原始格式为json、ForwardMessage且开启存档：在程序执行和输出均无错误，且发送消息成功时才进行保存
+            // 原始格式支持且开启存储功能：在程序执行和输出均无错误，且发送消息成功时才进行保存
             if (MiraiCompilerFramework.enableStorageFormats.contains(format) && storageMode == "true") {
                 // 额外检测：执行后原项目消失（如被删除、存储被关闭），则不再保存存储
                 if (PastebinData.pastebin[name]?.get("storage") == null) {

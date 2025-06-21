@@ -10,13 +10,18 @@ group = "com.tiedan"
 version = "1.0.1"
 
 repositories {
-    maven("https://maven.aliyun.com/repository/public")
     mavenCentral()
+    maven("https://maven.aliyun.com/repository/public")
 }
 
-dependencies{
+dependencies {
     implementation("org.jsoup:jsoup:1.20.1")
     implementation("com.squareup.okhttp3:okhttp:5.0.0-alpha.16")
     api("jakarta.mail:jakarta.mail-api:2.1.3")
     implementation("org.eclipse.angus:angus-mail:2.0.3")
+    compileOnly("xyz.cssxsh.mirai:mirai-tts-plugin:1.1.2")
+}
+
+mirai {
+    jvmTarget = JavaVersion.VERSION_17
 }
