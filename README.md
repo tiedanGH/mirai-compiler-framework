@@ -4,6 +4,12 @@
 
 _基于 Glot 接口的 Mirai Console 在线编译器框架_
 
+[![release](https://img.shields.io/github/v/release/tiedanGH/mirai-compiler-framework)](https://github.com/tiedanGH/mirai-compiler-framework/releases)
+[![Build Snapshot](https://github.com/tiedanGH/mirai-compiler-framework/actions/workflows/build.yml/badge.svg)](https://github.com/tiedanGH/mirai-compiler-framework/actions/workflows/build.yml)
+
+[//]: # ([![stars]&#40;https://img.shields.io/github/stars/tiedanGH/mirai-compiler-framework?style=flat&color=orange&#41;]&#40;https://github.com/tiedanGH/mirai-compiler-framework&#41;)
+[//]: # ([![downloads]&#40;https://shields.io/github/downloads/tiedanGH/mirai-compiler-framework/total&#41;]&#40;https://github.com/tiedanGH/mirai-compiler-framework/releases/latest&#41;)
+
 [简体中文](README.md) | [English](doc/README_en.md)
 
 </div>
@@ -45,14 +51,25 @@ _基于 Glot 接口的 Mirai Console 在线编译器框架_
 
 ---
 
-## 反馈
-如安装或使用插件过程中遇到任何问题，欢迎添加QQ群 1059834024 讨论和测试，您也可以直接添加QQ联系我：铁蛋（[2295824927](https://qm.qq.com/q/hAIXBftS12)）
+## 基于第三方开源代码
+本项目部分代码基于 **mirai-console-jcc-plugin**（原始地址：[https://github.com/jie65535/mirai-console-jcc-plugin/](https://github.com/jie65535/mirai-console-jcc-plugin/)）  
+该项目遵循 **GNU Affero General Public License v3.0（AGPL-3.0）** 发布。
 
-您也可以在 [issue](https://github.com/tiedanGH/mirai-compiler-framework/issues) 页面反馈遇到的问题。如果您具备相应能力并愿意参与改进，欢迎通过 [Pull Request](https://github.com/tiedanGH/mirai-compiler-framework/pulls) 提交修改建议。
+根据 AGPL-3.0 协议要求，本项目保留原始项目的版权声明，并在此对其贡献表示感谢。  
+如需了解该许可证的详细内容，请参阅本项目中的 [LICENSE](LICENSE) 文件。
+
+## 反馈
+如在安装或使用插件过程中遇到任何问题，欢迎通过以下方式反馈：
+
+- 加入交流群：QQ群 `1059834024`
+- 直接联系作者 QQ：**铁蛋**（[2295824927](https://qm.qq.com/q/hAIXBftS12)）
+- 在 [Issues 页面](https://github.com/tiedanGH/mirai-compiler-framework/issues) 提交问题
+- 如果你具备开发能力，欢迎通过 [Pull Request](https://github.com/tiedanGH/mirai-compiler-framework/pulls) 提交修改建议
 
 ## 致谢
-感谢对本框架提供项目代码的所有开发者。截止至 2025/06/06，本框架内已有 **217** 个独立的项目
+感谢所有为本框架提供代码或灵感的开发者！  
+截至 2025 年 6 月 6 日，**本框架已整合 217 个独立的项目**。
 
-感谢原项目 [jie65535/**mirai-console-jcc-plugin**](https://github.com/jie65535/mirai-console-jcc-plugin/) 提供的源代码和灵感
-
-感谢 Ubuntu Pastebin、pastebin.com、Gist 等共[7个网站/平台](doc/commands.md#支持上传代码的网站)提供的粘贴代码服务。
+特别感谢：
+- 原项目 [jie65535/mirai-console-jcc-plugin](https://github.com/jie65535/mirai-console-jcc-plugin/)
+- 提供粘贴服务的平台（共 [7 个网站](doc/commands.md#支持上传代码的网站)），包括 Ubuntu Pastebin、pastebin.com、Gist 等
