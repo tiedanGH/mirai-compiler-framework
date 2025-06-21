@@ -1,3 +1,12 @@
+/*
+ * This file is based on source code from https://github.com/cssxsh/mirai-administrator
+ * The original project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
+ *
+ * In compliance with the AGPL-3.0 license, any network service that uses this file
+ * must also make its complete source code publicly available.
+ *
+ * Original copyright and license terms are retained.
+ */
 package module
 
 import jakarta.activation.*
