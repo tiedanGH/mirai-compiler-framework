@@ -68,7 +68,7 @@ object MarkdownImageProcessor {
                 CoroutineScope(Dispatchers.IO).launch {
                     var seconds = 0
                     while (process.isAlive) {
-                        val physicalUsage = osBean.totalPhysicalMemorySize - osBean.freePhysicalMemorySize
+                        val physicalUsage = osBean.totalMemorySize - osBean.freeMemorySize
                         val swapUsage = osBean.totalSwapSpaceSize - osBean.freeSwapSpaceSize
                         val totalUsage = physicalUsage + swapUsage
                         if (totalUsage > SystemConfig.memoryLimit * 1024 * 1024) {
