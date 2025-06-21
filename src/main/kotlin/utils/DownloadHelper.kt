@@ -2,7 +2,7 @@ package utils
 
 import MiraiCompilerFramework.logger
 import module.Statistics
-import format.MarkdownImageProcessor.TIMEOUT
+import format.MarkdownImageGenerator.TIMEOUT
 import module.Statistics.roundTo2
 import java.io.File
 import java.io.FileOutputStream

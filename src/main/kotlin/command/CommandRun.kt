@@ -13,6 +13,7 @@ import data.CodeCache
 import data.ExtraData
 import data.PastebinData
 import data.PastebinStorage
+import format.AudioGenerator.generateAudio
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.commandPrefix
@@ -32,8 +33,8 @@ import format.JsonProcessor.outputMultipleMessage
 import format.JsonProcessor.processDecode
 import format.JsonProcessor.processEncode
 import format.JsonProcessor.savePastebinStorage
-import format.MarkdownImageProcessor.cacheFolder
-import format.MarkdownImageProcessor.processMarkdown
+import format.MarkdownImageGenerator.cacheFolder
+import format.MarkdownImageGenerator.processMarkdown
 import module.RequestLimiter.newRequest
 import module.Statistics
 import utils.PastebinUrlHelper
@@ -313,10 +314,21 @@ object CommandRun : RawCommand(
                 }
                 // 转发消息生成（JSON在内部进行解析）
                 "ForwardMessage"-> {
-                    val triple = generateForwardMessage(name, output, this)
-                    outputGlobal = triple.second
-                    outputStorage = triple.third
-                    triple.first        // 返回ForwardMessage
+                    val forwardMessageData = generateForwardMessage(name, output, this)
+                    outputGlobal = forwardMessageData.global
+                    outputStorage = forwardMessageData.storage
+                    forwardMessageData.forwardMessage     // 返回ForwardMessage
+                }
+                // TTS音频消息生成（JSON在内部进行解析）
+                "Audio"-> {
+                    val audioData = generateAudio(name, output, this)
+                    if (!audioData.success) {
+                        sendQuoteReply(audioData.error)
+                        return
+                    }
+                    outputGlobal = audioData.global
+                    outputStorage = audioData.storage
+                    audioData.audio
                 }
                 else -> {
                     sendQuoteReply("代码执行完成但无法输出：无效的输出格式：$outputFormat，请联系创建者修改格式")
@@ -327,16 +339,20 @@ object CommandRun : RawCommand(
                 is MessageChainBuilder -> sendMessage(builder.build())
                 is ForwardMessage -> sendMessage(builder)
                 is Image -> sendMessage(builder)
+                is Audio -> sendMessage(builder)
                 is String -> {
                     val ret = outputMultipleMessage(name, jsonDecodeResult, this)
                     if (ret != null) {
                         sendQuoteReply("【输出多条消息时出错】$ret")
                     }
                 }
-                else -> sendQuoteReply("[处理消息失败] 不识别的输出消息类型或内容，请联系管理员：$builder")
+                null -> sendQuoteReply("[处理消息失败] 意料之外的消息结果 null，请联系管理员")
+                else -> sendQuoteReply("[处理消息失败] 不识别的输出消息类型或内容，请联系管理员：\n" +
+                        trimToMaxLength(builder.toString(), 300).first
+                )
             }
             // 原始格式为json、ForwardMessage且开启存档：在程序执行和输出均无错误，且发送消息成功时才进行保存
-            if ((format == "json" || format == "ForwardMessage") && storageMode == "true") {
+            if (MiraiCompilerFramework.enableStorageFormats.contains(format) && storageMode == "true") {
                 // 额外检测：执行后原项目消失（如被删除、存储被关闭），则不再保存存储
                 if (PastebinData.pastebin[name]?.get("storage") == null) {
                     sendQuoteReply("[存储错误] 拒绝访问：名称 $name 不存在或未开启存储，保存数据失败！")

@@ -23,9 +23,9 @@ import net.mamoe.mirai.message.data.Image.Key.queryUrl
 import utils.DownloadHelper.downloadFile
 import utils.DownloadHelper.downloadImage
 import module.GlotAPI
-import format.MarkdownImageProcessor.cacheFolder
-import format.MarkdownImageProcessor.generatePastebinHtml
-import format.MarkdownImageProcessor.processMarkdown
+import format.MarkdownImageGenerator.cacheFolder
+import format.MarkdownImageGenerator.generatePastebinHtml
+import format.MarkdownImageGenerator.processMarkdown
 import utils.PastebinUrlHelper.checkUrl
 import utils.PastebinUrlHelper.supportedUrls
 import module.Statistics
@@ -522,15 +522,17 @@ object CommandPastebin : RawCommand(
                             }
                         }
                         "format"-> {
-                            val alias = mapOf("md" to "markdown", "html" to "markdown", "latex" to "LaTeX")
+                            val alias = mapOf(
+                                "md" to "markdown",
+                                "html" to "markdown",
+                                "latex" to "LaTeX",
+                                "JSON" to "json",
+                                "audio" to "Audio",
+                            )
                             val paras = content.split(" ")
-                            val format = if (paras[0] in alias.keys) {
-                                alias[paras[0]]!!
-                            } else {
-                                paras[0]
-                            }
+                            val format = alias.getOrDefault(paras[0], paras[0])
                             content = format
-                            if (listOf("text", "markdown", "base64", "image", "LaTeX", "json", "ForwardMessage").contains(format).not()) {
+                            if (MiraiCompilerFramework.supportedFormats.contains(format).not()) {
                                 sendQuoteReply(
                                         "无效的输出格式：$format\n" +
                                         "仅支持输出：\n" +

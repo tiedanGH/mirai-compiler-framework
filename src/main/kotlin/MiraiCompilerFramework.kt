@@ -23,12 +23,13 @@ import net.mamoe.mirai.message.data.*
 import net.mamoe.mirai.utils.ExternalResource.Companion.DEFAULT_FORMAT_NAME
 import net.mamoe.mirai.utils.ExternalResource.Companion.toExternalResource
 import net.mamoe.mirai.utils.info
-import utils.*
 import format.ForwardMessageGenerator.stringToForwardMessage
 import format.JsonProcessor.blockSensitiveContent
 import utils.PastebinUrlHelper
 import module.GlotAPI
 import module.Statistics
+import module.calculateNextClearDelay
+import module.executeClearBlackList
 import java.io.File
 
 object MiraiCompilerFramework : KotlinPlugin(
@@ -41,13 +42,28 @@ object MiraiCompilerFramework : KotlinPlugin(
         info("""基于Glot接口的在线编译器框架""")
     }
 ) {
-    data class Command(val usage: String, val usageCN: String, val desc: String, val type: Int)
-
     const val CMD_PREFIX = "run"
     const val MSG_TRANSFER_LENGTH = 550
     private const val MSG_MAX_LENGTH = 800
+    val supportedFormats = listOf(
+        "text",
+        "markdown",
+        "base64",
+        "image",
+        "LaTeX",
+        "json",     // MessageChain, MultipleMessage
+        "ForwardMessage",
+        "Audio",
+    )
+    val enableStorageFormats = listOf(
+        "json",     // MessageChain, MultipleMessage
+        "ForwardMessage",
+        "Audio",
+    )
 
     var THREAD = 0
+
+    data class Command(val usage: String, val usageCN: String, val desc: String, val type: Int)
 
     override fun onEnable() {
         logger.info { "Mirai Compiler Framework loaded" }

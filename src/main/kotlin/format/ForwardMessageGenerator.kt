@@ -10,19 +10,32 @@ import net.mamoe.mirai.message.data.ForwardMessage
 import net.mamoe.mirai.message.data.RawForwardMessage
 import net.mamoe.mirai.message.data.buildForwardMessage
 import utils.DownloadHelper.downloadImage
-import format.JsonProcessor.JsonForwardMessage
+import format.JsonProcessor.JsonMessage
 import format.JsonProcessor.generateMessageChain
 import format.JsonProcessor.json
-import format.MarkdownImageProcessor.TIMEOUT
-import format.MarkdownImageProcessor.cacheFolder
-import format.MarkdownImageProcessor.processMarkdown
+import format.MarkdownImageGenerator.TIMEOUT
+import format.MarkdownImageGenerator.cacheFolder
+import format.MarkdownImageGenerator.processMarkdown
+import kotlinx.serialization.Serializable
 import java.io.File
 import java.net.URI
 
 object ForwardMessageGenerator {
+    @Serializable
+    data class JsonForwardMessage(
+        val title: String = "运行结果",
+        val brief: String = "[输出内容]",
+        val preview: List<String> = listOf("无预览"),
+        val summary: String = "聊天记录",
+        val name: String = "输出内容",
+        val messages: List<JsonMessage> = listOf(JsonMessage()),
+        val storage: String? = null,
+        val global: String? = null,
+    )
 
-    // 解析json并生成转发消息
-    suspend fun generateForwardMessage(name: String, forwardMessageOutput: String, sender: CommandSender): Triple<ForwardMessage, String?, String?> {
+    data class ForwardMessageData(val forwardMessage: ForwardMessage, val global: String? = null, val storage: String? = null)
+
+    suspend fun generateForwardMessage(name: String, forwardMessageOutput: String, sender: CommandSender): ForwardMessageData {
         val result = try {
             json.decodeFromString<JsonForwardMessage>(forwardMessageOutput)
         } catch (e: Exception) {
@@ -38,7 +51,7 @@ object ForwardMessageGenerator {
                 }
                 sender.subject!!.bot named "原始输出" says "程序原始输出：\n$resultString"
             }
-            return Triple(forward, null, null)
+            return ForwardMessageData(forward)
         }
         try {
             val forward = buildForwardMessage(sender.subject!!) {
@@ -135,7 +148,7 @@ object ForwardMessageGenerator {
                     }
                 }
             }
-            return Triple(forward, result.global, result.storage)
+            return ForwardMessageData(forward, result.global, result.storage)
         } catch (e: Exception) {
             logger.warning(e)
             val forward = buildForwardMessage(sender.subject!!) {
@@ -146,7 +159,7 @@ object ForwardMessageGenerator {
                 sender.subject!!.bot named "Error" says "[错误] 转发消息生成错误：\n${e.message}"
                 sender.subject!!.bot named "Error" says "程序原始输出：\n$forwardMessageOutput"
             }
-            return Triple(forward, null, null)
+            return ForwardMessageData(forward)
         }
     }
 

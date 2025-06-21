@@ -16,9 +16,9 @@ import net.mamoe.mirai.contact.Group
 import net.mamoe.mirai.message.data.At
 import net.mamoe.mirai.message.data.MessageChainBuilder
 import utils.DownloadHelper.downloadImage
-import format.MarkdownImageProcessor.TIMEOUT
-import format.MarkdownImageProcessor.cacheFolder
-import format.MarkdownImageProcessor.processMarkdown
+import format.MarkdownImageGenerator.TIMEOUT
+import format.MarkdownImageGenerator.cacheFolder
+import format.MarkdownImageGenerator.processMarkdown
 import java.io.File
 import java.net.URI
 
@@ -45,17 +45,6 @@ object JsonProcessor {
         val format: String = "text",
         val width: Int = 600,
         val content: String = "空消息",
-    )
-    @Serializable
-    data class JsonForwardMessage(
-        val title: String = "运行结果",
-        val brief: String = "[输出内容]",
-        val preview: List<String> = listOf("无预览"),
-        val summary: String = "查看转发消息",
-        val name: String = "输出内容",
-        val messages: List<JsonMessage> = listOf(JsonMessage()),
-        val storage: String? = null,
-        val global: String? = null,
     )
     @Serializable
     data class ActiveMessage(

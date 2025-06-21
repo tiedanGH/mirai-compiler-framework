@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.ceil
 
 @OptIn(ConsoleExperimentalApi::class)
-object MarkdownImageProcessor {
+object MarkdownImageGenerator {
     const val TIMEOUT = 60L
     val cacheFolder = "./data/${MiraiCompilerFramework.dataHolderName}/cache/"
     private val MarkdownLock = Mutex()
