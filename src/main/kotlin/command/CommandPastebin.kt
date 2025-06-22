@@ -31,6 +31,7 @@ import utils.PastebinUrlHelper.supportedUrls
 import module.Statistics
 import module.buildMailContent
 import module.buildMailSession
+import net.mamoe.mirai.console.command.isNotConsole
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -136,7 +137,7 @@ object CommandPastebin : RawCommand(
                 }
 
                 "private", "私信时段"-> {
-                    if (bot?.containsFriend(userID) != true) {
+                    if (bot?.containsFriend(userID) != true && isNotConsole()) {
                         sendQuoteReply("请先添加bot为好友才能使用此功能")
                         return
                     }
@@ -205,7 +206,7 @@ object CommandPastebin : RawCommand(
 
                 "stats", "statistics", "统计"-> {
                     val arg = args.getOrNull(1)?.content
-                    val name = arg?.let { PastebinData.alias[it] ?: it }
+                    val name = PastebinData.alias[arg] ?: arg
                     val statistics = if (name != null) {
                         if (PastebinData.pastebin.containsKey(name).not()) {
                             sendQuoteReply("未知的名称：$name\n请使用「${commandPrefix}pb list」来查看完整列表")
@@ -537,7 +538,7 @@ object CommandPastebin : RawCommand(
                                         "无效的输出格式：$format\n" +
                                         "仅支持输出：\n" +
                                         "·text（纯文本）\n" +
-                                        "·markdown/md（md/html转图片）\n" +
+                                        "·markdown（md/html转图片）\n" +
                                         "·base64（base64自定义格式输出）\n" +
                                         "·image（链接或路径直接发图）\n" +
                                         "·LaTeX（LaTeX转图片）\n" +
@@ -556,26 +557,34 @@ object CommandPastebin : RawCommand(
                             } else {
                                 PastebinData.pastebin[name]?.set("format", format)
                             }
-                            if (listOf("text", "json", "ForwardMessage").contains(format)) {
-                                PastebinData.pastebin[name]?.remove("width")
-                                val storage = paras.getOrNull(1)
-                                when (storage) {
-                                    in arrayListOf("enable","on","true","开启")-> {
-                                        PastebinData.pastebin[name]?.set("storage", "true")
-                                    }
-                                    in arrayListOf("disable","off","false","关闭")-> {
-                                        PastebinData.pastebin[name]?.remove("storage")
-                                        PastebinStorage.Storage.remove(name)
-                                    }
-                                }
-                            } else {
+                            if (format == "markdown") {
                                 val width = paras.getOrNull(1)
                                 if (width != null) {
                                     if (width.toIntOrNull() == null) {
                                         sendQuoteReply("修改失败：宽度只能是int型数字")
                                         return
                                     }
+                                    content = "$format（宽度：$width）"
                                     PastebinData.pastebin[name]?.set("width", width)
+                                } else {
+                                    PastebinData.pastebin[name]?.remove("width")
+                                }
+                            } else {
+                                PastebinData.pastebin[name]?.remove("width")
+                                when (paras.getOrNull(1)?.lowercase()) {
+                                    in arrayListOf("enable","on","true","开启")-> {
+                                        content = "$format（开启存储）"
+                                        PastebinData.pastebin[name]?.set("storage", "true")
+                                    }
+                                    in arrayListOf("disable","off","false","关闭")-> {
+                                        content = "$format（关闭存储）"
+                                        PastebinData.pastebin[name]?.remove("storage")
+                                        PastebinStorage.Storage.remove(name)
+                                    }
+                                    in arrayListOf("clear","清空")-> {
+                                        content = "$format（清空存储）"
+                                        PastebinStorage.Storage.remove(name)
+                                    }
                                 }
                             }
                         }

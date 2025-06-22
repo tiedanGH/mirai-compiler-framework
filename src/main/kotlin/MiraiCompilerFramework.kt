@@ -66,8 +66,6 @@ object MiraiCompilerFramework : KotlinPlugin(
     data class Command(val usage: String, val usageCN: String, val desc: String, val type: Int)
 
     override fun onEnable() {
-        logger.info { "Mirai Compiler Framework loaded" }
-
         CommandGlot.register()
         CommandPastebin.register()
         CommandRun.register()
@@ -82,6 +80,13 @@ object MiraiCompilerFramework : KotlinPlugin(
         CodeCache.reload()
 
         startTimer()
+
+        if (PastebinConfig.API_TOKEN.isEmpty())
+            logger.error("Glot API token为空，请先在PastebinConfig中配置才能使用本框架，访问 https://glot.io/account/token 获取token")
+        if (PastebinConfig.Hastebin_TOKEN.isEmpty())
+            logger.warning("Hastebin token为空，将无法获取Hastebin上的代码，如需注册请访问 https://www.toptal.com/developers/hastebin/documentation")
+
+        logger.info { "Mirai Compiler Framework loaded" }
 
         globalEventChannel()
             .parentScope(this)
