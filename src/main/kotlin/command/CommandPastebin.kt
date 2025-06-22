@@ -252,9 +252,9 @@ object CommandPastebin : RawCommand(
                         return
                     }
                     if (addPara in arrayOf("default", "全部", "all")) {
-                        val processResult = processMarkdown(null, generatePastebinHtml(), "2000")
-                        if (!processResult.success) {
-                            sendQuoteReply(processResult.message)
+                        val markdownResult = processMarkdown(null, generatePastebinHtml(), "2000")
+                        if (!markdownResult.success) {
+                            sendQuoteReply(markdownResult.message)
                             return
                         }
                         val file = File("${cacheFolder}markdown.png")
@@ -538,11 +538,12 @@ object CommandPastebin : RawCommand(
                                         "仅支持输出：\n" +
                                         "·text（纯文本）\n" +
                                         "·markdown/md（md/html转图片）\n" +
-                                        "·base64（base64转图片）\n" +
+                                        "·base64（base64自定义格式输出）\n" +
                                         "·image（链接或路径直接发图）\n" +
                                         "·LaTeX（LaTeX转图片）\n" +
                                         "·json（自定义输出格式、图片宽度，MessageChain和MultipleMessage需使用此格式）\n" +
-                                        "·ForwardMessage（使用json生成包含多条文字/图片消息的转发消息）"
+                                        "·ForwardMessage（使用json生成包含多条文字/图片消息的转发消息）\n" +
+                                        "·Audio（使用json生成文字转语音消息）"
                                 )
                                 return
                             }

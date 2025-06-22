@@ -14,6 +14,8 @@ import data.ExtraData
 import data.PastebinData
 import data.PastebinStorage
 import format.AudioGenerator.generateAudio
+import format.Base64Processor.fileToMessage
+import format.Base64Processor.processBase64
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.commandPrefix
@@ -240,21 +242,25 @@ object CommandRun : RawCommand(
                         return
                     }
                 }
-                // markdown和base64转图片输出
-                "markdown", "base64"-> {
-                    if (outputFormat == "base64") output = "![base64image]($output)"
-                    val processResult = if (width == null) {
-                        processMarkdown(name, output)
-                    } else {
-                        processMarkdown(name, output, width)
-                    }
-                    if (!processResult.success) {
-                        sendQuoteReply(processResult.message)
+                // markdown转图片输出
+                "markdown"-> {
+                    val markdownResult = processMarkdown(name, output, width ?: "600")
+                    if (!markdownResult.success) {
+                        sendQuoteReply(markdownResult.message)
                         return
                     }
                     val file = File("${cacheFolder}markdown.png")
                     subject?.uploadFileToImage(file)     // 返回结果图片
                         ?: return sendQuoteReply("[错误] 图片文件异常：ExternalResource上传失败，请尝试重新执行")
+                }
+                // base64自定义格式输出
+                "base64"-> {
+                    val base64Result = processBase64(output)
+                    if (!base64Result.success) {
+                        sendQuoteReply(base64Result.extension)
+                        return
+                    }
+                    fileToMessage(base64Result.fileType, base64Result.extension, subject, true)
                 }
                 // 普通图片输出
                 "image"-> {
@@ -340,6 +346,7 @@ object CommandRun : RawCommand(
                 is ForwardMessage -> sendMessage(builder)
                 is Image -> sendMessage(builder)
                 is Audio -> sendMessage(builder)
+                is ShortVideo -> sendMessage(builder)
                 is String -> {
                     val ret = outputMultipleMessage(name, jsonDecodeResult, this)
                     if (ret != null) {

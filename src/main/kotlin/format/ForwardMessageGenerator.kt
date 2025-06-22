@@ -3,6 +3,8 @@ package format
 import command.CommandRun.renderLatexOnline
 import MiraiCompilerFramework.logger
 import MiraiCompilerFramework.uploadFileToImage
+import format.Base64Processor.fileToMessage
+import format.Base64Processor.processBase64
 import kotlinx.serialization.decodeFromString
 import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.contact.Contact
@@ -17,6 +19,7 @@ import format.MarkdownImageGenerator.TIMEOUT
 import format.MarkdownImageGenerator.cacheFolder
 import format.MarkdownImageGenerator.processMarkdown
 import kotlinx.serialization.Serializable
+import net.mamoe.mirai.message.data.PlainText
 import java.io.File
 import java.net.URI
 
@@ -63,17 +66,16 @@ object ForwardMessageGenerator {
                 }
                 var timeUsed: Long = 0
                 for (m in result.messages) {
-                    var content = m.content
+                    val content = m.content
                     when (m.format) {
-                        "text" -> {
+                        "text"-> {
                             sender.subject!!.bot named result.name says content
                         }
-                        "markdown", "base64" -> {
-                            if (m.format == "base64") content = "![base64image]($content)"
-                            val processResult = processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
-                            timeUsed += processResult.duration
-                            if (!processResult.success) {
-                                sender.subject!!.bot named "Error" says "[markdown2image错误] ${processResult.message}"
+                        "markdown"-> {
+                            val markdownResult = processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
+                            timeUsed += markdownResult.duration
+                            if (!markdownResult.success) {
+                                sender.subject!!.bot named "Error" says "[markdown2image错误] ${markdownResult.message}"
                                 continue
                             }
                             try {
@@ -86,6 +88,21 @@ object ForwardMessageGenerator {
                                 logger.warning(e)
                                 sender.subject!!.bot named "Error" says "[错误] 图片文件异常：${e.message}"
                             }
+                        }
+                        "base64"-> {
+                            val base64Result = processBase64(content)
+                            if (!base64Result.success) {
+                                sender.subject!!.bot named "Error" says base64Result.extension
+                                continue
+                            }
+                            sender.subject!!.bot named result.name says (
+                                fileToMessage(
+                                    base64Result.fileType,
+                                    base64Result.extension,
+                                    sender.subject,
+                                    true
+                                ) ?: PlainText("[错误] Base64文件转换时出现未知错误，请联系管理员")
+                            )
                         }
                         "image"-> {
                             val file = if (content.startsWith("file:///")) {

@@ -6,6 +6,8 @@ import MiraiCompilerFramework.save
 import MiraiCompilerFramework.uploadFileToImage
 import config.SystemConfig
 import data.PastebinStorage
+import format.Base64Processor.fileToMessage
+import format.Base64Processor.processBase64
 import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -19,6 +21,7 @@ import utils.DownloadHelper.downloadImage
 import format.MarkdownImageGenerator.TIMEOUT
 import format.MarkdownImageGenerator.cacheFolder
 import format.MarkdownImageGenerator.processMarkdown
+import net.mamoe.mirai.message.data.PlainText
 import java.io.File
 import java.net.URI
 
@@ -93,20 +96,34 @@ object JsonProcessor {
         var timeUsed = timeUsedRecord
         for ((index, m) in jsonMessage.messageList.withIndex()) {
             if (index > 0) builder.add("\n")
-            var content = m.content
+            val content = m.content
             when (m.format) {
-                "text" -> {
+                "text"-> {
                     builder.add(if (content.isBlank()) "　" else if(index == 0) blockSensitiveContent(content, jsonMessage.at, sender.subject is Group) else content)
                 }
-                "markdown", "base64" -> {
-                    if (m.format == "base64") content = "![base64image]($content)"
-                    val processResult = processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
-                    timeUsed += processResult.duration
-                    if (!processResult.success) {
-                        builder.add("[markdown2image错误] ${processResult.message}")
+                "markdown"-> {
+                    val markdownResult = processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
+                    timeUsed += markdownResult.duration
+                    if (!markdownResult.success) {
+                        builder.add("[markdown2image错误] ${markdownResult.message}")
                         continue
                     }
                     builder.addImageFromFile("${cacheFolder}markdown.png", sender)
+                }
+                "base64"-> {
+                    val base64Result = processBase64(content)
+                    if (!base64Result.success) {
+                        builder.add(base64Result.extension)
+                        continue
+                    }
+                    builder.add(
+                        fileToMessage(
+                            base64Result.fileType,
+                            base64Result.extension,
+                            sender.subject,
+                            false
+                        ) ?: PlainText("[错误] Base64文件转换时出现未知错误，请联系管理员")
+                    )
                 }
                 "image"-> {
                     if (content.startsWith("file:///")) {
@@ -169,9 +186,9 @@ object JsonProcessor {
                 if (index >= 15) {
                     return "单次执行消息上限为15条"
                 }
-                var content = m.content
+                val content = m.content
                 when (m.format) {
-                    "text" -> {
+                    "text"-> {
                         val builder = MessageChainBuilder()
                         if (sender.subject is Group && jsonMessage.at) {
                             builder.add(At(sender.user!!))
@@ -180,15 +197,29 @@ object JsonProcessor {
                         builder.add(if (content.isBlank()) "　" else blockSensitiveContent(content, jsonMessage.at, sender.subject is Group))
                         sender.sendMessage(builder.build())
                     }
-                    "markdown", "base64" -> {
-                        if (m.format == "base64") content = "![base64image]($content)"
-                        val processResult = processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
-                        timeUsed += processResult.duration
-                        if (!processResult.success) {
-                            sender.sendMessage("[markdown2image错误] ${processResult.message}")
+                    "markdown"-> {
+                        val markdownResult = processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
+                        timeUsed += markdownResult.duration
+                        if (!markdownResult.success) {
+                            sender.sendMessage("[markdown2image错误] ${markdownResult.message}")
                             continue
                         }
                         sendLocalImage("${cacheFolder}markdown.png", sender)
+                    }
+                    "base64"-> {
+                        val base64Result = processBase64(content)
+                        if (!base64Result.success) {
+                            sender.sendMessage(base64Result.extension)
+                            continue
+                        }
+                        sender.sendMessage(
+                            fileToMessage(
+                                base64Result.fileType,
+                                base64Result.extension,
+                                sender.subject,
+                                true
+                            ) ?: PlainText("[错误] Base64文件转换时出现未知错误，请联系管理员")
+                        )
                     }
                     "image"-> {
                         if (content.startsWith("file:///")) {
