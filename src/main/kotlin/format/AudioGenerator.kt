@@ -19,7 +19,7 @@ object AudioGenerator {
         val person: Int = 0,
         val speed: Int = 5,
         val pitch: Int = 5,
-        val volume: Int = 15,
+        val volume: Int = 10,
         val content: String = "",
         val storage: String? = null,
         val global: String? = null,
@@ -43,7 +43,7 @@ object AudioGenerator {
             return AudioData(success = false, error = "生成语音失败：content内容为空")
         }
         if (result.format == "text") {
-            return AudioData(success = false, error = result.content)
+            return AudioData(null, false, result.global, result.storage, result.content)
         }
         val receiver = sender.subject as? AudioSupported
             ?: return AudioData(success = false, error = "生成语音失败：当前执行环境不支持接收语音消息")
@@ -58,18 +58,18 @@ object AudioGenerator {
             )
             return AudioData(audio, true, result.global, result.storage)
         } catch (e: IOException) {
-            return AudioData(success = false, error = "上传语音失败：${e.message ?: e.toString()}")
+            return AudioData(null, false, result.global, result.storage, "上传语音失败：${e.message ?: e.toString()}")
         } catch (e: IllegalStateException) {
             val message = e.message ?: e.toString()
             if (message.contains("parameter")) {
-                return AudioData(success = false, error = "生成语音失败（请求参数错误，请查看person支持）：$message")
+                return AudioData(null, false, result.global, result.storage, "生成语音失败（请求参数错误，请查看person支持）：$message")
             } else if (message.contains("rate")) {
-                return AudioData(success = false, error = "生成语音失败（调用频率过快）：$message")
+                return AudioData(null, false, result.global, result.storage, "生成语音失败（调用频率过快）：$message")
             }
-            return AudioData(success = false, error = "生成语音失败：$message")
+            return AudioData(null, false, result.global, result.storage, "生成语音失败：$message")
         } catch (e: Exception) {
             logger.warning(e)
-            return AudioData(success = false, error = "[错误] 生成语音未知错误：${e.message}")
+            return AudioData(null, false, result.global, result.storage, "[错误] 生成语音未知错误：${e.message}")
         }
     }
 

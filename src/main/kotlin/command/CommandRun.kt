@@ -328,19 +328,20 @@ object CommandRun : RawCommand(
                 // TTS音频消息生成（JSON在内部进行解析）
                 "Audio"-> {
                     val audioData = generateAudio(output, this)
-                    if (!audioData.success) {
-                        sendQuoteReply(audioData.error)
-                        return
-                    }
                     outputGlobal = audioData.global
                     outputStorage = audioData.storage
-                    audioData.audio
+                    if (audioData.success) {
+                        audioData.audio
+                    } else {
+                        sendQuoteReply(audioData.error)
+                    }
                 }
                 else -> {
                     sendQuoteReply("代码执行完成但无法输出：无效的输出格式：$outputFormat，请联系创建者修改格式")
                     return
                 }
             }
+            // 根据消息类型进行回复
             when (builder) {
                 is MessageChainBuilder -> sendMessage(builder.build())
                 is ForwardMessage -> sendMessage(builder)
@@ -353,6 +354,7 @@ object CommandRun : RawCommand(
                         sendQuoteReply("【输出多条消息时出错】$ret")
                     }
                 }
+                is Unit -> { /* do nothing */ }
                 null -> sendQuoteReply("[处理消息失败] 意料之外的消息结果 null，请联系管理员")
                 else -> sendQuoteReply("[处理消息失败] 不识别的输出消息类型或内容，请联系管理员：\n" +
                         trimToMaxLength(builder.toString(), 300).first
