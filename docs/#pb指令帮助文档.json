@@ -10,37 +10,37 @@
     "name": "帮助文档",
     "messages": [
         {
-            "content": "【2025/6/4更新公告】\n新增更多粘贴代码网站支持，使用`#pb support`查看完整列表\n【2025/5/12更新公告】\n1) 新输出格式image：通过链接或路径直接发图，支持发送gif动图\n2) 私信主动消息：用户设置可用时间段后可向用户发送主动消息\n【2025/2/28更新公告】\n1) json分支功能MultipleMessage：让程序分多条消息输出\n2) 群聊主动消息：json格式支持一条群聊主动消息，可指定群聊发送文字消息\n【2025/1/22更新公告】\n1) 新输出格式LaTeX：使用在线API转换图片\n2) 使用辅助文件需要进行配置，具体请查看第一部分第2图\n【2025/1/5更新公告】\npython语言新增辅助文件\"htmlTools.py\"：用于html表格的快捷生成和样式设置，具体使用方法和代码示例请查看：https://pastebin.ubuntu.com/p/mfBGHbyS6T/"
+            "content": "【2025/6/22更新公告】\n1) base64输出重构：现在可根据文件类型自动选择输出格式（支持文本、图片、语音、视频）\n2) 新输出格式Audio：使用在线API实现文本转语音，可调音库、语速、音调、音量\n\n【2025/6/4更新公告】\n新增更多粘贴代码网站支持，使用`#pb support`查看完整列表\n【2025/5/12更新公告】\n1) 新输出格式image：通过链接或路径直接发图，支持发送gif动图\n2) 私信主动消息：用户设置可用时间段后可向用户发送主动消息\n【2025/2/28更新公告】\n1) json分支功能MultipleMessage：让程序分多条消息输出\n2) 群聊主动消息：json格式支持向指定群聊发送消息\n【2025/1/22更新公告】\n1) 新输出格式LaTeX：使用在线API转换图片\n【2025/1/5更新公告】\npython语言新增辅助文件\"htmlTools.py\"：用于html表格的快捷生成和样式设置，具体使用方法和代码示例请查看：https://pastebin.ubuntu.com/p/mfBGHbyS6T/"
         },
         {
-            "content": "【帮助文档】\n本文内容为#pb指令的使用说明，帮助你快速掌握指令和使用多种输出格式，和使用存储功能让程序支持多段式运行"
+            "content": "【帮助文档】\n本文内容为`#pb`指令的使用说明，帮助你快速掌握指令和使用多种输出格式，和使用存储功能让程序支持多段式运行"
         },
         {
             "format": "MessageChain",
             "at": false,
             "messageList": [
                 {
-                    "content": "一、查看本文下方内容前，您需要先了解#pb和#run指令的基本功能，如您已经掌握基本功能并熟练运用，可直接跳至第二点"
+                    "content": "一、查看本文下方内容前，您需要先了解`#pb`和`#run`指令的基本功能，如您已经掌握基本功能并熟练运用，可直接跳至第二点"
                 },
                 {
                     "format": "markdown",
                     "width": 600,
-                    "content": "## 基本功能和指令使用\n### 基本功能\n- 本指令基于glot在线编译器接口制作，通过调用glot在线编译器的接口来远程执行代码\n    + 具体插件详情和原项目地址可通过指令「`#glot help`」查看\n- 本插件支持绝大多数的编程语言\n    + 使用指令「`#glot list`」来查看全部支持的语言\n- 「`#run <名称> [输入]`」用于运行保存在pb列表中的代码，注意程序执行仅有**15秒时间限制**，且输出内容大小最大**不能超过100wKB**\n### 指令使用\n- 指令「`#pb help`」可以查看全部功能的帮助\n- 指令「`#pb list`」可查看完整数据列表\n- 指令「`#pb info <名称>`」可查看对应项目的相关信息和运行示例\n### 添加新的代码链接\n- 在执行添加指令前，您需要先学会如何上传代码至pastebin网站，目前bot支持的pastebin网站有：\n    + [https://pastebin.ubuntu.com/](https://pastebin.ubuntu.com/) （需要登录，支持缓存）\n    + [https://pastebin.com/](https://pastebin.com/) （需要raw，更新无需修改链接）\n    + [https://gist.github.com/](https://gist.github.com/) （需登录GitHub，支持修改+缓存）\n    + [https://www.toptal.com/developers/hastebin/](https://www.toptal.com/developers/hastebin/)（支持缓存）\n    + [https://bytebin.lucko.me/](https://bytebin.lucko.me/)（支持缓存）\n    + [https://pastes.dev/](https://pastes.dev/)（支持缓存）\n    + [https://p.ip.fi/](https://p.ip.fi/) （支持缓存）\n- 部分网站需要注册账户登录后才能使用，已进行标注\n- pastebin.com可以游客身份创建链接（但部分功能受限，仍建议注册账户）。内容可以点击`edit`进行修改，而无需创建新链接，但要使用时需要加上`raw`参数，例如：https://pastebin.com/raw/114514\n- GitHub的gist支持修改内容，但修改后需要点击`raw`按钮获取新链接并替换\n- 将您的代码上传后会获得一个链接（或者直接复制浏览器上方的链接），使用指令「`#pb add <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]`」将链接填写于`源代码URL`处，即可添加新的pb项目\n- 如果提示无效的链接，可能原因为链接没有以“https://”开头或没有以“/”结尾\n### 修改参数\n- 使用指令「`#pb set <名称> <参数名> <内容>`」来修改相关参数\n    + 例如：`#pb set test name test2`，将test的名字修改为test2\n- **链接隐藏：** 当修改`hide`为开启状态时，对应的代码在info查看相关信息时会隐藏源代码链接（可用于一些包含加密功能的程序）\n- **仅限群聊：** 当修改`groupOnly`为开启状态时，对应的代码会被限制为仅群聊执行"
+                    "content": "## 基本功能和指令使用\n### 基本功能\n- 本指令基于glot在线编译器接口制作，通过调用glot在线编译器的接口来远程执行代码\n    + 具体项目详情可通过指令「`#glot help`」查看\n- 本插件支持绝大多数的编程语言\n    + 使用指令「`#glot list`」来查看全部支持的语言\n- 「`#run <名称> [输入]`」用于运行保存在pb列表中的代码，注意程序执行仅有**15秒时间限制**，且输出内容大小最大**不能超过100wKB**\n### 指令使用\n- 指令「`#pb help`」可以查看全部功能的帮助\n- 指令「`#pb list`」可查看完整数据列表\n- 指令「`#pb info <名称>`」可查看对应项目的相关信息和运行示例\n### 添加新的代码链接\n- 在执行添加指令前，您需要先学会如何上传代码至pastebin网站，目前bot支持的pastebin网站有：\n    + [https://pastebin.ubuntu.com/](https://pastebin.ubuntu.com/) （需要登录，支持缓存）\n    + [https://pastebin.com/](https://pastebin.com/) （需要`raw`，更新无需修改链接）\n    + [https://gist.github.com/](https://gist.github.com/) （需登录GitHub，支持修改+缓存）\n    + [https://www.toptal.com/developers/hastebin/](https://www.toptal.com/developers/hastebin/)（支持缓存）\n    + [https://bytebin.lucko.me/](https://bytebin.lucko.me/)（支持缓存）\n    + [https://pastes.dev/](https://pastes.dev/)（支持缓存）\n    + [https://p.ip.fi/](https://p.ip.fi/) （支持缓存）\n- 部分网站需要注册账户登录后才能使用，已进行标注\n- pastebin.com可以游客身份创建链接（但部分功能受限，仍建议注册账户）。内容可以点击`edit`进行修改，而无需创建新链接，但要使用时需要加上`/raw`参数，例如：https://pastebin.com/raw/114514\n- GitHub的Gist支持修改内容，但修改后需要点击`raw`按钮获取新链接并替换\n- 将您的代码上传后会获得一个链接（或者直接复制浏览器上方的链接），使用指令:\n  ```\n  #pb add <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]\n  ```\n  将链接填写于`源代码URL`处，即可添加新的pb项目\n- 如果提示无效的链接，可能原因为链接没有以“https://”开头或没有以“/”结尾\n### 修改参数\n- 使用指令：\n  ```\n  #pb set <名称> <参数名> <内容>\n  ```\n  来修改相关参数\n    + 例如：`#pb set test name test2`，将 test 的名字修改为 test2\n- **链接隐藏：** 当修改`hide`为开启状态时，对应的代码在info查看相关信息时会隐藏源代码链接（可用于一些包含加密功能的程序）\n- **仅限群聊：** 当修改`groupOnly`为开启状态时，对应的代码会被限制为仅群聊执行"
                 },
                 {
                     "format": "markdown",
                     "width": 600,
-                    "content": "## 辅助文件使用帮助\n- 辅助文件用于提供部分程序可用的通用功能，使用时需要使用set指令配置\n- 在执行时，辅助文件会和代码文件一起上传至glot\n### 使用方法\n- 使用如下指令配置辅助文件，目前每个程序仅支持添加一个辅助文件：\n    + `#pb set <名称> util <文件名>`\n- 如果您编写了其他好用的辅助文件，欢迎联系铁蛋添加\n### 目前支持的辅助文件列表\n- `htmlTools.py`\n    + html表格辅助生成工具，可直接创建Table对象来配置表格属性，以及单元格的样式和内容，包括合并单元格、设置背景色等常用功能，并使用`to_string()`方法快速转换为html字符串\n- `json.h`\n    + cpp语言存储功能辅助，用于将JSON字符串解析为可供cpp程序使用的map对象，以及将map重新编码成JSON字符串用于json格式输出"
+                    "content": "## 辅助文件使用帮助\n- 辅助文件用于提供部分程序可用的通用功能，使用时需要使用set指令配置\n- 在执行时，辅助文件会和代码文件一起上传至glot\n### 使用方法\n- 使用如下指令配置辅助文件，目前每个程序仅支持添加一个辅助文件：\n  ```\n  #pb set <名称> util <文件名>\n  ```\n- 如果您编写了其他好用的辅助文件，欢迎联系铁蛋添加\n### 目前支持的辅助文件列表\n- `htmlTools.py`\n    + html表格辅助生成工具，可直接创建Table对象来配置表格属性，以及单元格的样式和内容，包括合并单元格、设置背景色等常用功能，并使用`to_string()`方法快速转换为html字符串\n- `json.h`\n    + cpp语言存储功能辅助，用于将JSON字符串解析为可供cpp程序使用的map对象，以及将map重新编码成JSON字符串用于json格式输出"
                 }
             ]
         },
         {
-            "content": "二、本部分关于如何将程序输出转换成不同的格式。在查看下方内容前，您需要先执行指令把在第一步中创建的代码项目的输出格式改为你需要的格式，具体指令为：\n\n#pb set <名称> format <输出格式> [默认宽度]\n\n其中输出格式包括：\n·text（纯文本）\n·markdown（md/html转图片）\n·base64（base64转图片）\n·image（链接或路径直接发图）\n·LaTeX（LaTeX转图片）\n·json（自定义输出格式、图片宽度）\n·ForwardMessage（使用json生成包含多条文字/图片消息的转发消息）\n\n具体使用方法详见下文说明"
+            "content": "二、本部分关于如何将程序输出转换成不同的格式。在查看下方内容前，您需要先执行指令把在第一步中创建的代码项目的输出格式改为你需要的格式，具体指令为：\n\n#pb set <名称> format <输出格式> [默认宽度]\n\n其中输出格式包括：\n·text（纯文本）\n·markdown（md/html转图片）\n·base64（base64自定义格式输出）\n·image（链接或路径直接发图）\n·LaTeX（LaTeX转图片）\n·json（自定义输出格式、图片宽度）\n·ForwardMessage（使用json生成包含多条文字/图片消息的转发消息）\n·Audio（使用json生成文字转语音消息）\n\n具体使用方法详见下文说明"
         },
         {
             "format": "markdown",
             "width": 600,
-            "content": "## text\n- 朴实无华的文本，输出最初的风格\n### 使用帮助\n- 这个格式没什么好写的，就是纯文本发送，**无需执行指令修改format，程序会默认采用本方法输出**\n- 当文本消息过长时（大于550字符），会收入转发消息显示（防止刷屏），但转发消息的容量依然有上限，程序一次的输出最多只能为5000个中文字符（15000个英文字符），多余部分会被截断"
+            "content": "## (1) text\n- 朴实无华的文本，输出最初的风格\n### 使用帮助\n- 这个格式没什么好写的，就是纯文本发送，**无需执行指令修改format，程序会默认采用本方法输出**\n- 当文本消息过长时（大于550字符），会收入转发消息显示（防止刷屏），但转发消息的容量依然有上限，程序一次的输出最多只能为5000个中文字符（15000个英文字符），多余部分会被截断"
         },
         {
             "format": "MessageChain",
@@ -49,7 +49,7 @@
                 {
                     "format": "markdown",
                     "width": 600,
-                    "content": "## markdown和html\n- 将markdown和html格式的文档渲染成图片\n### 使用帮助\n- 程序输出需为markdown或html格式\n- 鉴于服务器性能考虑，markdown转图片进程最大执行时间限制为60秒。过于复杂或大小过大的图片可能无法成功生成\n### 图片调用\n- 支持上传图片至服务器缓存方便调用，指令为：\n    + `#pb upload <图片名称(需要包含拓展名)> <【图片】>`\n    + markdown图片相关语法：`![](网页链接/本地图片)`\n- 但由于QQ新版更换了发图方式，目前上传图片仅支持使用**电脑怀旧版客户端**进行，如果存在上传方面困难，请联系铁蛋寻求帮助\n- 使用upload指令上传的图片可以直接通过“`image​://`”作为路径调用图片\n- 同时支持调用LGTBot的图片素材，使用“`lgtbot​://`”作为路径会直接关联至LGTBot的`game`文件夹，如需查看相关图片具体路径，请访问[https://github.com/Slontia/lgtbot](https://github.com/Slontia/lgtbot)"
+                    "content": "## (2) markdown和html\n- 将markdown和html格式的文档渲染成图片\n### 使用帮助\n- 程序输出需为markdown或html格式\n- 鉴于服务器性能考虑，markdown转图片进程最大执行时间限制为60秒。过于复杂或大小过大的图片可能无法成功生成\n### 图片调用\n- 支持上传图片至服务器缓存方便调用，指令为：\n    + `#pb upload <图片名称(需要包含拓展名)> <【图片】>`\n    + markdown图片相关语法：`![](网页链接/本地图片)`\n- 但由于QQ新版更换了发图方式，目前上传图片仅支持使用**电脑怀旧版客户端**进行，如果存在上传方面困难，请联系铁蛋寻求帮助\n- 使用upload指令上传的图片可以直接通过“`image​://`”作为路径调用图片\n- 同时支持调用LGTBot的图片素材，使用“`lgtbot​://`”作为路径会直接关联至LGTBot的`game`文件夹，如需查看相关图片具体路径，请访问[https://github.com/Slontia/lgtbot](https://github.com/Slontia/lgtbot)"
                 },
                 {
                     "content": "·python语言可以通过\"import htmlTools\"导入html表格辅助生成工具（此文件会在配置辅助文件为“htmlTools.py”后一起上传至glot），内部包含一些表格相关的辅助方法，具体使用方法和代码示例请查看：https://pastebin.ubuntu.com/p/mfBGHbyS6T/（内含源代码链接）"
@@ -59,17 +59,17 @@
         {
             "format": "markdown",
             "width": 600,
-            "content": "## base64\n- 将base64字符串转换成图片\n### 使用帮助\n- 程序输出需为base64格式的字符串，例如：\n    + data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABhkAAAPGC...[此处省略几万个字符]\n- 当图片像素很高时，base64字符串会相对较长，建议直接使用命令上传图片至缓存来调用\n- 也可以在markdown模式下，直接使用 `![](base64字符串)` 来直接转换base64图片<del>（感觉base64是最没用的一个功能）</del>"
+            "content": "## (3) base64\n- 将根据base64的文件类型，自动将base64字符串转换成多种输出格式\n- 目前支持转换 文本、图片、语音、视频\n### 使用帮助\n- 程序输出需为base64格式的字符串，需要包含类型，例如：\n    + data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABhkAAAPGC...(此处省略几万个字符)\n    + data:video/mp4;base64,AAAAGGZ0eXBtcDQyAAAAAG1wNDJpc29tA...(此处省略几万个字符)\n- 如果输出为图片，当图片像素很高时，base64字符串会相对较长，建议直接使用命令上传图片至缓存来调用。\n- 也可以在markdown模式下，直接使用 `![](base64字符串)` 来直接转换base64图片\n- 最后：base64终于变得非常有用了"
         },
         {
             "format": "markdown",
             "width": 600,
-            "content": "## image\n- 从链接或本地路径直接获取图片，**可支持发送gif动图**\n- 此输出格式下图片发送速度极快，但质量可能会被压缩，原始质量图片请选择markdown输出格式（速度和质量不能兼得）\n### 使用帮助\n- 程序输出**仅能包含有且仅有一个**`http`开头的URL或`file:///`开头的本地文件路径，例如：\n    + `https://i.imgs.ovh/2025/04/20/jXUdp.jpeg`\n    + `file:////home/lighthouse/lgtbot-mirai/lgtbot/images/logo_transparent_colorful.svg`\n    + `image://boss2.png`"
+            "content": "## (4) image\n- 从链接或本地路径直接获取图片，**可支持发送gif动图**\n- 此输出格式下图片发送速度极快，但质量可能会被压缩，原始质量图片请选择markdown输出格式（速度和质量不能兼得）\n### 使用帮助\n- 程序输出**仅能包含有且仅有一个**`http`开头的URL或`file:///`开头的本地文件路径，例如：\n    + `https://i.imgs.ovh/2025/04/20/jXUdp.jpeg`\n    + `file:////home/lighthouse/lgtbot-mirai/lgtbot/images/logo_transparent_colorful.svg`\n    + `image://boss2.png`"
         },
         {
             "format": "markdown",
             "width": 600,
-            "content": "## LaTeX\n- 将LaTeX格式的文档使用在线API转换成图片，主要用于公式的图片生成\n### 使用帮助\n- 程序输出需为LaTeX格式的字符串，例如：\n```text\n\\begin{align}\n    E_0 &= mc^2 \\\\\n    E &= \\frac{mc^2}{\\sqrt{1-\\frac{v^2}{c^2}}}\n\\end{align}\n```\n- **LaTeX不支持图片宽度`width`配置**\n- 当前使用的在线转换API为QuickLaTeX（[https://quicklatex.com/](https://quicklatex.com/)）"
+            "content": "## (5) LaTeX\n- 将LaTeX格式的文档使用在线API转换成图片，主要用于公式的图片生成\n### 使用帮助\n- 程序输出需为LaTeX格式的字符串，例如：\n```text\n\\begin{align}\n    E_0 &= mc^2 \\\\\n    E &= \\frac{mc^2}{\\sqrt{1-\\frac{v^2}{c^2}}}\n\\end{align}\n```\n- **LaTeX不支持图片宽度`width`配置**\n- 当前使用的在线转换API为QuickLaTeX（[https://quicklatex.com/](https://quicklatex.com/)）"
         },
         {
             "format": "MessageChain",
@@ -81,7 +81,7 @@
                 {
                     "format": "markdown",
                     "width": 600,
-                    "content": "## json\n- 自定义输出格式、图片宽度和内容，让程序输出可以在文字和图片间随时切换\n### 使用帮助\n- 使用此功能需要程序输出json格式结果，输出格式应与`JsonMessage`中的格式对应\n- `JsonMessage`中包含下方几个参数：\n    + `format`(String)——为输出的格式，格式不能使用json和ForwardMessage *（默认为text）*\n    + `at`(Boolean)——为文本消息前是否@指令执行者，**仅在`format`为text和MessageChain时生效** *（默认为true）*\n    + `width`(Int)——图片的默认宽度，当以text输出时，此项参数不生效 *（默认为600）*\n    + `content`(String)——输出的内容，用于输出文字或生成图片，如果是markdown格式需要使用markdown语法 *（默认为“空消息”）*\n    + `messageList`(List[`JsonSingleMessage`])——消息链中包含的所有消息，和`content`参数之间仅有一个有效。**MessageChain和`JsonSingleMessage`的使用帮助请在下一张图片中查看**\n    + `error`(String)——用于抛出中断异常。当为非空时，bot会直接发送`error`中的消息，**并停止解析输出中的其他任何参数，存储数据也不会保存**\n- 上方的全部参数均不是必填项，如没有填写则按照默认值生成\n### 使用json输出的几个示例\n- text格式输出（`format`和`width`均可省略）\n```json\n{\n    \"content\": \"这是一段文本\"\n}\n```\n- markdown格式输出（如果省略`width`则为默认值600）\n```json\n{\n    \"format\": \"markdown\",\n    \"width\": 300,\n    \"content\": \"### markdown标题\\n- 文本内容\"\n}\n```\n- base64格式输出（如果宽度小于600，可适当调小`width`）\n```json\n{\n    \"format\": \"base64\",\n    \"content\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABhkAAA...\"\n}\n```"
+                    "content": "## (6) json\n- 自定义输出格式、图片宽度和内容，让程序输出可以在文字和图片间随时切换\n### 使用帮助\n- 使用此功能需要程序输出json格式结果，输出格式应与`JsonMessage`中的格式对应\n- `JsonMessage`中包含下方几个参数：\n    + `format`(String)——为输出的格式，格式不能使用json和ForwardMessage *（默认为text）*\n    + `at`(Boolean)——为文本消息前是否@指令执行者，**仅在`format`为text和MessageChain时生效** *（默认为true）*\n    + `width`(Int)——图片的默认宽度，当以text输出时，此项参数不生效 *（默认为600）*\n    + `content`(String)——输出的内容，用于输出文字或生成图片，如果是markdown格式需要使用markdown语法 *（默认为“空消息”）*\n    + `messageList`(List[`JsonSingleMessage`])——消息链中包含的所有消息，和`content`参数之间仅有一个有效。**MessageChain和`JsonSingleMessage`的使用帮助请在下一张图片中查看**\n    + `error`(String)——用于抛出中断异常。当为非空时，bot会直接发送`error`中的消息，**并停止解析输出中的其他任何参数，存储数据也不会保存**\n- 上方的全部参数均不是必填项，如没有填写则按照默认值生成\n### 使用json输出的几个示例\n- text格式输出（`format`和`width`均可省略）\n```json\n{\n    \"content\": \"这是一段文本\"\n}\n```\n- markdown格式输出（如果省略`width`则为默认值600）\n```json\n{\n    \"format\": \"markdown\",\n    \"width\": 300,\n    \"content\": \"### markdown标题\\n- 文本内容\"\n}\n```\n- base64格式输出（如果宽度小于600，可适当调小`width`）\n```json\n{\n    \"format\": \"base64\",\n    \"content\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABhkAAA...\"\n}\n```"
                 },
                 {
                     "content": "[消息链]MessageChain"
@@ -117,10 +117,21 @@
                 {
                     "format": "markdown",
                     "width": 600,
-                    "content": "## ForwardMessage\n- 使用json生成包含多条文字、图片消息的转发消息，高度自定义输出，pb指令目前的最强输出功能\n### 使用帮助\n- 此功能虽然非常强大，但使用起来比较麻烦，需要程序输出json格式结果，输出格式应与`JsonForwardMessage`中的格式对应\n- `JsonForwardMessage`中包含下方几个参数：\n    + `title`(String)——转发消息卡片的标题，点开后也会显示在页面最上方 *（默认为“运行结果”）*\n    + `brief`(String)——转发消息显示在消息列表中的预览，仅在消息列表中可见 *（默认为“[输出内容]”）*\n    + `preview`(List[String])——转发消息卡片的预览，可添加多条（但最多只能显示前3条），展示在标题下方。**注意此项参数为列表，使用时需要带[ ]** *（默认为“[\"无预览\"]”）*\n    + `summary`(String)——展示在转发消息卡片的底部 *（默认为“查看转发消息”）*\n    + `name`(String)——转发消息内部bot显示的昵称，现在似乎如果有bot好友就依然显示好友名字了。此项感觉用处不大，可忽略 *（默认为“输出内容”）*\n    + `messages`(List[`JsonMessage`])——转发消息内包含的所有消息，**注意此项为json对象组成的列表，内部项目为【json输出格式(详见上一张图片)】内提到的JsonMessage对象** *（默认为一个空的`JsonMessage`对象）*\n- 上方的全部参数均不是必填项，如没有填写则按照默认值生成\n- 在ForwardMessage的消息对象中，也可以使用MessageChain格式构造文字和图片组成的消息链，MessageChain的实现请查看上一张图片\n### markdown图片时限\n- 单次执行中，markdown转图片进程总时间为60秒。\n- 如果包含多张图片（同时包括其中MessageChain复合消息中的一张或多张图片），**每个图片的实际执行时间都会被累计**。如果在生成某一张图片时已经达到60秒总上限，**后续图片都将无法生成**"
+                    "content": "## (7) ForwardMessage\n- 使用json生成包含多条文字、图片消息的转发消息，高度自定义输出。\n### 使用帮助\n- 需要程序输出json格式结果，输出格式应与`JsonForwardMessage`中的格式对应\n- `JsonForwardMessage`中包含下方几个参数：\n    + `title`(String)——转发消息卡片的标题，点开后也会显示在页面最上方 *（默认为“运行结果”）*\n    + `brief`(String)——转发消息显示在消息列表中的预览，仅在消息列表中可见 *（默认为“[输出内容]”）*\n    + `preview`(List[String])——转发消息卡片的预览，可添加多条（但最多只能显示前3条），展示在标题下方。**注意此项参数为列表，使用时需要带[ ]** *（默认为“[\"无预览\"]”）*\n    + `summary`(String)——展示在转发消息卡片的底部 *（默认为“查看转发消息”）*\n    + `name`(String)——转发消息内部bot显示的昵称，现在似乎如果有bot好友就依然显示好友名字了。此项感觉用处不大，可忽略 *（默认为“输出内容”）*\n    + `messages`(List[`JsonMessage`])——转发消息内包含的所有消息，**注意此项为json对象组成的列表，内部项目为【json输出格式(详见上一张图片)】内提到的JsonMessage对象** *（默认为一个空的`JsonMessage`对象）*\n- 上方的全部参数均不是必填项，如没有填写则按照默认值生成\n- 在ForwardMessage的消息对象中，也可以使用MessageChain格式构造文字和图片组成的消息链，MessageChain的实现请查看上一张图片\n### markdown图片时限\n- 单次执行中，markdown转图片进程总时间为60秒。\n- 如果包含多张图片（同时包括其中MessageChain复合消息中的一张或多张图片），**每个图片的实际执行时间都会被累计**。如果在生成某一张图片时已经达到60秒总上限，**后续图片都将无法生成**"
                 },
                 {
                     "content": "关于JsonForwardMessage的输出样例：https://pastebin.ubuntu.com/p/gxykmRrsF8/"
+                }
+            ]
+        },
+        {
+            "format": "MessageChain",
+            "at": false,
+            "messageList": [
+                {
+                    "format": "markdown",
+                    "width": 600,
+                    "content": "## (8) Audio (TTS)\n- 将自定义文本通过调用在线API转换为语音，可调音库、语速、音调、音量\n### 使用帮助\n- 需要程序输出json格式结果，输出格式应与`AudioMessage`中的格式对应\n- `AudioMessage`中包含下方几个参数：\n    + `format`(String)——**正常无需修改！**，仅提供`text`格式输出帮助或调试文本 *（默认为“Audio”）*\n    + `person`(Int)——音库：设置转换语音的音色。*（默认为“0”）* <br>目前仅支持：\n        + `0`——度小美-成熟女声（基础音库）\n        + `106`——度博文-情感男声（精品音库）\n        + `4100`——度小雯-成熟女声（臻品音库）\n        + `4106`——度博文-情感男声（臻品音库）\n    + `speed`(Int)——语速：支持范围 0-15 *（默认为“5”）*\n    + `pitch`(Int)——音调：支持范围 0-15 *（默认为“5”）*\n    + `volume`(Int)——音量：支持范围 0-15 *（默认为“15”）*\n    + `content`(String)——要播放的文本内容 *（此项必须填写）*\n- 参数仅有 `content`(转换内容) 为必填项目，其余参数如没有填写则按照默认值生成\n### 使用示例\n- 下方为一个使用度博文常规语速、音调的测试音频消息\n```json\n{\n    \"person\": 4106,\n    \"speed\": 5,\n    \"pitch\": 5,\n    \"volume\": 10,\n    \"content\": \"这是要转换语音的文本\"\n}\n```\n- 也可以使用如下方式在 Audio 格式下输出文本\n```json\n{\n    \"format\": \"text\",\n    \"content\": \"这是普通文本输出（用于展示使用帮助、调试等）\"\n}\n```"
                 }
             ]
         },

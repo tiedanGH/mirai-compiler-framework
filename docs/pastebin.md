@@ -75,11 +75,12 @@
 其中输出格式包括：
 - [text](#1-text)（纯文本）
 - [markdown](#2-markdown和html)（md/html转图片）
-- [base64](#3-base64)（base64转图片）
+- [base64](#3-base64)（base64自定义格式输出）
 - [image](#4-image)（链接或路径直接发图）
 - [LaTeX](#5-latex)（LaTeX转图片）
 - [json](#6-json输出使用帮助)（自定义输出格式、图片宽度）
 - [ForwardMessage](#7-forwardmessage)（使用json生成包含多条文字/图片消息的转发消息）
+- [Audio](#8-audio-tts)（使用json生成文字转语音消息）
 
 具体使用方法详见下文说明
 
@@ -111,12 +112,15 @@
 ---
 
 ## (3) base64
-- 将base64字符串转换成图片
+- 将根据base64的文件类型，自动将base64字符串转换成多种输出格式
+- 目前支持转换 文本、图片、语音、视频
 ### 使用帮助
-- 程序输出需为base64格式的字符串，例如：
-    + data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABhkAAAPGC...[此处省略几万个字符]
-- 当图片像素很高时，base64字符串会相对较长，建议直接使用命令上传图片至缓存来调用
-- 也可以在markdown模式下，直接使用 `![](base64字符串)` 来直接转换base64图片<del>（感觉base64是最没用的一个功能）</del>
+- 程序输出需为base64格式的字符串，需要包含类型，例如：
+    + data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABhkAAAPGC...(此处省略几万个字符)
+    + data:video/mp4;base64,AAAAGGZ0eXBtcDQyAAAAAG1wNDJpc29tA...(此处省略几万个字符)
+- 如果输出为图片，当图片像素很高时，base64字符串会相对较长，建议直接使用命令上传图片至缓存来调用。
+- 也可以在markdown模式下，直接使用 `![](base64字符串)` 来直接转换base64图片
+- 最后：base64终于变得非常有用了
 
 ---
 
@@ -386,6 +390,43 @@
 - 如果包含多张图片（同时包括其中MessageChain复合消息中的一张或多张图片），**每个图片的实际执行时间都会被累计**。如果在生成某一张图片时已经达到60秒总上限，**后续图片都将无法生成**
 ### 样例
 - 关于JsonForwardMessage的输出样例：[https://pastebin.ubuntu.com/p/gxykmRrsF8/](https://pastebin.ubuntu.com/p/gxykmRrsF8/)
+
+---
+
+## (8) Audio (TTS)
+- 将自定义文本通过调用在线API转换为语音，可调音库、语速、音调、音量
+### 使用帮助
+- 需要程序输出json格式结果，输出格式应与`AudioMessage`中的格式对应
+- `AudioMessage`中包含下方几个参数：
+    + `format`(String)——**正常无需修改！**，仅提供`text`格式输出帮助或调试文本 *（默认为“Audio”）*
+    + `person`(Int)——音库：设置转换语音的音色。*（默认为“0”）* <br>目前仅支持：
+        + `0`——度小美-成熟女声（基础音库）
+        + `106`——度博文-情感男声（精品音库）
+        + `4100`——度小雯-成熟女声（臻品音库）
+        + `4106`——度博文-情感男声（臻品音库）
+    + `speed`(Int)——语速：支持范围 0-15 *（默认为“5”）*
+    + `pitch`(Int)——音调：支持范围 0-15 *（默认为“5”）*
+    + `volume`(Int)——音量：支持范围 0-15 *（默认为“15”）*
+    + `content`(String)——要播放的文本内容 *（此项必须填写）*
+- 参数仅有 `content`(转换内容) 为必填项目，其余参数如没有填写则按照默认值生成
+### 使用示例
+- 下方为一个使用度博文常规语速、音调的测试音频消息
+```json
+{
+    "person": 4106,
+    "speed": 5,
+    "pitch": 5,
+    "volume": 10,
+    "content": "这是要转换语音的文本"
+}
+```
+- 也可以使用如下方式在 Audio 格式下输出文本
+```json
+{
+    "format": "text",
+    "content": "这是普通文本输出（用于展示使用帮助、调试等）"
+}
+```
 
 ---
 

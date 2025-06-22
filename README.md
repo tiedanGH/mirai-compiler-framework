@@ -10,7 +10,7 @@ _基于 Glot 接口的 Mirai Console 在线编译器框架_
 [//]: # ([![stars]&#40;https://img.shields.io/github/stars/tiedanGH/mirai-compiler-framework?style=flat&color=orange&#41;]&#40;https://github.com/tiedanGH/mirai-compiler-framework&#41;)
 [//]: # ([![downloads]&#40;https://shields.io/github/downloads/tiedanGH/mirai-compiler-framework/total&#41;]&#40;https://github.com/tiedanGH/mirai-compiler-framework/releases/latest&#41;)
 
-[简体中文](README.md) | [English](doc/README_en.md)
+[简体中文](README.md) | [English](docs/README_en.md)
 
 </div>
 
@@ -22,7 +22,7 @@ _基于 Glot 接口的 Mirai Console 在线编译器框架_
 - **项目一键保存与执行**
     + 通过指令将项目URL保存至本地，下次只需输入项目名称即可极速启动
 - **支持使用多种格式输出**
-    + Markdown/HTML转图片、base64转图片、链接下载图片、LaTeX转图片，还能输出消息链、多条消息或转发消息。满足生成各种效果的需求
+    + Markdown/HTML转图片、base64自定义格式（图片、语音、视频）、文本转语音、链接下载图片、LaTeX转图片，还能输出消息链、多条消息或转发消息。满足生成各种效果的需求
 - **智能数据存储与调用**
     + 自定义数据持久化保存，后续运行可直接读取，轻松延续程序逻辑。同时可获取昵称、QQ号、群聊等信息
 - **群聊和私信主动消息**
@@ -38,16 +38,16 @@ _基于 Glot 接口的 Mirai Console 在线编译器框架_
 5. 本框架提供了超过200个已经实现好的项目，位于 [data\PastebinData.yml](data/PastebinData.yml)，放入数据文件夹来加载已有项目
 
 ## 帮助文档
-- [框架基础指令帮助](doc/commands.md)
-    + [run直接运行代码](doc/commands.md#run直接运行代码)
-    + [Glot指令](doc/commands.md#Glot指令)
-    + [Pastebin指令](doc/commands.md#Pastebin指令)
-    + [Run指令](doc/commands.md#Run指令)
-- [pb指令和高级功能帮助文档](doc/pastebin.md)
-    + [1. 指令基本功能和使用帮助](doc/pastebin.md#一指令基本功能和使用帮助)
-    + [2. 输出格式：输出图片或同时输出多条文字和图片](doc/pastebin.md#二输出格式)
-    + [3. 使用存储功能关联程序多次运行](doc/pastebin.md#三数据存储功能)
-- [支持上传代码的网站](doc/commands.md#支持上传代码的网站)
+- [框架基础指令帮助](docs/commands.md)
+    + [run直接运行代码](docs/commands.md#run直接运行代码)
+    + [Glot指令](docs/commands.md#Glot指令)
+    + [Pastebin指令](docs/commands.md#Pastebin指令)
+    + [Run指令](docs/commands.md#Run指令)
+- [pb指令和高级功能帮助文档](docs/pastebin.md)
+    + [1. 指令基本功能和使用帮助](docs/pastebin.md#一指令基本功能和使用帮助)
+    + [2. 输出格式：输出图片或同时输出多条文字和图片](docs/pastebin.md#二输出格式)
+    + [3. 使用存储功能关联程序多次运行](docs/pastebin.md#三数据存储功能)
+- [支持上传代码的网站](docs/commands.md#支持上传代码的网站)
 
 ---
 
@@ -72,4 +72,4 @@ _基于 Glot 接口的 Mirai Console 在线编译器框架_
 
 特别感谢：
 - 原项目 [jie65535/**mirai-console-jcc-plugin**](https://github.com/jie65535/mirai-console-jcc-plugin/)
-- 提供粘贴代码服务的平台，包括 Ubuntu Pastebin、pastebin.com、Gist 等共 [7 个网站](doc/commands.md#支持上传代码的网站)
+- 提供粘贴代码服务的平台，包括 Ubuntu Pastebin、pastebin.com、Gist 等共 [7 个网站](docs/commands.md#支持上传代码的网站)

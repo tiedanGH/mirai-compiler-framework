@@ -75,11 +75,12 @@ This section explains how to convert program output into different formats. Befo
 Supported output formats include:
 - [text](#1-text) (plain text)
 - [markdown](#2-markdown--html) (Markdown/HTML to image)
-- [base64](#3-base64) (base64 to image)
+- [base64](#3-base64) (Custom Base64 Format Output)
 - [image](#4-image) (send image via link or path)
 - [LaTeX](#5-latex) (LaTeX to image)
 - [json](#6-json-output) (custom format and image width)
-- [ForwardMessage](#7-forwardmessage) (generate a forwarded message containing multiple text/image messages)
+- [ForwardMessage](#7-forwardmessage) (generate a forwarded message containing multiple text/image messages using JSON)
+- [Audio](#8-audio-tts)（Generate a text-to-speech message using JSON）
 
 Detailed usage is provided below.
 
@@ -110,13 +111,16 @@ Detailed usage is provided below.
 
 ---
 
-### (3) base64
-- Converts a base64 string into an image.
-#### Usage
-- Output must be a base64 string, for example:
-    + data:image/png;base64,iVBORw0KGgoAAAANS...
-- For high-resolution images, the base64 string may be very long. It is recommended to upload images via `#pb upload` instead.
-- In markdown mode, you can also directly use: `![](base64 string)`
+## (3) Base64
+- Automatically converts Base64 strings into multiple output formats based on the file type.
+- Currently, supports conversion of text, images, audio, and video.
+
+### Usage Guide
+- The program requires to be output in Base64 format, including the file type prefix, for example:
+    + `data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABhkAAAPGC...`
+    + `data:video/mp4;base64,AAAAGGZ0eXBtcDQyAAAAAG1wNDJpc29tA...`
+- If the output is an image with high resolution, the Base64 string can be very long. In such cases, it's recommended to upload the image to cache via a command instead.
+- In Markdown mode, you can also directly convert Base64 images using: `![](base64_string)`
 
 ---
 
@@ -156,7 +160,7 @@ Detailed usage is provided below.
     + `format` (String): the output format; cannot use `json` or `ForwardMessage` here (default: `text`).
     + `at` (Boolean): whether to @ the command issuer; effective only for `text` and `MessageChain` (default: `true`).
     + `width` (Int): default image width; ignored in text output (default: `600`).
-    + `content` (String): text or content for image generation; use markdown syntax if needed (default: empty).
+    + `content` (String): text or content for image generation; use Markdown syntax if needed (default: empty).
     + `messageList` (List[`JsonSingleMessage`]): used only in `MessageChain` or `MultipleMessage`; cannot coexist with `content`.
     + `error` (String): used to throw exceptions; if non-empty, the bot sends the `error` message and stops parsing other fields or saving data.
 - All fields are optional and will use defaults if omitted.
@@ -389,6 +393,43 @@ The user will see:
 
 ---
 
+## (8) Audio (TTS)
+- Converts custom text into speech using an online API, with adjustable voice type, speed, pitch, and volume.
+### Usage Instructions
+- The program must output a result in JSON format, which should match the structure of `AudioMessage`.
+- `AudioMessage` includes the following parameters:
+    + `format` (String) — **Usually does not need to be changed!** Only use `text` format for displaying help or debugging output. *(Default: "Audio")*
+    + `person` (Int) — Voice type: determines the voice used for conversion. *(Default: 0)* <br>Currently supported values:
+        + `0` — Du Xiaomei - Mature Female (Basic Voice)
+        + `106` — Du Bowen - Emotional Male (Premium Voice)
+        + `4100` — Du Xiaowen - Mature Female (Ultra Voice)
+        + `4106` — Du Bowen - Emotional Male (Ultra Voice)
+    + `speed` (Int) — Speaking speed: range 0–15 *(Default: 5)*
+    + `pitch` (Int) — Pitch: range 0–15 *(Default: 5)*
+    + `volume` (Int) — Volume: range 0–15 *(Default: 15)*
+    + `content` (String) — The text content to be spoken *(This field is required)*
+- Only the `content` field is required. Other parameters will use default values if omitted.
+### Examples
+- Below is a test audio message using Du Bowen with default speed and pitch:
+```json
+{
+    "person": 4106,
+    "speed": 5,
+    "pitch": 5,
+    "volume": 10,
+    "content": "This is the text to be converted into speech"
+}
+```
+- You can also output plain text in `text` format like this:
+```json
+{
+    "format": "text",
+    "content": "This is plain text output (used for help display, debugging, etc.)"
+}
+```
+
+---
+
 ## 3. Using the Storage Feature to Link Multiple Program Runs
 You can enable data storage with:
 
@@ -449,4 +490,3 @@ You can enable data storage with:
 - Thank you for reading this documentation!
 - If you still have questions after reading or encounter difficulties during usage, feel free to contact Tiedan (QQ: 2295824927). Since group messages may be missed, it is recommended to send a private message describing your issue.
 - Tiedan is currently studying abroad and may not be able to respond promptly. Thank you for your understanding.
-
