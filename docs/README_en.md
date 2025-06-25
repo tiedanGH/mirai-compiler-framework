@@ -33,8 +33,8 @@ _Mirai Console online compiler framework based on Glot API_
 ## Installation Instructions
 1. This plugin runs on [Mirai Console](https://github.com/mamoe/mirai). You can learn how to install and start the bot by reading the [Mirai User Manual](https://docs.mirai.mamoe.net/UserManual.html).
 2. After `MiraiConsole` has started successfully, place the `.jar` file from this project’s [releases](https://github.com/tiedanGH/mirai-compiler-framework/releases) into the `.\plugins\` directory to load the plugin.
-3. Once the plugin has loaded successfully, copy all files from the [data](../data) into `data\com.tiedan.mirai-compiler-framework\`, then restart `MiraiConsole`.
-4. In `config\com.tiedan.mirai-compiler-framework\`, fill in the Glot [API Token](https://glot.io/account/token). In `mail.properties`, enter the SMTP email information (if needed, used to send stored data via email for review).
+3. Once the plugin has loaded successfully, copy all files from the [data](../data) into `data\site.tiedan.mirai-compiler-framework\`, then restart `MiraiConsole`.
+4. In `config\site.tiedan.mirai-compiler-framework\`, fill in the Glot [API Token](https://glot.io/account/token). In `mail.properties`, enter the SMTP email information (if needed, used to send stored data via email for review).
 5. This framework provides over 200 pre-implemented projects located in [data\PastebinData.yml](../data/PastebinData.yml). Place this file into the data folder to load existing projects.
 
 ## Documentation

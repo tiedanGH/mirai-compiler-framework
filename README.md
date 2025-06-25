@@ -33,8 +33,8 @@ _基于 Glot 接口的 Mirai Console 在线编译器框架_
 ## 安装方法
 1. 本插件基于 [Mirai Console](https://github.com/mamoe/mirai) 运行，您可以通过阅读 [Mirai用户手册](https://docs.mirai.mamoe.net/UserManual.html) 来了解如何安装、启动机器人。
 2. `MiraiConsole` 成功启动后，将本项目 [releases](https://github.com/tiedanGH/mirai-compiler-framework/releases) 中的`.jar`文件放入`.\plugins\`目录下即可加载插件。
-3. 插件加载成功后，将 [data文件夹](data) 下的所有文件放入 `data\com.tiedan.mirai-compiler-framework\` 中，然后重新启动 `MiraiConsole`
-4. `config\com.tiedan.mirai-compiler-framework\` 中填写 Glot 的 [Api Token](https://glot.io/account/token)，`mail.properties` 中填写SMTP邮箱信息（如果需要，用于将存储数据发送邮件查看）
+3. 插件加载成功后，将 [data文件夹](data) 下的所有文件放入 `data\site.tiedan.mirai-compiler-framework\` 中，然后重新启动 `MiraiConsole`
+4. `config\site.tiedan.mirai-compiler-framework\` 中填写 Glot 的 [Api Token](https://glot.io/account/token)，`mail.properties` 中填写SMTP邮箱信息（如果需要，用于将存储数据发送邮件查看）
 5. 本框架提供了超过200个已经实现好的项目，位于 [data\PastebinData.yml](data/PastebinData.yml)，放入数据文件夹来加载已有项目
 
 ## 帮助文档
