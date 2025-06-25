@@ -349,7 +349,7 @@ object CommandPastebin : RawCommand(
                             }
                         )
                         data["util"]?.let { appendLine("辅助文件：$it") }
-                        data["site/tiedan/formatiedan/format"]?.let { fmt ->
+                        data["format"]?.let { fmt ->
                             appendLine("输出格式：$fmt")
                             data["width"]?.let { w -> appendLine("图片宽度：$w") }
                         }
@@ -434,7 +434,7 @@ object CommandPastebin : RawCommand(
                         return
                     }
                     val cnParaList = listOf("名称", "作者", "创建者ID", "语言", "链接", "辅助文件", "示例输入", "别名", "隐藏链接", "仅限群聊", "输出格式", "数据存储")
-                    val enParaList = listOf("name", "author", "userID", "language", "url", "util", "stdin", "alias", "hide", "groupOnly", "site/tiedan/formatiedan/format", "storage")
+                    val enParaList = listOf("name", "author", "userID", "language", "url", "util", "stdin", "alias", "hide", "groupOnly", "format", "storage")
                     val cnIndex = cnParaList.indexOf(option)
                     if (cnIndex != -1) {
                         option = enParaList[cnIndex]
@@ -457,11 +457,11 @@ object CommandPastebin : RawCommand(
                         )
                         return
                     }
-                    if (option == "site/tiedan/formatiedan/format" && args.size > 5) {
+                    if (option == "format" && args.size > 5) {
                         sendQuoteReply("修改失败：format中仅能包含两个参数（输出格式，默认图片宽度）")
                         return
                     }
-                    if (option != "stdin" && option != "site/tiedan/formatiedan/format" && args.size > 4) {
+                    if (option != "stdin" && option != "format" && args.size > 4) {
                         sendQuoteReply("修改失败：$option 参数中不能包含空格！")
                         return
                     }
@@ -527,7 +527,7 @@ object CommandPastebin : RawCommand(
                                 PastebinData.alias[content] = name
                             }
                         }
-                        "site/tiedan/formatiedan/format"-> {
+                        "format"-> {
                             val alias = mapOf(
                                 "md" to "markdown",
                                 "html" to "markdown",
@@ -558,9 +558,9 @@ object CommandPastebin : RawCommand(
                                 return
                             }
                             if (format == "text") {
-                                PastebinData.pastebin[name]?.remove("site/tiedan/formatiedan/format")
+                                PastebinData.pastebin[name]?.remove("format")
                             } else {
-                                PastebinData.pastebin[name]?.set("site/tiedan/formatiedan/format", format)
+                                PastebinData.pastebin[name]?.set("format", format)
                             }
                             if (format == "markdown") {
                                 val width = paras.getOrNull(1)

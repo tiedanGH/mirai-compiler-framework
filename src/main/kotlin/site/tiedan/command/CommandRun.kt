@@ -106,7 +106,7 @@ object CommandRun : RawCommand(
 
             val language = PastebinData.pastebin[name]?.get("language").toString()
             val url = PastebinData.pastebin[name]?.get("url").toString()
-            val format = PastebinData.pastebin[name]?.get("site/tiedan/formatiedan/format")
+            val format = PastebinData.pastebin[name]?.get("format")
             var width = PastebinData.pastebin[name]?.get("width")
             val util = PastebinData.pastebin[name]?.get("util")
             val storageMode = PastebinData.pastebin[name]?.get("storage")
