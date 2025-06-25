@@ -6,7 +6,7 @@ plugins {
     id("net.mamoe.mirai-console") version "2.16.0"
 }
 
-group = "com.tiedan"
+group = "site.tiedan"
 version = "1.0.1"
 
 repositories {
