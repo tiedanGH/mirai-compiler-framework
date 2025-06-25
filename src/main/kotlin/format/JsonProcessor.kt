@@ -99,7 +99,7 @@ object JsonProcessor {
             val content = m.content
             when (m.format) {
                 "text"-> {
-                    builder.add(if (content.isBlank()) "　" else if(index == 0) blockSensitiveContent(content, jsonMessage.at, sender.subject is Group) else content)
+                    builder.add(if (content.isBlank()) "　" else if(index == 0) blockProhibitedContent(content, jsonMessage.at, sender.subject is Group) else content)
                 }
                 "markdown"-> {
                     val markdownResult = processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
@@ -194,7 +194,7 @@ object JsonProcessor {
                             builder.add(At(sender.user!!))
                             builder.add("\n")
                         }
-                        builder.add(if (content.isBlank()) "　" else blockSensitiveContent(content, jsonMessage.at, sender.subject is Group))
+                        builder.add(if (content.isBlank()) "　" else blockProhibitedContent(content, jsonMessage.at, sender.subject is Group))
                         sender.sendMessage(builder.build())
                     }
                     "markdown"-> {
@@ -302,21 +302,20 @@ object JsonProcessor {
     }
 
     // 检查json和MessageChain中的禁用内容，发现则返回覆盖文本
-    fun blockSensitiveContent(content: String, at: Boolean, isGroup: Boolean): String {
-        if (isGroup) {
+    fun blockProhibitedContent(content: String, at: Boolean, isGroup: Boolean): String {
+        val (blacklist, warning) = if (isGroup) {
             if (at) return content
-            val blockedContent = "[警告] 首条消息中检测到指令或易引发多bot冲突的高危内容，请开启`at`参数或修改内容来避免此警告"
-            if (content.trimStart().startsWith("/")) return blockedContent
-            for (word in SystemConfig.groupBlackList)
-                if (word in content)
-                    return blockedContent
-            return content
+            Pair(SystemConfig.groupBlackList, "[警告] 首条消息中检测到被禁用的内容，请开启`at`参数或修改内容来避免此警告")
         } else {
-            val blockedContent = "[警告] 私信输出中检测到被禁用的内容，请修改内容来避免此警告"
-            for (word in SystemConfig.privateBlackList)
-                if (word in content)
-                    return blockedContent
-            return content
+            Pair(SystemConfig.privateBlackList, "[警告] 私信输出中检测到被禁用的内容，请修改内容来避免此警告")
         }
+        for (pattern in blacklist) {
+            println(pattern)
+            if (pattern.toRegex().containsMatchIn(content)) {
+                return warning
+            }
+        }
+        return content
     }
+
 }

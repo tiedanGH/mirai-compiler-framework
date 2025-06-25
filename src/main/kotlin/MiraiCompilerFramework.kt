@@ -24,7 +24,7 @@ import net.mamoe.mirai.utils.ExternalResource.Companion.DEFAULT_FORMAT_NAME
 import net.mamoe.mirai.utils.ExternalResource.Companion.toExternalResource
 import net.mamoe.mirai.utils.info
 import format.ForwardMessageGenerator.stringToForwardMessage
-import format.JsonProcessor.blockSensitiveContent
+import format.JsonProcessor.blockProhibitedContent
 import utils.PastebinUrlHelper
 import module.GlotAPI
 import module.Statistics
@@ -199,7 +199,7 @@ object MiraiCompilerFramework : KotlinPlugin(
             builder.add(At(sender!!))
             builder.add("\n")
         } else {
-            val ret = blockSensitiveContent(result.stdout, at = true, isGroup = false)
+            val ret = blockProhibitedContent(result.stdout, at = true, isGroup = false)
             if (ret.startsWith("[警告]")) builder.add("$ret\n")
         }
 

@@ -205,8 +205,7 @@ object CommandPastebin : RawCommand(
                 }
 
                 "stats", "statistics", "统计"-> {
-                    val arg = args.getOrNull(1)?.content
-                    val name = PastebinData.alias[arg] ?: arg
+                    val name = args.getOrNull(1)?.content?.let { PastebinData.alias[it] ?: it }
                     val statistics = if (name != null) {
                         if (PastebinData.pastebin.containsKey(name).not()) {
                             sendQuoteReply("未知的名称：$name\n请使用「${commandPrefix}pb list」来查看完整列表")

@@ -9,6 +9,7 @@ import MiraiCompilerFramework.save
 import MiraiCompilerFramework.sendQuoteReply
 import MiraiCompilerFramework.uploadFileToImage
 import config.PastebinConfig
+import config.SystemConfig
 import data.CodeCache
 import data.ExtraData
 import data.PastebinData
@@ -29,7 +30,7 @@ import format.ForwardMessageGenerator.stringToForwardMessage
 import format.ForwardMessageGenerator.trimToMaxLength
 import module.GlotAPI
 import format.JsonProcessor
-import format.JsonProcessor.blockSensitiveContent
+import format.JsonProcessor.blockProhibitedContent
 import format.JsonProcessor.generateMessageChain
 import format.JsonProcessor.outputMultipleMessage
 import format.JsonProcessor.processDecode
@@ -57,7 +58,6 @@ object CommandRun : RawCommand(
     private val OutputLock = Mutex()
     private val StorageLock = Mutex()
     val Image_Path = "file:///${MiraiCompilerFramework.dataFolderPath.toString().replace("\\", "/")}/images/"
-    private const val GAME_PATH = "file:////home/lighthouse/lgtbot-mirai/lgtbot/games/"
 
     /**
      * 从保存的pastebin链接中直接运行
@@ -217,7 +217,7 @@ object CommandRun : RawCommand(
                 width = jsonDecodeResult.width.toString()
                 if (outputFormat != "MessageChain") {
                     output = if (listOf("markdown", "base64").contains(outputFormat)) jsonDecodeResult.content
-                            else blockSensitiveContent(jsonDecodeResult.content, outputAt, subject is Group)
+                            else blockProhibitedContent(jsonDecodeResult.content, outputAt, subject is Group)
                 }
                 if (listOf("json", "ForwardMessage").contains(outputFormat)) {
                     sendQuoteReply("禁止套娃：不支持在JsonMessage或JsonForwardMessage内使用“$outputFormat”输出格式")
@@ -552,7 +552,7 @@ object CommandRun : RawCommand(
                     builder.append(result.stderr)
                 }
             }
-            return Pair(builder.toString().replace("image://", Image_Path).replace("lgtbot://", GAME_PATH),
+            return Pair(builder.toString().replace("image://", Image_Path).replace("lgtbot://", SystemConfig.TEST_PATH),
                 result.error.isNotEmpty() || result.stderr.isNotEmpty())
         } catch (e: Exception) {
             return Pair("执行失败\n原因：${e.message}", true)
