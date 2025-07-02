@@ -83,7 +83,7 @@ object CommandGlot : RawCommand(
                     sendQuoteReply("[参数不匹配]\n请使用「${commandPrefix}glot help」来查看指令帮助")
                 }
             }
-        } catch (e: IndexOutOfBoundsException) {
+        } catch (_: IndexOutOfBoundsException) {
             sendQuoteReply("[参数不足]\n请使用「${commandPrefix}glot help」来查看指令帮助")
         } catch (e: Exception) {
             logger.warning(e)

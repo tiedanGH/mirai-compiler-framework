@@ -310,7 +310,6 @@ object JsonProcessor {
             Pair(SystemConfig.privateBlackList, "[警告] 私信输出中检测到被禁用的内容，请修改内容来避免此警告")
         }
         for (pattern in blacklist) {
-            println(pattern)
             if (pattern.toRegex().containsMatchIn(content)) {
                 return warning
             }

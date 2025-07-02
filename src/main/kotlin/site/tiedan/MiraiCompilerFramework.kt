@@ -34,10 +34,6 @@ import site.tiedan.command.CommandGlot
 import site.tiedan.command.CommandPastebin
 import site.tiedan.command.CommandRun
 import site.tiedan.data.*
-import site.tiedan.data.CodeCache
-import site.tiedan.data.ExtraData
-import site.tiedan.data.PastebinData
-import site.tiedan.data.PastebinStorage
 import java.io.File
 
 object MiraiCompilerFramework : KotlinPlugin(

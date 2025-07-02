@@ -721,7 +721,7 @@ object CommandPastebin : RawCommand(
                     var isImage = true
                     try{
                         imageUrl = (args[2] as Image).queryUrl()
-                    } catch (e: ClassCastException) {
+                    } catch (_: ClassCastException) {
                         if (args[2] is UnsupportedMessage) {
                             sendQuoteReply("[不支持的消息] 无法解析新版客户端发送的图片消息：请尝试使用*电脑怀旧版客户端*重新发送图片上传，或将图片替换为URL")
                             return
@@ -783,7 +783,7 @@ object CommandPastebin : RawCommand(
                     val id = try {
                         if (args[2].content == "global" || args[2].content == "全局") 0
                         else args[2].content.toLong()
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         -1
                     }
                     try {
@@ -824,7 +824,7 @@ object CommandPastebin : RawCommand(
                             }
                         }
                         sendMessage(forward)
-                    } catch (e: MessageTooLargeException) {
+                    } catch (_: MessageTooLargeException) {
                         val length = if (id == -1L) "汇总存储查询总长度超出限制，用户数量：${storage?.size?.minus(1)}，请尝试添加编号查询指定内容"
                                 else "数据长度：${storage?.get(id)?.length}"
                         sendQuoteReply("[内容过长] $length。如需查看完整内容请使用指令\n" +
@@ -885,7 +885,7 @@ object CommandPastebin : RawCommand(
                             sendQuoteReply("已将 $qq 移入黑名单")
                         }
                         ExtraData.save()
-                    } catch (e: IndexOutOfBoundsException) {
+                    } catch (_: IndexOutOfBoundsException) {
                         var blackListInfo = "·代码执行黑名单："
                         for (black in ExtraData.BlackList) {
                             blackListInfo += "\n$black"
@@ -916,9 +916,9 @@ object CommandPastebin : RawCommand(
                     sendQuoteReply("[参数不匹配]\n请使用「${commandPrefix}pb help」来查看指令帮助")
                 }
             }
-        } catch (e: PermissionDeniedException) {
+        } catch (_: PermissionDeniedException) {
             sendQuoteReply("[参数不匹配]\n请使用「${commandPrefix}pb help」来查看指令帮助")
-        } catch (e: IndexOutOfBoundsException) {
+        } catch (_: IndexOutOfBoundsException) {
             sendQuoteReply("[参数不足]\n请使用「${commandPrefix}pb help」来查看指令帮助")
         } catch (e: Exception) {
             logger.warning(e)
