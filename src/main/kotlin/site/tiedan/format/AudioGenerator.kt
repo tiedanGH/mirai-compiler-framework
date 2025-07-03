@@ -1,14 +1,14 @@
 package site.tiedan.format
 
-import site.tiedan.MiraiCompilerFramework.logger
-import site.tiedan.format.JsonProcessor.json
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
-import site.tiedan.module.FreeTextToSpeech
-import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.contact.AudioSupported
+import net.mamoe.mirai.contact.Contact
 import net.mamoe.mirai.message.data.Audio
 import net.mamoe.mirai.utils.ExternalResource.Companion.toExternalResource
+import site.tiedan.MiraiCompilerFramework.logger
+import site.tiedan.format.JsonProcessor.json
+import site.tiedan.module.FreeTextToSpeech
 import xyz.cssxsh.baidu.aip.BaiduAipClient
 import java.io.IOException
 
@@ -33,7 +33,7 @@ object AudioGenerator {
         val error: String = "",
     )
 
-    suspend fun generateAudio(audioOutput: String, sender: CommandSender): AudioData {
+    suspend fun generateAudio(audioOutput: String, subject: Contact?): AudioData {
         val result = try {
             json.decodeFromString<AudioMessage>(audioOutput)
         } catch (e: Exception) {
@@ -45,7 +45,7 @@ object AudioGenerator {
         if (result.format == "text") {
             return AudioData(null, false, result.global, result.storage, result.content)
         }
-        val receiver = sender.subject as? AudioSupported
+        val receiver = subject as? AudioSupported
             ?: return AudioData(success = false, error = "生成语音失败：当前执行环境不支持接收语音消息")
         try {
             val audio = textToSpeech(

@@ -1,6 +1,5 @@
 package site.tiedan.format
 
-import site.tiedan.command.CommandRun.renderLatexOnline
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.MiraiCompilerFramework.uploadFileToImage
@@ -22,6 +21,7 @@ import site.tiedan.format.MarkdownImageGenerator.TIMEOUT
 import site.tiedan.format.MarkdownImageGenerator.cacheFolder
 import site.tiedan.format.MarkdownImageGenerator.processMarkdown
 import net.mamoe.mirai.message.data.PlainText
+import site.tiedan.module.PastebinCodeExecutor.renderLatexOnline
 import java.io.File
 import java.net.URI
 

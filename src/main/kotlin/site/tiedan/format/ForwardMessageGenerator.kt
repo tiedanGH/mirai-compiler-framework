@@ -1,25 +1,25 @@
 package site.tiedan.format
 
-import site.tiedan.command.CommandRun.renderLatexOnline
-import site.tiedan.MiraiCompilerFramework.logger
-import site.tiedan.MiraiCompilerFramework.uploadFileToImage
-import site.tiedan.format.Base64Processor.fileToMessage
-import site.tiedan.format.Base64Processor.processBase64
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.contact.Contact
 import net.mamoe.mirai.message.data.ForwardMessage
+import net.mamoe.mirai.message.data.PlainText
 import net.mamoe.mirai.message.data.RawForwardMessage
 import net.mamoe.mirai.message.data.buildForwardMessage
-import site.tiedan.utils.DownloadHelper.downloadImage
+import site.tiedan.MiraiCompilerFramework.logger
+import site.tiedan.MiraiCompilerFramework.uploadFileToImage
+import site.tiedan.format.Base64Processor.fileToMessage
+import site.tiedan.format.Base64Processor.processBase64
 import site.tiedan.format.JsonProcessor.JsonMessage
 import site.tiedan.format.JsonProcessor.generateMessageChain
 import site.tiedan.format.JsonProcessor.json
 import site.tiedan.format.MarkdownImageGenerator.TIMEOUT
 import site.tiedan.format.MarkdownImageGenerator.cacheFolder
 import site.tiedan.format.MarkdownImageGenerator.processMarkdown
-import kotlinx.serialization.Serializable
-import net.mamoe.mirai.message.data.PlainText
+import site.tiedan.module.PastebinCodeExecutor.renderLatexOnline
+import site.tiedan.utils.DownloadHelper.downloadImage
 import java.io.File
 import java.net.URI
 
@@ -39,25 +39,26 @@ object ForwardMessageGenerator {
     data class ForwardMessageData(val forwardMessage: ForwardMessage, val global: String? = null, val storage: String? = null)
 
     suspend fun generateForwardMessage(name: String, forwardMessageOutput: String, sender: CommandSender): ForwardMessageData {
+        val subject = sender.subject
         val result = try {
             json.decodeFromString<JsonForwardMessage>(forwardMessageOutput)
         } catch (e: Exception) {
-            val forward = buildForwardMessage(sender.subject!!) {
+            val forward = buildForwardMessage(subject!!) {
                 displayStrategy = object : ForwardMessage.DisplayStrategy {
                     override fun generateTitle(forward: RawForwardMessage): String = "输出解析错误"
                     override fun generatePreview(forward: RawForwardMessage): List<String> = listOf("执行失败：JSON解析错误")
                 }
-                sender.subject!!.bot named "Error" says "[错误] JSON解析错误：\n${e.message}"
+                subject.bot named "Error" says "[错误] JSON解析错误：\n${e.message}"
                 val (resultString, tooLong) = trimToMaxLength(forwardMessageOutput, 10000)
                 if (tooLong) {
-                    sender.subject!!.bot named "Error" says "原始输出过大，仅截取前10000个字符"
+                    subject.bot named "Error" says "原始输出过大，仅截取前10000个字符"
                 }
-                sender.subject!!.bot named "原始输出" says "程序原始输出：\n$resultString"
+                subject.bot named "原始输出" says "程序原始输出：\n$resultString"
             }
             return ForwardMessageData(forward)
         }
         try {
-            val forward = buildForwardMessage(sender.subject!!) {
+            val forward = buildForwardMessage(subject!!) {
                 displayStrategy = object : ForwardMessage.DisplayStrategy {
                     override fun generateTitle(forward: RawForwardMessage): String = result.title
                     override fun generateBrief(forward: RawForwardMessage): String = result.brief
@@ -69,37 +70,37 @@ object ForwardMessageGenerator {
                     val content = m.content
                     when (m.format) {
                         "text"-> {
-                            sender.subject!!.bot named result.name says content
+                            subject.bot named result.name says content
                         }
                         "markdown"-> {
                             val markdownResult = processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
                             timeUsed += markdownResult.duration
                             if (!markdownResult.success) {
-                                sender.subject!!.bot named "Error" says "[markdown2image错误] ${markdownResult.message}"
+                                subject.bot named "Error" says "[markdown2image错误] ${markdownResult.message}"
                                 continue
                             }
                             try {
-                                val image = sender.subject?.uploadFileToImage(File("${cacheFolder}markdown.png"))
+                                val image = subject.uploadFileToImage(File("${cacheFolder}markdown.png"))
                                 if (image == null)
-                                    sender.subject!!.bot named result.name says "[错误] 图片文件异常：ExternalResource上传失败"
+                                    subject.bot named result.name says "[错误] 图片文件异常：ExternalResource上传失败"
                                 else
-                                    sender.subject!!.bot named result.name says image       // 添加图片消息
+                                    subject.bot named result.name says image       // 添加图片消息
                             } catch (e: Exception) {
                                 logger.warning(e)
-                                sender.subject!!.bot named "Error" says "[错误] 图片文件异常：${e.message}"
+                                subject.bot named "Error" says "[错误] 图片文件异常：${e.message}"
                             }
                         }
                         "base64"-> {
                             val base64Result = processBase64(content)
                             if (!base64Result.success) {
-                                sender.subject!!.bot named "Error" says base64Result.extension
+                                subject.bot named "Error" says base64Result.extension
                                 continue
                             }
-                            sender.subject!!.bot named result.name says (
+                            subject.bot named result.name says (
                                 fileToMessage(
                                     base64Result.fileType,
                                     base64Result.extension,
-                                    sender.subject,
+                                    subject,
                                     true
                                 ) ?: PlainText("[错误] Base64文件转换时出现未知错误，请联系管理员")
                             )
@@ -111,56 +112,56 @@ object ForwardMessageGenerator {
                                 val downloadResult = downloadImage(name, content, cacheFolder, "image", TIMEOUT - timeUsed, force = true)
                                 timeUsed += downloadResult.duration
                                 if (!downloadResult.success) {
-                                    sender.subject!!.bot named "Error" says downloadResult.message
+                                    subject.bot named "Error" says downloadResult.message
                                     continue
                                 }
                                 File("${cacheFolder}image")
                             }
                             try {
                                 if (!file.exists()) {
-                                    sender.subject!!.bot named "Error" says "[错误] 本地图片文件不存在，请检查路径"
+                                    subject.bot named "Error" says "[错误] 本地图片文件不存在，请检查路径"
                                     continue
                                 }
-                                val image = sender.subject?.uploadFileToImage(file)
+                                val image = subject.uploadFileToImage(file)
                                 if (image == null)
-                                    sender.subject!!.bot named result.name says "[错误] 图片文件异常：ExternalResource上传失败"
+                                    subject.bot named result.name says "[错误] 图片文件异常：ExternalResource上传失败"
                                 else
-                                    sender.subject!!.bot named result.name says image       // 添加图片消息
+                                    subject.bot named result.name says image       // 添加图片消息
                             } catch (e: Exception) {
                                 logger.warning(e)
-                                sender.subject!!.bot named "Error" says "[错误] 图片文件异常：${e.message}"
+                                subject.bot named "Error" says "[错误] 图片文件异常：${e.message}"
                             }
                         }
                         "LaTeX"-> {
                             val renderResult = renderLatexOnline(content)
                             if (renderResult.startsWith("QuickLaTeX")) {
-                                sender.subject!!.bot named "Error" says "[错误] $renderResult"
+                                subject.bot named "Error" says "[错误] $renderResult"
                             }
                             try {
-                                val image = sender.subject?.uploadFileToImage(File("${cacheFolder}latex.png"))
+                                val image = subject.uploadFileToImage(File("${cacheFolder}latex.png"))
                                 if (image == null)
-                                    sender.subject!!.bot named result.name says "[错误] 图片文件异常：ExternalResource上传失败"
+                                    subject.bot named result.name says "[错误] 图片文件异常：ExternalResource上传失败"
                                 else
-                                    sender.subject!!.bot named result.name says image       // 添加图片消息
+                                    subject.bot named result.name says image       // 添加图片消息
                             } catch (e: Exception) {
                                 logger.warning(e)
-                                sender.subject!!.bot named "Error" says "[错误] 图片文件异常：${e.message}"
+                                subject.bot named "Error" says "[错误] 图片文件异常：${e.message}"
                             }
                         }
                         // json分支功能MessageChain
                         "MessageChain"-> {
                             val pair = generateMessageChain(name, m, sender, timeUsed)
                             timeUsed = pair.second
-                            sender.subject!!.bot named result.name says pair.first.build()
+                            subject.bot named result.name says pair.first.build()
                         }
                         "json", "ForwardMessage" -> {
-                            sender.subject!!.bot named "Error" says "[错误] 不支持在JsonMessage内使用“${m.format}”输出格式"
+                            subject.bot named "Error" says "[错误] 不支持在JsonMessage内使用“${m.format}”输出格式"
                         }
                         "MultipleMessage"-> {
-                            sender.subject!!.bot named "Error" says "[错误] 不支持在ForwardMessage内使用“${m.format}”输出格式"
+                            subject.bot named "Error" says "[错误] 不支持在ForwardMessage内使用“${m.format}”输出格式"
                         }
                         else -> {
-                            sender.subject!!.bot named "Error" says "[错误] 无效的输出格式：${m.format}，请检查此条消息的format参数"
+                            subject.bot named "Error" says "[错误] 无效的输出格式：${m.format}，请检查此条消息的format参数"
                         }
                     }
                 }
@@ -168,13 +169,13 @@ object ForwardMessageGenerator {
             return ForwardMessageData(forward, result.global, result.storage)
         } catch (e: Exception) {
             logger.warning(e)
-            val forward = buildForwardMessage(sender.subject!!) {
+            val forward = buildForwardMessage(subject!!) {
                 displayStrategy = object : ForwardMessage.DisplayStrategy {
                     override fun generateTitle(forward: RawForwardMessage): String = "转发消息生成错误"
                     override fun generatePreview(forward: RawForwardMessage): List<String> = listOf("执行失败：发生未知错误")
                 }
-                sender.subject!!.bot named "Error" says "[错误] 转发消息生成错误：\n${e.message}"
-                sender.subject!!.bot named "Error" says "程序原始输出：\n$forwardMessageOutput"
+                subject.bot named "Error" says "[错误] 转发消息生成错误：\n${e.message}"
+                subject.bot named "Error" says "程序原始输出：\n$forwardMessageOutput"
             }
             return ForwardMessageData(forward)
         }
