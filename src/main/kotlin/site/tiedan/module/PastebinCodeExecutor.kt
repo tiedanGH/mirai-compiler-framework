@@ -57,9 +57,9 @@ object PastebinCodeExecutor {
     private val OutputLock = Mutex()
     private val StorageLock = Mutex()
     
-    suspend fun execute(name: String, userInput: String, sender: CommandSender) {
+    suspend fun CommandSender.executeMainProcess(name: String, userInput: String) {
 
-        val userID = sender.user?.id ?: 10000
+        val userID = user?.id ?: 10000
 
         if (ExtraData.BlackList.contains(userID)) {
             logger.info("${userID}已被拉黑，请求被拒绝")
@@ -68,22 +68,22 @@ object PastebinCodeExecutor {
 
         val request = newRequest(userID)
         if (request.first.isNotEmpty()) {
-            sender.sendQuoteReply(request.first)
+            sendQuoteReply(request.first)
             if (request.second) return
         }
 
         if (THREAD >= PastebinConfig.thread_limit) {
-            sender.sendQuoteReply("当前已经有 $THREAD 个进程正在执行，请等待几秒后再次尝试")
+            sendQuoteReply("当前已经有 $THREAD 个进程正在执行，请等待几秒后再次尝试")
             return
         }
-        if (PastebinData.groupOnly.contains(name) && (sender.subject is Group).not() &&
+        if (PastebinData.groupOnly.contains(name) && (subject is Group).not() &&
             userID.toString() != PastebinData.pastebin[name]?.get("userID") && PastebinConfig.admins.contains(userID).not()
             ) {
-            sender.sendQuoteReply("执行失败：此条代码链接被标记为仅限群聊中执行！")
+            sendQuoteReply("执行失败：此条代码链接被标记为仅限群聊中执行！")
             return
         }
         if (PastebinData.censorList.contains(name)) {
-            sender.sendQuoteReply("此条链接仍在审核中，暂时无法执行。管理员会定期对链接进行审核，您也可以主动联系进行催审")
+            sendQuoteReply("此条链接仍在审核中，暂时无法执行。管理员会定期对链接进行审核，您也可以主动联系进行催审")
             return
         }
 
@@ -96,7 +96,7 @@ object PastebinCodeExecutor {
             var width = PastebinData.pastebin[name]?.get("width")
             val util = PastebinData.pastebin[name]?.get("util")
             val storageMode = PastebinData.pastebin[name]?.get("storage")
-            val nickname = sender.name
+            val nickname = this.name
             var input = userInput
 
             var output = ""
@@ -119,10 +119,10 @@ object PastebinCodeExecutor {
                         if (cache.isNotBlank()) {
                             CodeCache.CodeCache[name] = cache
                             CodeCache.save()
-                            sender.sendMessage("【$name】已保存至缓存，下次执行时将从缓存中获取代码")
+                            sendMessage("【$name】已保存至缓存，下次执行时将从缓存中获取代码")
                             cache
                         } else {
-                            sender.sendMessage("【$name】保存至缓存失败且无法执行：获取代码失败或代码为空，请联系代码创建者")
+                            sendMessage("【$name】保存至缓存失败且无法执行：获取代码失败或代码为空，请联系代码创建者")
                             return
                         }
                     }
@@ -131,7 +131,7 @@ object PastebinCodeExecutor {
                     PastebinUrlHelper.get(url)
                 }
             } catch (e: Exception) {
-                sender.sendQuoteReply(
+                sendQuoteReply(
                     "[获取代码失败] 请重新尝试\n" +
                     "报错类别：${e::class.simpleName}\n" +
                     "报错信息：${trimToMaxLength(e.message.toString(), 300).first}"
@@ -140,7 +140,7 @@ object PastebinCodeExecutor {
             }
 
             if (code.isBlank()) {
-                sender.sendQuoteReply("[执行失败] 未获取到有效代码")
+                sendQuoteReply("[执行失败] 未获取到有效代码")
                 return
             }
 
@@ -152,8 +152,7 @@ object PastebinCodeExecutor {
                 StorageLock.lock()
                 val global = PastebinStorage.Storage[name]?.get(0) ?: ""
                 val storage = PastebinStorage.Storage[name]?.get(userID) ?: ""
-                val group = sender.subject
-                val from = if (group is Group) "${group.name}(${group.id})" else "private"
+                val from = if (subject is Group) "${(subject as Group).name}(${(subject as Group).id})" else "private"
                 val jsonInput = processEncode(global, storage, userID, nickname, from)
                 input = "$jsonInput\n$userInput"
                 logger.info("输入Storage数据: global{${global.length}} storage{${storage.length}} $nickname($userID) $from")
@@ -166,7 +165,7 @@ object PastebinCodeExecutor {
             output = pair.first
             if (pair.second) {
                 if (output.startsWith("[执行失败]")) {
-                    sender.sendQuoteReply(output)
+                    sendQuoteReply(output)
                     return
                 }
                 outputFormat = "text"
@@ -177,22 +176,21 @@ object PastebinCodeExecutor {
                 jsonDecodeResult = processDecode(output)
                 if (jsonDecodeResult.error.isNotEmpty()) {
                     if (PastebinConfig.enable_ForwardMessage) {
-                        val subject = sender.subject
                         val forward = buildForwardMessage(subject!!) {
                             displayStrategy = object : ForwardMessage.DisplayStrategy {
                                 override fun generateTitle(forward: RawForwardMessage): String = "输出解析错误"
                                 override fun generatePreview(forward: RawForwardMessage): List<String> = listOf("执行失败：JSON解析错误")
                             }
-                            subject.bot named "Error" says "[错误] ${jsonDecodeResult.error}"
+                            subject!!.bot named "Error" says "[错误] ${jsonDecodeResult.error}"
                             val (resultString, tooLong) = trimToMaxLength(output, 10000)
                             if (tooLong) {
-                                subject.bot named "Error" says "原始输出过大，仅截取前10000个字符"
+                                subject!!.bot named "Error" says "原始输出过大，仅截取前10000个字符"
                             }
-                            subject.bot named "原始输出" says "程序原始输出：\n$resultString"
+                            subject!!.bot named "原始输出" says "程序原始输出：\n$resultString"
                         }
-                        sender.sendMessage(forward)
+                        sendMessage(forward)
                     } else {
-                        sender.sendQuoteReply("[错误] ${jsonDecodeResult.error}")
+                        sendQuoteReply("[错误] ${jsonDecodeResult.error}")
                     }
                     return
                 }
@@ -204,10 +202,10 @@ object PastebinCodeExecutor {
                 width = jsonDecodeResult.width.toString()
                 if (outputFormat != "MessageChain") {
                     output = if (outputFormat in listOf("markdown", "base64")) jsonDecodeResult.content
-                    else blockProhibitedContent(jsonDecodeResult.content, outputAt, sender.subject is Group)
+                    else blockProhibitedContent(jsonDecodeResult.content, outputAt, subject is Group)
                 }
                 if (outputFormat in listOf("json", "ForwardMessage")) {
-                    sender.sendQuoteReply("禁止套娃：不支持在JsonMessage或JsonForwardMessage内使用“$outputFormat”输出格式")
+                    sendQuoteReply("禁止套娃：不支持在JsonMessage或JsonForwardMessage内使用“$outputFormat”输出格式")
                     return
                 }
             }
@@ -221,11 +219,11 @@ object PastebinCodeExecutor {
                 // text文本输出
                 "text"-> {
                     if ((output.length > MSG_TRANSFER_LENGTH || output.lines().size > 30) && PastebinConfig.enable_ForwardMessage) {
-                        stringToForwardMessage(StringBuilder(output), sender.subject)
+                        stringToForwardMessage(StringBuilder(output), subject)
                     } else {
                         val messageBuilder = MessageChainBuilder()
-                        if (sender.subject is Group && outputAt) {
-                            messageBuilder.add(At(sender.user!!))
+                        if (subject is Group && outputAt) {
+                            messageBuilder.add(At(user!!))
                             messageBuilder.add("\n")
                         } else {
                             val ret = blockProhibitedContent(output, at = true, isGroup = false)
@@ -243,21 +241,21 @@ object PastebinCodeExecutor {
                 "markdown"-> {
                     val markdownResult = processMarkdown(name, output, width ?: "600")
                     if (!markdownResult.success) {
-                        sender.sendQuoteReply(markdownResult.message)
+                        sendQuoteReply(markdownResult.message)
                         return
                     }
                     val file = File("${cacheFolder}markdown.png")
-                    sender.subject?.uploadFileToImage(file)     // 返回结果图片
-                        ?: return sender.sendQuoteReply("[错误] 图片文件异常：ExternalResource上传失败，请尝试重新执行")
+                    subject?.uploadFileToImage(file)     // 返回结果图片
+                        ?: return sendQuoteReply("[错误] 图片文件异常：ExternalResource上传失败，请尝试重新执行")
                 }
                 // base64自定义格式输出
                 "base64"-> {
                     val base64Result = processBase64(output)
                     if (!base64Result.success) {
-                        sender.sendQuoteReply(base64Result.extension)
+                        sendQuoteReply(base64Result.extension)
                         return
                     }
-                    fileToMessage(base64Result.fileType, base64Result.extension, sender.subject, true)
+                    fileToMessage(base64Result.fileType, base64Result.extension, subject, true)
                 }
                 // 普通图片输出
                 "image"-> {
@@ -266,32 +264,32 @@ object PastebinCodeExecutor {
                     } else {
                         val downloadResult = downloadImage(name, output, cacheFolder, "image", force = true)
                         if (!downloadResult.success) {
-                            sender.sendQuoteReply(downloadResult.message)
+                            sendQuoteReply(downloadResult.message)
                             return
                         }
                         File("${cacheFolder}image")
                     }
                     if (!file.exists()) {
-                        sender.sendQuoteReply("[错误] 本地图片文件不存在，请检查路径")
+                        sendQuoteReply("[错误] 本地图片文件不存在，请检查路径")
                         return
                     }
-                    sender.subject?.uploadFileToImage(file)     // 返回结果图片
-                        ?: return sender.sendQuoteReply("[错误] 图片文件异常：ExternalResource上传失败，请尝试重新执行")
+                    subject?.uploadFileToImage(file)     // 返回结果图片
+                        ?: return sendQuoteReply("[错误] 图片文件异常：ExternalResource上传失败，请尝试重新执行")
                 }
                 // LaTeX转图片输出
                 "LaTeX"-> {
                     val renderResult = renderLatexOnline(output)
                     if (renderResult.startsWith("QuickLaTeX")) {
-                        sender.sendQuoteReply("[错误] $renderResult")
+                        sendQuoteReply("[错误] $renderResult")
                         return
                     }
                     val file = File("${cacheFolder}latex.png")
-                    sender.subject?.uploadFileToImage(file)     // 返回结果图片
-                        ?: return sender.sendQuoteReply("[错误] 图片文件异常：ExternalResource上传失败，请尝试重新执行")
+                    subject?.uploadFileToImage(file)     // 返回结果图片
+                        ?: return sendQuoteReply("[错误] 图片文件异常：ExternalResource上传失败，请尝试重新执行")
                 }
                 // json分支功能MessageChain
                 "MessageChain"-> {
-                    generateMessageChain(name, jsonDecodeResult, sender).first
+                    generateMessageChain(name, jsonDecodeResult, this).first
                 }
                 // json分支功能MultipleMessage
                 "MultipleMessage"-> {
@@ -299,43 +297,43 @@ object PastebinCodeExecutor {
                 }
                 // 转发消息生成（JSON在内部进行解析）
                 "ForwardMessage"-> {
-                    val forwardMessageData = generateForwardMessage(name, output, sender)
+                    val forwardMessageData = generateForwardMessage(name, output, this)
                     outputGlobal = forwardMessageData.global
                     outputStorage = forwardMessageData.storage
                     forwardMessageData.forwardMessage     // 返回ForwardMessage
                 }
                 // TTS音频消息生成（JSON在内部进行解析）
                 "Audio"-> {
-                    val audioData = generateAudio(output, sender.subject)
+                    val audioData = generateAudio(output, subject)
                     outputGlobal = audioData.global
                     outputStorage = audioData.storage
                     if (audioData.success) {
                         audioData.audio
                     } else {
-                        sender.sendQuoteReply(audioData.error)
+                        sendQuoteReply(audioData.error)
                     }
                 }
                 else -> {
-                    sender.sendQuoteReply("代码执行完成但无法输出：无效的输出格式：$outputFormat，请联系创建者修改格式")
+                    sendQuoteReply("代码执行完成但无法输出：无效的输出格式：$outputFormat，请联系创建者修改格式")
                     return
                 }
             }
             // 根据消息类型进行回复
             when (builder) {
-                is MessageChainBuilder -> sender.sendMessage(builder.build())
-                is ForwardMessage -> sender.sendMessage(builder)
-                is Image -> sender.sendMessage(builder)
-                is Audio -> sender.sendMessage(builder)
-                is ShortVideo -> sender.sendMessage(builder)
+                is MessageChainBuilder -> sendMessage(builder.build())
+                is ForwardMessage -> sendMessage(builder)
+                is Image -> sendMessage(builder)
+                is Audio -> sendMessage(builder)
+                is ShortVideo -> sendMessage(builder)
                 is String -> {
-                    val ret = outputMultipleMessage(name, jsonDecodeResult, sender)
+                    val ret = outputMultipleMessage(name, jsonDecodeResult, this)
                     if (ret != null) {
-                        sender.sendQuoteReply("【输出多条消息时出错】$ret")
+                        sendQuoteReply("【输出多条消息时出错】$ret")
                     }
                 }
                 is Unit -> { /* do nothing */ }
-                null -> sender.sendQuoteReply("[处理消息失败] 意料之外的消息结果 null，请联系管理员")
-                else -> sender.sendQuoteReply("[处理消息失败] 不识别的输出消息类型或内容，请联系管理员：\n" +
+                null -> sendQuoteReply("[处理消息失败] 意料之外的消息结果 null，请联系管理员")
+                else -> sendQuoteReply("[处理消息失败] 不识别的输出消息类型或内容，请联系管理员：\n" +
                         trimToMaxLength(builder.toString(), 300).first
                 )
             }
@@ -343,23 +341,24 @@ object PastebinCodeExecutor {
             if (format in MiraiCompilerFramework.enableStorageFormats && storageMode == "true") {
                 // 额外检测：执行后原项目消失（如被删除、存储被关闭），则不再保存存储
                 if (PastebinData.pastebin[name]?.get("storage") == null) {
-                    sender.sendQuoteReply("[存储错误] 拒绝访问：名称 $name 不存在或未开启存储，保存数据失败！")
+                    sendQuoteReply("[存储错误] 拒绝访问：名称 $name 不存在或未开启存储，保存数据失败！")
                     return
                 }
                 savePastebinStorage(name, userID, outputGlobal, outputStorage)
             }
             // 主动消息相关
             if (activeMessage != null) {
-                val ret = handleActiveMessage(activeMessage, sender, name)
+                val ret = handleActiveMessage(activeMessage, this, name)
                 if (ret.isNotEmpty()) {
-                    sender.sendQuoteReply("【主动消息错误】$ret")
+                    sendQuoteReply("【主动消息错误】$ret")
                 }
             }
         } catch (e: Exception) {
             logger.warning(e)
-            sender.sendQuoteReply("[指令运行错误](非代码问题)\n" +
-                    "报错类别：${e::class.simpleName}\n" +
-                    "报错信息：${trimToMaxLength(e.message.toString(), 300).first}"
+            sendQuoteReply(
+                "[指令运行错误](非代码问题)\n" +
+                "报错类别：${e::class.simpleName}\n" +
+                "报错信息：${trimToMaxLength(e.message.toString(), 300).first}"
             )
         } finally {
             THREAD--

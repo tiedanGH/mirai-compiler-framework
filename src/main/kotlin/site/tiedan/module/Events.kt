@@ -31,6 +31,7 @@ import site.tiedan.data.PastebinData
 import site.tiedan.format.ForwardMessageGenerator.stringToForwardMessage
 import site.tiedan.format.ForwardMessageGenerator.trimToMaxLength
 import site.tiedan.format.JsonProcessor.blockProhibitedContent
+import site.tiedan.module.PastebinCodeExecutor.executeMainProcess
 import site.tiedan.utils.PastebinUrlHelper
 import kotlin.coroutines.CoroutineContext
 
@@ -45,15 +46,15 @@ object Events : SimpleListenerHost() {
     internal suspend fun MessageEvent.process() {
         // 快捷前缀执行pastebin中的代码
         if (message.content.startsWith(PastebinConfig.QUICK_PREFIX)) {
-            return commandRunOnEvent(message, toCommandSender())
+            return toCommandSender().commandRunOnEvent(message)
         }
         // 直接run任意代码
         if (message.content.startsWith(CMD_PREFIX)) {
-            return codeRunOnEvent(message, toCommandSender())
+            return toCommandSender().codeRunOnEvent(message)
         }
     }
 
-    suspend fun commandRunOnEvent(message: MessageChain, sender: CommandSender) {
+    suspend fun CommandSender.commandRunOnEvent(message: MessageChain) {
         val msg = message.content.removePrefix(PastebinConfig.QUICK_PREFIX).trim()
         val args = msg.split(" ")
         if (args.isEmpty()) return
@@ -64,30 +65,31 @@ object Events : SimpleListenerHost() {
         if (PastebinData.pastebin.containsKey(name).not()) return
 
         // 执行代码并输出
-        PastebinCodeExecutor.execute(name, userInput, sender)
+        this.executeMainProcess(name, userInput)
     }
 
-    private suspend fun codeRunOnEvent(message: MessageChain, sender: CommandSender) {
-        if (ExtraData.BlackList.contains(sender.user?.id)) {
-            return logger.info("${sender.user?.id}已被拉黑，请求被拒绝")
+    private suspend fun CommandSender.codeRunOnEvent(message: MessageChain) {
+        if (ExtraData.BlackList.contains(user?.id)) {
+            return logger.info("${user?.id}已被拉黑，请求被拒绝")
         }
 
         val msg = message.content.removePrefix(CMD_PREFIX).trim()
         if (msg.isBlank()) {
-            sender.sendMessage("请输入正确的命令！例如：\n$CMD_PREFIX python print(\"Hello world\")")
+            sendMessage("请输入正确的命令！例如：\n$CMD_PREFIX python print(\"Hello world\")")
             return
         }
         val index = msg.indexOfFirst(Char::isWhitespace)
         val language = if (index >= 0) msg.substring(0, index) else msg
         if (!GlotAPI.checkSupport(language)) {
-            sender.sendMessage("不支持这种编程语言\n" +
-                    "${commandPrefix}glot list　列出所有支持的编程语言\n" +
-                    "如果要执行保存好的pastebin代码，请在指令前添加“$commandPrefix”"
+            sendMessage(
+                "不支持这种编程语言\n" +
+                "${commandPrefix}glot list　列出所有支持的编程语言\n" +
+                "如果要执行保存好的pastebin代码，请在指令前添加“$commandPrefix”"
             )
             return
         }
         if (THREAD >= PastebinConfig.thread_limit) {
-            sender.sendQuoteReply("当前有 $THREAD 个进程正在执行或等待冷却，请等待几秒后再次尝试")
+            sendQuoteReply("当前有 $THREAD 个进程正在执行或等待冷却，请等待几秒后再次尝试")
             return
         }
 
@@ -107,7 +109,7 @@ object Events : SimpleListenerHost() {
             } else if (index >= 0) {
                 msg.substring(index).trim()
             } else {
-                sender.sendQuoteReply("$CMD_PREFIX $language\n" + GlotAPI.getTemplateFile(language).content)
+                sendQuoteReply("$CMD_PREFIX $language\n" + GlotAPI.getTemplateFile(language).content)
                 return
             }
 
@@ -128,23 +130,23 @@ object Events : SimpleListenerHost() {
                 logger.info("从 $url 中获取代码")
                 code = PastebinUrlHelper.get(url)
                 if (code.isBlank()) {
-                    sender.sendQuoteReply("未获取到有效代码")
+                    sendQuoteReply("未获取到有效代码")
                     return
                 }
             }
 
             logger.info("请求执行代码\n$code")
 
-            when (val builder = runCode(sender, language, code, input)) {
-                is MessageChainBuilder -> sender.sendMessage(builder.build())
-                is ForwardMessage-> sender.sendMessage(builder)
-                else -> sender.sendQuoteReply("[处理消息失败] 不识别的输出消息类型或内容，请联系管理员：\n" +
+            when (val builder = runCode(this, language, code, input)) {
+                is MessageChainBuilder -> sendMessage(builder.build())
+                is ForwardMessage-> sendMessage(builder)
+                else -> sendQuoteReply("[处理消息失败] 不识别的输出消息类型或内容，请联系管理员：\n" +
                         trimToMaxLength(builder.toString(), 300).first
                 )
             }
         } catch (e: Exception) {
             logger.warning("执行失败：${e::class.simpleName}(${e.message})")
-            sender.sendQuoteReply("[执行失败]\n原因：${e.message}")
+            sendQuoteReply("[执行失败]\n原因：${e.message}")
         } finally {
             CoroutineScope(Dispatchers.IO).launch {
                 delay(6000); THREAD--

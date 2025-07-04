@@ -7,7 +7,7 @@ import net.mamoe.mirai.message.data.*
 import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.data.PastebinData
-import site.tiedan.module.PastebinCodeExecutor
+import site.tiedan.module.PastebinCodeExecutor.executeMainProcess
 
 object CommandRun : RawCommand(
     owner = MiraiCompilerFramework,
@@ -37,6 +37,6 @@ object CommandRun : RawCommand(
         val userInput = args.drop(1).joinToString(separator = " ")
 
         // 执行代码并输出
-        PastebinCodeExecutor.execute(name, userInput, this)
+        this.executeMainProcess(name, userInput)
     }
 }
