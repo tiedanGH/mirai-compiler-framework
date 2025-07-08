@@ -8,6 +8,7 @@ import net.mamoe.mirai.message.data.At
 import net.mamoe.mirai.message.data.Audio
 import net.mamoe.mirai.message.data.ForwardMessage
 import net.mamoe.mirai.message.data.Image
+import net.mamoe.mirai.message.data.MessageChain
 import net.mamoe.mirai.message.data.MessageChainBuilder
 import net.mamoe.mirai.message.data.RawForwardMessage
 import net.mamoe.mirai.message.data.ShortVideo
@@ -202,7 +203,7 @@ object PastebinCodeExecutor {
                 width = jsonDecodeResult.width.toString()
                 if (outputFormat != "MessageChain") {
                     output = if (outputFormat in listOf("markdown", "base64")) jsonDecodeResult.content
-                    else blockProhibitedContent(jsonDecodeResult.content, outputAt, subject is Group)
+                    else blockProhibitedContent(jsonDecodeResult.content, outputAt, subject is Group).first
                 }
                 if (outputFormat in listOf("json", "ForwardMessage")) {
                     sendQuoteReply("禁止套娃：不支持在JsonMessage或JsonForwardMessage内使用“$outputFormat”输出格式")
@@ -227,14 +228,14 @@ object PastebinCodeExecutor {
                             messageBuilder.add("\n")
                         } else {
                             val ret = blockProhibitedContent(output, at = true, isGroup = false)
-                            if (ret.startsWith("[警告]")) messageBuilder.add("$ret\n")
+                            if (ret.second) messageBuilder.add("${ret.first}\n")
                         }
                         if (output.isEmpty()) {
                             messageBuilder.add("没有任何结果呢~")
                         } else {
                             messageBuilder.add(output)
                         }
-                        messageBuilder
+                        messageBuilder.build()
                     }
                 }
                 // markdown转图片输出
@@ -320,7 +321,7 @@ object PastebinCodeExecutor {
             }
             // 根据消息类型进行回复
             when (builder) {
-                is MessageChainBuilder -> sendMessage(builder.build())
+                is MessageChain -> sendMessage(builder)
                 is ForwardMessage -> sendMessage(builder)
                 is Image -> sendMessage(builder)
                 is Audio -> sendMessage(builder)
@@ -514,7 +515,7 @@ object PastebinCodeExecutor {
             val title = c >= 2
 
             if (c == 0) {
-                builder.append("[警告] 程序未输出任何内容，无法转换至预设输出格式")
+                if (format != "text") builder.append("[警告] 程序未输出任何内容，无法转换至预设输出格式")
                 return Pair(builder.toString(), true)
             } else {
                 if (result.error.isNotEmpty()) {

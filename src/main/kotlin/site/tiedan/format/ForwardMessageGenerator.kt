@@ -152,7 +152,7 @@ object ForwardMessageGenerator {
                         "MessageChain"-> {
                             val pair = generateMessageChain(name, m, sender, timeUsed)
                             timeUsed = pair.second
-                            subject.bot named result.name says pair.first.build()
+                            subject.bot named result.name says pair.first
                         }
                         "json", "ForwardMessage" -> {
                             subject.bot named "Error" says "[错误] 不支持在JsonMessage内使用“${m.format}”输出格式"

@@ -15,6 +15,7 @@ import kotlinx.serialization.json.Json
 import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.contact.Group
 import net.mamoe.mirai.message.data.At
+import net.mamoe.mirai.message.data.MessageChain
 import net.mamoe.mirai.message.data.MessageChainBuilder
 import site.tiedan.utils.DownloadHelper.downloadImage
 import site.tiedan.format.MarkdownImageGenerator.TIMEOUT
@@ -87,7 +88,7 @@ object JsonProcessor {
         }
     }
 
-    suspend fun generateMessageChain(name: String, jsonMessage: JsonMessage, sender: CommandSender, timeUsedRecord: Long = 0): Pair<MessageChainBuilder, Long> {
+    suspend fun generateMessageChain(name: String, jsonMessage: JsonMessage, sender: CommandSender, timeUsedRecord: Long = 0): Pair<MessageChain, Long> {
         val builder = MessageChainBuilder()
         if (sender.subject is Group && jsonMessage.at) {
             builder.add(At(sender.user!!))
@@ -99,7 +100,11 @@ object JsonProcessor {
             val content = m.content
             when (m.format) {
                 "text"-> {
-                    builder.add(if (content.isBlank()) "　" else if(index == 0) blockProhibitedContent(content, jsonMessage.at, sender.subject is Group) else content)
+                    builder.add(
+                        if (content.isBlank()) "　"
+                        else if(index == 0) blockProhibitedContent(content, jsonMessage.at, sender.subject is Group).first
+                        else content
+                    )
                 }
                 "markdown"-> {
                     val markdownResult = processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
@@ -158,7 +163,7 @@ object JsonProcessor {
                 }
             }
         }
-        return Pair(builder, timeUsed)
+        return Pair(builder.build(), timeUsed)
     }
 
     private suspend fun MessageChainBuilder.addImageFromFile(filePath: String, sender: CommandSender) {
@@ -194,7 +199,10 @@ object JsonProcessor {
                             builder.add(At(sender.user!!))
                             builder.add("\n")
                         }
-                        builder.add(if (content.isBlank()) "　" else blockProhibitedContent(content, jsonMessage.at, sender.subject is Group))
+                        builder.add(
+                            if (content.isBlank()) "　"
+                            else blockProhibitedContent(content, jsonMessage.at, sender.subject is Group).first
+                        )
                         sender.sendMessage(builder.build())
                     }
                     "markdown"-> {
@@ -302,19 +310,19 @@ object JsonProcessor {
     }
 
     // 检查json和MessageChain中的禁用内容，发现则返回覆盖文本
-    fun blockProhibitedContent(content: String, at: Boolean, isGroup: Boolean): String {
+    fun blockProhibitedContent(content: String, at: Boolean, isGroup: Boolean): Pair<String, Boolean> {
         val (blacklist, warning) = if (isGroup) {
-            if (at) return content
+            if (at) return content to false
             Pair(SystemConfig.groupBlackList, "[警告] 首条消息中检测到被禁用的内容，请开启`at`参数或修改内容来避免此警告")
         } else {
             Pair(SystemConfig.privateBlackList, "[警告] 私信输出中检测到被禁用的内容，请修改内容来避免此警告")
         }
         for (pattern in blacklist) {
             if (pattern.toRegex().containsMatchIn(content)) {
-                return warning
+                return warning to true
             }
         }
-        return content
+        return content to false
     }
 
 }

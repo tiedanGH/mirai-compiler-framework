@@ -138,7 +138,7 @@ object Events : SimpleListenerHost() {
             logger.info("请求执行代码\n$code")
 
             when (val builder = runCode(this, language, code, input)) {
-                is MessageChainBuilder -> sendMessage(builder.build())
+                is MessageChain -> sendMessage(builder)
                 is ForwardMessage-> sendMessage(builder)
                 else -> sendQuoteReply("[处理消息失败] 不识别的输出消息类型或内容，请联系管理员：\n" +
                         trimToMaxLength(builder.toString(), 300).first
@@ -176,7 +176,7 @@ object Events : SimpleListenerHost() {
             builder.add("\n")
         } else {
             val ret = blockProhibitedContent(result.stdout, at = true, isGroup = false)
-            if (ret.startsWith("[警告]")) builder.add("$ret\n")
+            if (ret.second) builder.add("${ret.first}\n")
         }
 
         if (c == 0) {
@@ -206,6 +206,6 @@ object Events : SimpleListenerHost() {
             }
             builder.append(sb.toString())
         }
-        return builder
+        return builder.build()
     }
 }
