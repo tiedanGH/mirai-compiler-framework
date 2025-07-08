@@ -3,10 +3,14 @@ name: Build Snapshot
 on:
   push:
     branches: [ main ]
-    paths-ignore: '*.md'
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
   pull_request:
     branches: [ main ]
-    paths-ignore: '*.md'
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
 
 jobs:
   build:
@@ -30,10 +34,13 @@ jobs:
           echo "SHA=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_ENV
           ./gradlew buildPlugin
           ./gradlew buildPluginLegacy
+          mkdir upload
+          cp build/mirai/*.jar upload/
+          cp -r data upload/
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: mirai-compiler-framework-${{ env.SHA }}
-          path: build/mirai/*.jar
+          path: upload/
           if-no-files-found: error
