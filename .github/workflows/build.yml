@@ -35,8 +35,9 @@ jobs:
           ./gradlew buildPlugin
           ./gradlew buildPluginLegacy
           mkdir upload
+          zip -r data.zip data
+          cp data.zip upload/
           cp build/mirai/*.jar upload/
-          cp -r data upload/
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
