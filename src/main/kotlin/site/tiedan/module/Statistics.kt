@@ -62,6 +62,7 @@ object Statistics {
 
         return buildString {
             appendLine("📈 总执行次数：$totalRun")
+            appendLine()
             if (totalMarkdown > 0) {
                 appendLine("·调用markdown：$totalMarkdown")
                 val avg = totalMdTime / totalMarkdown
@@ -99,6 +100,7 @@ object Statistics {
                 val emoji = if (length < 800_000) "📄" else "⚠️"
                 appendLine("$emoji 代码字符数：$length")
             }
+            if (markdown != null || download != null) appendLine()
             if (markdown != null) {
                 appendLine("·调用markdown：$markdown")
                 if (mdTime != null && markdown > 0) {
