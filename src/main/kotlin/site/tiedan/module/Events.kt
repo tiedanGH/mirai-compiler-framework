@@ -14,8 +14,10 @@ import net.mamoe.mirai.event.SimpleListenerHost
 import net.mamoe.mirai.event.events.MessageEvent
 import net.mamoe.mirai.message.data.At
 import net.mamoe.mirai.message.data.ForwardMessage
+import net.mamoe.mirai.message.data.Message
 import net.mamoe.mirai.message.data.MessageChain
 import net.mamoe.mirai.message.data.MessageChainBuilder
+import net.mamoe.mirai.message.data.PlainText
 import net.mamoe.mirai.message.data.QuoteReply
 import net.mamoe.mirai.message.data.content
 import net.mamoe.mirai.utils.warning
@@ -25,6 +27,7 @@ import site.tiedan.MiraiCompilerFramework.MSG_TRANSFER_LENGTH
 import site.tiedan.MiraiCompilerFramework.THREAD
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
+import site.tiedan.config.DockerConfig
 import site.tiedan.config.PastebinConfig
 import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
@@ -137,11 +140,12 @@ object Events : SimpleListenerHost() {
 
             logger.info("请求执行代码\n$code")
 
-            when (val builder = runCode(this, language, code, input)) {
-                is MessageChain -> sendMessage(builder)
-                is ForwardMessage-> sendMessage(builder)
+            when (val message = runCode(this, language, code, input)) {
+                is MessageChain -> sendMessage(message)
+                is ForwardMessage -> sendMessage(message)
+                is PlainText -> sendQuoteReply(message.content)
                 else -> sendQuoteReply("[处理消息失败] 不识别的输出消息类型或内容，请联系管理员：\n" +
-                        trimToMaxLength(builder.toString(), 300).first
+                        trimToMaxLength(message.toString(), 300).first
                 )
             }
         } catch (e: Exception) {
@@ -154,7 +158,7 @@ object Events : SimpleListenerHost() {
         }
     }
 
-    private fun runCode(sender: CommandSender, language: String, code: String, input: String?, util: String? = null): Any {
+    private fun runCode(sender: CommandSender, language: String, code: String, input: String?, util: String? = null): Message {
         val result = if (language == "text")
             GlotAPI.RunResult(stdout = code)
         else
@@ -162,9 +166,15 @@ object Events : SimpleListenerHost() {
 
         val builder = MessageChainBuilder()
         if (result.message.isNotEmpty()) {
-            builder.append("[执行失败]\n收到来自glot接口的消息：")
-            builder.append(result.message)
-            return builder
+            return if (language in DockerConfig.supportedLanguages) {
+                PlainText(
+                    "[执行失败]\n来自docker容器的错误信息：\n" +
+                    "- error: ${result.error}\n" +
+                    "- message: ${trimToMaxLength(result.message, 300).first}"
+                )
+            } else {
+                PlainText("[执行失败]\n收到来自glot接口的消息：${result.message}")
+            }
         }
         var c = 0
         if (result.stdout.isNotEmpty()) c++

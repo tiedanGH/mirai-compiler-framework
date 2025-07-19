@@ -30,6 +30,7 @@ import site.tiedan.module.Statistics
 import site.tiedan.module.buildMailContent
 import site.tiedan.module.buildMailSession
 import net.mamoe.mirai.console.command.isNotConsole
+import site.tiedan.config.DockerConfig
 import site.tiedan.config.MailConfig
 import site.tiedan.config.PastebinConfig
 import site.tiedan.config.SystemConfig
@@ -900,6 +901,7 @@ object CommandPastebin : RawCommand(
                         PastebinConfig.reload()
                         MailConfig.reload()
                         SystemConfig.reload()
+                        DockerConfig.reload()
                         GlotCache.reload()
                         PastebinData.reload()
                         ExtraData.reload()

@@ -7,6 +7,7 @@ import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 import net.mamoe.mirai.console.util.ConsoleExperimentalApi
 import site.tiedan.MiraiCompilerFramework
+import site.tiedan.config.DockerConfig
 import site.tiedan.utils.HttpUtil
 import java.io.File
 
@@ -39,11 +40,25 @@ object GlotAPI {
     data class CodeFile(val name: String, val content: String)
 
     @Serializable
-    data class RunCodeRequest(val stdin: String? = null,
-                              val command: String? = null,
-                              val files: List<CodeFile>)
+    data class RunCodeRequest(
+        val language: String,
+        val stdin: String? = null,
+        val command: String? = null,
+        val files: List<CodeFile>
+    )
     @Serializable
-    data class RunResult(val stdout: String = "", val stderr: String = "", val error: String = "", val message: String = "")
+    data class DockerRunRequest(
+        val image: String,
+        val payload: RunCodeRequest
+    )
+    @Serializable
+    data class RunResult(
+        val stdout: String = "",
+        val stderr: String = "",
+        val error: String = "",
+        val message: String = "",
+        val duration: Long? = null
+    )
 
     /**
      * 列出所有支持在线运行的语言（缓存）
@@ -172,7 +187,27 @@ object GlotAPI {
      * 导致程序无法在限定时间内返回，将会报告超时异常
      */
     private fun runCode(language: Language, requestData: RunCodeRequest): RunResult {
-        val response = HttpUtil.post(language.url + "/latest", Json.encodeToString(requestData), mapOf("Authorization" to PastebinConfig.API_TOKEN))
+        val response =
+            if (language.name in DockerConfig.supportedLanguages) {
+                // docker 请求
+                logger.debug("请求使用 glot docker-run 运行代码")
+                val dockerImage = when (language.name) {
+                    "c", "cpp"-> "glot/clang:latest"
+                    else-> "glot/${language.name}:latest"
+                }
+                HttpUtil.post(
+                    DockerConfig.requestUrl,
+                    Json.encodeToString(DockerRunRequest(dockerImage, requestData)),
+                    mapOf("X-Access-Token" to DockerConfig.token)
+                )
+            } else {
+                // Glot API 请求
+                HttpUtil.post(
+                    language.url + "/latest",
+                    Json.encodeToString(requestData),
+                    mapOf("Authorization" to PastebinConfig.API_TOKEN)
+                )
+            }
         return Json.decodeFromString(response) ?: throw Exception("未获取到任何数据")
     }
 
@@ -212,5 +247,5 @@ object GlotAPI {
      * 导致程序无法在限定时间内返回，将会报告超时异常
      */
     fun runCode(language: String, code: String, stdin: String? = null, file: String? = null): RunResult =
-        runCode(getSupport(language), RunCodeRequest(stdin, useCommand(language), getFiles(language, code, file)))
+        runCode(getSupport(language), RunCodeRequest(language, stdin, useCommand(language), getFiles(language, code, file)))
 }

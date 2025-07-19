@@ -21,6 +21,7 @@ import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.uploadFileToImage
 import site.tiedan.command.CommandRun.Image_Path
+import site.tiedan.config.DockerConfig
 import site.tiedan.config.PastebinConfig
 import site.tiedan.config.SystemConfig
 import site.tiedan.data.CodeCache
@@ -504,8 +505,13 @@ object PastebinCodeExecutor {
 
             val builder = StringBuilder()
             if (result.message.isNotEmpty()) {
-                builder.append("[执行失败]\n收到来自glot接口的消息：")
-                builder.append(result.message)
+                if (language in DockerConfig.supportedLanguages) {
+                    builder.append("[执行失败]\n来自docker容器的错误信息：\n")
+                    builder.append("- error: ${result.error}\n")
+                    builder.append("- message: ${trimToMaxLength(result.message, 300).first}")
+                } else {
+                    builder.append("[执行失败]\n收到来自glot接口的消息：${result.message}")
+                }
                 return Pair(builder.toString(), true)
             }
             var c = 0

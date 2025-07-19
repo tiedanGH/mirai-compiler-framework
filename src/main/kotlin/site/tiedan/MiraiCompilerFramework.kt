@@ -36,6 +36,7 @@ import site.tiedan.module.executeClearBlackList
 import site.tiedan.command.CommandGlot
 import site.tiedan.command.CommandPastebin
 import site.tiedan.command.CommandRun
+import site.tiedan.config.DockerConfig
 import site.tiedan.data.*
 import site.tiedan.module.Events
 import java.io.File
@@ -81,6 +82,7 @@ object MiraiCompilerFramework : KotlinPlugin(
         PastebinConfig.reload()
         MailConfig.reload()
         SystemConfig.reload()
+        DockerConfig.reload()
         GlotCache.reload()
         PastebinData.reload()
         ExtraData.reload()
