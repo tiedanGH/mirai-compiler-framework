@@ -42,6 +42,7 @@ object PastebinUrlHelper {
 
     val supportedUrls = arrayOf(
         UrlInfo("https://pastebin.ubuntu.com/", "https://pastebin.ubuntu.com/p/", true),
+        UrlInfo("https://glot.io/snippets/", "https://glot.io/snippets/", false),
         UrlInfo("https://pastebin.com/ (raw)", "https://pastebin.com/raw/", false),
         UrlInfo("https://gist.github.com/ (raw)", "https://gist.githubusercontent.com/", true),
         UrlInfo("https://www.toptal.com/developers/hastebin/", "https://hastebin.com/share/", true),
@@ -61,6 +62,10 @@ object PastebinUrlHelper {
         return when {
             url.startsWith("https://pastebin.ubuntu.com/p/") ->
                 HttpUtil.documentSelect(HttpUtil.getDocument(url), "#hidden-content").text()
+
+            url.startsWith("https://glot.io/snippets/") ->
+                HttpUtil.documentSelect(HttpUtil.getDocument(url), "#editor-1").firstOrNull()?.wholeText()
+                    ?: throw Exception("获取 $url 内容失败")
 
             url.startsWith("https://pastebin.com/raw/") -> getRawText(url)
 
