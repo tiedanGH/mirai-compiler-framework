@@ -77,9 +77,17 @@ object CommandPastebin : RawCommand(
         Command("pb reload", "代码 重载", "重载本地数据", 4),
     )
 
+    val pendingConfirmations = mutableMapOf<Long, String>()
+
     override suspend fun CommandSender.onCommand(args: MessageChain) {
 
         val userID = this.user?.id ?: 10000
+
+        // 二次操作对比
+        if (pendingConfirmations[userID]?.let { it != args.content } == true) {
+            pendingConfirmations.remove(userID)
+            sendQuoteReply("指令不一致，操作已取消")
+        }
 
         try {
             when (args[0].content) {
@@ -407,7 +415,7 @@ object CommandPastebin : RawCommand(
                             "添加pastebin成功！\n" +
                                     "名称：$name\n" +
                                     "作者：$author\n" +
-                                    "创建者ID：$userID\n" +
+                                    "userID：$userID\n" +
                                     "语言：$language\n" +
                                     "源代码URL：\n" +
                                 if (PastebinConfig.enable_censor) {
@@ -431,30 +439,43 @@ object CommandPastebin : RawCommand(
                         return
                     }
                     if (userID.toString() != PastebinData.pastebin[name]?.get("userID") && PastebinConfig.admins.contains(userID).not()) {
-                        sendQuoteReply("此条记录并非由您创建，如需修改请联系创建者：${PastebinData.pastebin[name]?.get("userID")}")
+                        sendQuoteReply("无权修改此项目，如需修改请联系所有者：${PastebinData.pastebin[name]?.get("userID")}")
                         return
                     }
-                    val cnParaList = listOf("名称", "作者", "创建者ID", "语言", "链接", "辅助文件", "示例输入", "别名", "隐藏链接", "仅限群聊", "输出格式", "数据存储")
-                    val enParaList = listOf("name", "author", "userID", "language", "url", "util", "stdin", "alias", "hide", "groupOnly", "format", "storage")
-                    val cnIndex = cnParaList.indexOf(option)
-                    if (cnIndex != -1) {
-                        option = enParaList[cnIndex]
-                    }
-                    if (enParaList.contains(option).not()) {
+                    val paraMap = mapOf(
+                        // 基础信息修改
+                        "名称" to "name",
+                        "别名" to "alias",
+                        "作者" to "author",
+                        "语言" to "language",
+                        "链接" to "url",
+                        "示例输入" to "stdin",
+                        "所有者ID" to "userID",
+                        // 启用拓展功能
+                        "隐藏链接" to "hide",
+                        "仅限群聊" to "groupOnly",
+                        "辅助文件" to "util",
+                        "输出格式" to "format",
+                        "数据存储" to "storage"
+                    )
+                    option = paraMap[option] ?: option
+                    if (paraMap.values.contains(option).not()) {
                         sendQuoteReply(
                             "未知的配置项：$option\n" +
-                                "仅支持配置：\n" +
-                                "name（名称）\n" +
-                                "author（作者）\n" +
-                                "language（语言）\n" +
-                                "url（链接）\n" +
-                                "util（辅助文件）\n" +
-                                "stdin（示例输入）\n" +
-                                "alias（别名）\n" +
-                                "hide（隐藏链接）\n" +
-                                "groupOnly（仅限群聊）\n" +
-                                "format（输出格式）\n" +
-                                "storage（数据存储）"
+                            "---基础信息修改---\n" +
+                            "name（名称）\n" +
+                            "alias（别名）\n" +
+                            "author（作者）\n" +
+                            "language（语言）\n" +
+                            "url（链接）\n" +
+                            "stdin（示例输入）\n" +
+                            "userID（所有者ID）\n" +
+                            "---启用拓展功能---\n" +
+                            "hide（隐藏链接）\n" +
+                            "groupOnly（仅限群聊）\n" +
+                            "util（辅助文件）\n" +
+                            "format（输出格式）\n" +
+                            "storage（数据存储）"
                         )
                         return
                     }
@@ -520,6 +541,27 @@ object CommandPastebin : RawCommand(
                             // 转移统计数据
                             ExtraData.statistics.remove(name)?.let {
                                 ExtraData.statistics[content] = it
+                            }
+                        }
+                        "userID"-> {
+                            if (content.toLongOrNull() == null) {
+                                sendQuoteReply("转移失败：输入的 userID 不是整数")
+                                return
+                            }
+                            if (pendingConfirmations.contains(userID).not() && userID !in PastebinConfig.admins) {
+                                pendingConfirmations.put(userID, args.content)
+                                sendQuoteReply(
+                                    " +++⚠️ 危险操作警告 ⚠️+++\n" +
+                                    "您正在转移项目所有权，转移前请确保您已知晓：\n" +
+                                    "- 此操作*不可撤销*\n" +
+                                    "- 转移后您将*完全失去*项目管理权\n" +
+                                    "- 请务必确认目标用户ID准确且有效\n" +
+                                    "如您确认无误，请再次执行转移指令以完成操作"
+                                )
+                                return
+                            } else {
+                                pendingConfirmations.remove(userID)
+                                PastebinData.pastebin[name]?.set("userID", content)
                             }
                         }
                         "alias"-> {
@@ -696,9 +738,15 @@ object CommandPastebin : RawCommand(
                         return
                     }
                     val isOwner = userID.toString() == PastebinData.pastebin[name]?.get("userID")
-                    val isAdmin = PastebinConfig.admins.contains(userID) && args.getOrNull(2)?.content == "admin"
-                    if (!isOwner && !isAdmin){
-                        sendQuoteReply("此条记录并非由您创建，如需删除请联系创建者：${PastebinData.pastebin[name]?.get("userID")}。如果您认为此条记录存在不合适的内容或其他问题，请联系指令管理员")
+                    val isAdmin = PastebinConfig.admins.contains(userID)
+                    val withAdmin = args.getOrNull(2)?.content == "admin"
+                    if (!isOwner && !isAdmin) {
+                        val ownerID = PastebinData.pastebin[name]?.get("userID")
+                        sendQuoteReply("无权删除此项目，如需删除请联系所有者：$ownerID。如果您认为此条记录存在不合适的内容或其他问题，请联系指令管理员")
+                        return
+                    }
+                    if (isAdmin && !isOwner && !withAdmin) {
+                        sendQuoteReply("操作保护：该项目不属于您，如需以管理员权限强制删除，请在指令中附带 admin 参数")
                         return
                     }
                     PastebinData.alias.entries.removeIf { it.value == name }
