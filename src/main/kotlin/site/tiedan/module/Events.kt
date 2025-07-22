@@ -112,7 +112,7 @@ object Events : SimpleListenerHost() {
             } else if (index >= 0) {
                 msg.substring(index).trim()
             } else {
-                sendQuoteReply("$CMD_PREFIX $language\n" + GlotAPI.getTemplateFile(language).content)
+                sendMessage("$CMD_PREFIX $language\n" + GlotAPI.getTemplateFile(language).content)
                 return
             }
 

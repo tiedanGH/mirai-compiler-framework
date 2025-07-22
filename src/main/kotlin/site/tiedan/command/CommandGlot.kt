@@ -75,8 +75,7 @@ object CommandGlot : RawCommand(
                         sendQuoteReply("不支持该语言，请使用「${commandPrefix}glot list」列出所有支持的编程语言")
                         return
                     }
-                    val file = GlotAPI.getTemplateFile(language)
-                    sendMessage("$CMD_PREFIX $language\n" + file.content)
+                    sendMessage("$CMD_PREFIX $language\n" + GlotAPI.getTemplateFile(language).content)
                 }
 
                 else -> {
