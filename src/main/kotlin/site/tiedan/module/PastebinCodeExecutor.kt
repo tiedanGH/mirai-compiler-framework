@@ -505,7 +505,7 @@ object PastebinCodeExecutor {
 
             val builder = StringBuilder()
             if (result.message.isNotEmpty()) {
-                if (language in DockerConfig.supportedLanguages) {
+                if (language.lowercase() in DockerConfig.supportedLanguages) {
                     builder.append("[执行失败]\n来自docker容器的错误信息：\n")
                     builder.append("- error: ${result.error}\n")
                     builder.append("- message: ${trimToMaxLength(result.message, 300).first}")

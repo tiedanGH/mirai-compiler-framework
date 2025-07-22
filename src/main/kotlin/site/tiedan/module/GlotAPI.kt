@@ -247,5 +247,5 @@ object GlotAPI {
      * 导致程序无法在限定时间内返回，将会报告超时异常
      */
     fun runCode(language: String, code: String, stdin: String? = null, file: String? = null): RunResult =
-        runCode(getSupport(language), RunCodeRequest(language, stdin, useCommand(language), getFiles(language, code, file)))
+        runCode(getSupport(language), RunCodeRequest(language.lowercase(), stdin, useCommand(language), getFiles(language, code, file)))
 }

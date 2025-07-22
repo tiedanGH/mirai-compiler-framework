@@ -136,9 +136,10 @@ object Events : SimpleListenerHost() {
                     sendQuoteReply("未获取到有效代码")
                     return
                 }
+                logger.info("请求执行代码\n$code")
+            } else {
+                logger.info("请求执行代码")
             }
-
-            logger.info("请求执行代码\n$code")
 
             when (val message = runCode(this, language, code, input)) {
                 is MessageChain -> sendMessage(message)
@@ -166,7 +167,7 @@ object Events : SimpleListenerHost() {
 
         val builder = MessageChainBuilder()
         if (result.message.isNotEmpty()) {
-            return if (language in DockerConfig.supportedLanguages) {
+            return if (language.lowercase() in DockerConfig.supportedLanguages) {
                 PlainText(
                     "[执行失败]\n来自docker容器的错误信息：\n" +
                     "- error: ${result.error}\n" +
