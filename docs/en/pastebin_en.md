@@ -25,6 +25,7 @@ Before reading the content below, you need to first understand the basic functio
 ### Adding New Code Links
 - Before using the add command, you need to learn how to upload code to a pastebin website. The bot currently supports the following pastebin websites:
     + [https://pastebin.ubuntu.com/](https://pastebin.ubuntu.com/) (login required, supports caching)
+    + [https://glot.io/snippets/](https://glot.io/snippets/) (updates require no changes to the URL, can debug directly)
     + [https://pastebin.com/](https://pastebin.com/) (use `raw` links; updates require no changes to the URL)
     + [https://gist.github.com/](https://gist.github.com/) (GitHub login required, supports editing and caching)
     + [https://www.toptal.com/developers/hastebin/](https://www.toptal.com/developers/hastebin/) (supports caching)

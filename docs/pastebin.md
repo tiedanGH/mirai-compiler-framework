@@ -25,6 +25,7 @@
 ### 添加新的代码链接
 - 在执行添加指令前，您需要先学会如何上传代码至pastebin网站，目前bot支持的pastebin网站有：
     + [https://pastebin.ubuntu.com/](https://pastebin.ubuntu.com/) （需要登录，支持缓存）
+    + [https://glot.io/snippets/](https://glot.io/snippets/) （更新无需修改链接，可直接调试）
     + [https://pastebin.com/](https://pastebin.com/) （需要`raw`，更新无需修改链接）
     + [https://gist.github.com/](https://gist.github.com/) （需登录GitHub，支持修改+缓存）
     + [https://www.toptal.com/developers/hastebin/](https://www.toptal.com/developers/hastebin/)（支持缓存）

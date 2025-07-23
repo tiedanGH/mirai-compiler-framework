@@ -4,7 +4,7 @@
 - [Directly Run Code](#directly-run-code)
 - [Glot Commands](#glot-commands)
 - [Pastebin Commands](#pastebin-commands)
-- [Run Commands](#run-commands)
+- [Run Commands & Quick Prefix](#run-commands--quick-prefix)
 - [Supported Code Upload Sites](#supported-code-upload-sites)
 
 ---
@@ -82,12 +82,15 @@ View and add pastebin code, profile info, statistics, and configure advanced fea
 
 ---
 
-## Run Commands
+## Run Commands & Quick Prefix
 Run code saved in pastebin
 
 ```text
 /run <name> [stdin]    Run pastebin code by name
+##<name> [stdin]    Run pastebin code using Quick Prefix
 ```
+
+*The Quick Prefix can be configured in [PastebinConfig](../../src/main/kotlin/site/tiedan/config/PastebinConfig.kt)
 
 # Supported Code Upload Sites
 - [https://pastebin.ubuntu.com/](https://pastebin.ubuntu.com/) (Login required, supports caching)

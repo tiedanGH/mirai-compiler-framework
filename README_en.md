@@ -10,7 +10,7 @@ _Mirai Console online compiler framework based on Glot API_
 [//]: # ([![stars]&#40;https://img.shields.io/github/stars/tiedanGH/mirai-compiler-framework?style=flat&color=orange&#41;]&#40;https://github.com/tiedanGH/mirai-compiler-framework&#41;)
 [//]: # ([![downloads]&#40;https://shields.io/github/downloads/tiedanGH/mirai-compiler-framework/total&#41;]&#40;https://github.com/tiedanGH/mirai-compiler-framework/releases/latest&#41;)
 
-[简体中文](../README.md) | [English](README_en.md)
+[简体中文](README.md) | [English](README_en.md)
 
 </div>
 
@@ -33,21 +33,24 @@ _Mirai Console online compiler framework based on Glot API_
 ## Installation Instructions
 1. This plugin runs on [Mirai Console](https://github.com/mamoe/mirai). You can learn how to install and start the bot by reading the [Mirai User Manual](https://docs.mirai.mamoe.net/UserManual.html).
 2. After `MiraiConsole` has started successfully, place the `.jar` file from this project’s [releases](https://github.com/tiedanGH/mirai-compiler-framework/releases) into the `.\plugins\` directory to load the plugin.
-3. Once the plugin has loaded successfully, copy all files from the [data](../data) into `data\site.tiedan.mirai-compiler-framework\`, then restart `MiraiConsole`.
+3. Once the plugin has loaded successfully, copy all files from the [data](data) into `data\site.tiedan.mirai-compiler-framework\`, then restart `MiraiConsole`.
 4. In `config\site.tiedan.mirai-compiler-framework\`, fill in the Glot [API Token](https://glot.io/account/token). In `mail.properties`, enter the SMTP email information (if needed, used to send stored data via email for review).
-5. This framework provides over 200 pre-implemented projects located in [data\PastebinData.yml](../data/PastebinData.yml). Place this file into the data folder to load existing projects.
+5. This framework provides over 200 pre-implemented projects located in [data\PastebinData.yml](data/PastebinData.yml). Place this file into the data folder to load existing projects.
 
 ## Documentation
-- [Basic Framework Command Help](commands_en.md)
-    + [Directly Run Code](commands_en.md#directly-run-code)
-    + [Glot Commands](commands_en.md#glot-commands)
-    + [Pastebin Commands](commands_en.md#pastebin-commands)
-    + [Run Commands](commands_en.md#run-commands)
-- [Pastebin Commands and Advanced Features Documentation](pastebin_en.md)
-    + [1. Basic Command Functionality and Usage](pastebin_en.md#1-basic-functions-and-usage)
-    + [2. Output Formats: Output Images or Simultaneously Output Multiple Texts and Images](pastebin_en.md#2-output-formats)
-    + [3. Using Storage Functionality to Link Multiple Program Runs](pastebin_en.md#3-using-the-storage-feature-to-link-multiple-program-runs)
-- [Supported Code Upload Websites](commands_en.md#supported-code-upload-sites)
+- [Basic Framework Command Help](docs/en/commands_en.md)
+    + [Directly Run Code](docs/en/commands_en.md#directly-run-code)
+    + [Glot Commands](docs/en/commands_en.md#glot-commands)
+    + [Pastebin Commands](docs/en/commands_en.md#pastebin-commands)
+    + [Run Commands & Quick Prefix](docs/en/commands_en.md#run-commands--quick-prefix)
+- [Pastebin Commands and Advanced Features Documentation](docs/en/pastebin_en.md)
+    + [1. Basic Command Functionality and Usage](docs/en/pastebin_en.md#1-basic-functions-and-usage)
+    + [2. Output Formats: Output Images or Simultaneously Output Multiple Texts and Images](docs/en/pastebin_en.md#2-output-formats)
+    + [3. Using Storage Functionality to Link Multiple Program Runs](docs/en/pastebin_en.md#3-using-the-storage-feature-to-link-multiple-program-runs)
+- [Supported Code Upload Websites](docs/en/commands_en.md#supported-code-upload-sites)
+- [Deploy Glot locally using docker-run](docs/en/docker-run_en.md)
+    + [Install and Start docker-run](docs/en/docker-run_en.md#install-and-start-docker-run)
+    + [Fill in the DockerConfig](docs/en/docker-run_en.md#fill-in-the-dockerconfig)
 
 ---
 
@@ -56,7 +59,7 @@ Parts of this project are based on **mirai-console-jcc-plugin** (original reposi
 This project is released under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
 
 In compliance with the AGPL-3.0 license, this project retains the original copyright notice and expresses gratitude for the contribution.  
-For more information about this license, please refer to the [LICENSE](../LICENSE) file in this project.
+For more information about this license, please refer to the [LICENSE](LICENSE) file in this project.
 
 ## Feedback
 If you encounter any issues during the installation or usage of the plugin, feel free to provide feedback through the following channels:
@@ -72,4 +75,5 @@ As of June 6, 2025, this framework has integrated **217** independent projects.
 
 Special thanks to:
 - The original project [jie65535/**mirai-console-jcc-plugin**](https://github.com/jie65535/mirai-console-jcc-plugin/)
-- Platforms providing code paste services, including Ubuntu Pastebin, pastebin.com, Gist, and a total of [7 supported sites](commands.md#支持上传代码的网站)
+- The online compiler API provided by Glot and its [docker-run](https://github.com/glotcode/docker-run) deployment plan
+- Platforms providing code paste services, including Ubuntu Pastebin, pastebin.com, Gist, and a total of [7 supported sites](docs/commands.md#支持上传代码的网站)

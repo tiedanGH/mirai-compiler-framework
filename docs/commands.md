@@ -4,7 +4,7 @@
 - [run直接运行代码](#run直接运行代码)
 - [Glot指令](#Glot指令)
 - [Pastebin指令](#Pastebin指令)
-- [Run指令](#Run指令)
+- [Run指令及快捷前缀](#run指令及快捷前缀)
 - [支持上传代码的网站](#支持上传代码的网站)
 
 ---
@@ -48,9 +48,9 @@
 查看框架信息和帮助
 
 ```text
-- /glot help    查看框架信息和帮助
-- /glot list    列出所有支持的编程语言
-- /glot template [语言]    获取指定语言的模板
+/glot help    查看框架信息和帮助
+/glot list    列出所有支持的编程语言
+/glot template [语言]    获取指定语言的模板
 ```
 
 ---
@@ -82,15 +82,21 @@
 
 ---
 
-## Run指令
+## Run指令及快捷前缀
 运行pastebin中的代码
 
 ```text
 /run <名称> [stdin]    运行保存的pastebin代码
+##<名称> [stdin]    使用快捷前缀运行pastebin代码
 ```
+
+*快捷前缀可在 [PastebinConfig](../src/main/kotlin/site/tiedan/config/PastebinConfig.kt) 中进行配置
+
+---
 
 # 支持上传代码的网站
 - [https://pastebin.ubuntu.com/](https://pastebin.ubuntu.com/) （需要登录，支持缓存）
+- [https://glot.io/snippets/](https://glot.io/snippets/) （更新无需修改链接，可直接调试）
 - [https://pastebin.com/](https://pastebin.com/) （需要`raw`，更新无需修改链接）
 - [https://gist.github.com/](https://gist.github.com/) （需登录GitHub，支持修改+缓存）
 - [https://www.toptal.com/developers/hastebin/](https://www.toptal.com/developers/hastebin/)（支持缓存）
