@@ -34,7 +34,7 @@ object CommandRun : RawCommand(
             return
         }
 
-        val userInput = args.drop(1).joinToString(separator = " ")
+        val userInput = args.drop(1).joinToString(separator = " ") { it.content }
 
         // 执行代码并输出
         this.executeMainProcess(name, userInput)
