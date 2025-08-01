@@ -14,6 +14,7 @@ import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.console.command.CommandSenderOnMessage
 import net.mamoe.mirai.console.plugin.jvm.JvmPluginDescription
 import net.mamoe.mirai.console.plugin.jvm.KotlinPlugin
+import net.mamoe.mirai.console.util.ConsoleExperimentalApi
 import net.mamoe.mirai.contact.Contact
 import net.mamoe.mirai.contact.Group
 import net.mamoe.mirai.contact.User
@@ -54,6 +55,7 @@ object MiraiCompilerFramework : KotlinPlugin(
     const val CMD_PREFIX = "run"
     const val MSG_TRANSFER_LENGTH = 550
     const val MSG_MAX_LENGTH = 800
+    const val TIMEOUT = 60L
     val supportedFormats = listOf(
         "text",
         "markdown",
@@ -69,6 +71,10 @@ object MiraiCompilerFramework : KotlinPlugin(
         "ForwardMessage",
         "Audio",
     )
+    @OptIn(ConsoleExperimentalApi::class)
+    val cacheFolder = "./data/${MiraiCompilerFramework.dataHolderName}/cache/"
+    @OptIn(ConsoleExperimentalApi::class)
+    val imageFolder = "./data/${MiraiCompilerFramework.dataHolderName}/images/"
 
     var THREAD = 0
 

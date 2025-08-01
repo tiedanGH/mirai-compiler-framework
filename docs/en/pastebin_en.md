@@ -438,7 +438,7 @@ You can enable data storage with:
 
 ## Data Storage (`storage`)
 - The storage feature allows saving custom save data that can be retrieved in the next run to continue program execution. It is suitable for use cases such as save-based games, leaderboards, etc.
-- **The storage feature only works when the output format is `json` or `ForwardMessage`. For other formats, output is displayed but data is not stored.**
+- **The storage feature only works when the output format is `json`, `ForwardMessage`, `Audio`. For other formats, output is displayed but data is not stored.**
 ### Usage Instructions
 - The storage feature uses two parameters: `storage` and `global`. **Both are of type `String` (but may also be `null`).**
 - `storage` refers to user-specific storage, bound to the user’s `userID`. **Each user has separate data. When user A runs the program, they only get their own data and cannot access user B's.**
@@ -484,6 +484,26 @@ You can enable data storage with:
 ### Example Code Using [Storage + JSON Output]
 - Python example using the storage feature: [https://pastebin.ubuntu.com/p/8dBPp9KJkj/](https://pastebin.ubuntu.com/p/8dBPp9KJkj/)
 - In C++, using the storage feature requires importing `json.h`. (this helper file will be uploaded to Glot when configured). It includes functions for JSON parsing and encoding. See usage and code examples here: [https://pastebin.ubuntu.com/p/qXMJcBdGFt/](https://pastebin.ubuntu.com/p/qXMJcBdGFt/)
+
+## Image Input
+- Users can attach images when executing code. This section explains how to retrieve user-provided images in your program.
+- **This feature requires storage to be enabled, even if you're not using data storage.**
+- As mentioned earlier, when storage is enabled, the program will first receive a line containing a JSON string with stored data. Image information will be included in this string.
+- When users input images, an array of all image information is generated **in the order the images were input**, including image URLs and base64-encoded strings.
+### Retrieving Image Information
+- All image data is located in the `images` array. Each image entry contains the following fields:
+  + `url` (String) — A download link for the image, directly usable for markdown rendering.
+  + `base64` (String?) — A base64-encoded string of the image. **Defaults to null**, as image downloading takes time. This field is only provided when base64 conversion is explicitly enabled (see instruction below).
+  + `error` (String) — Error message: an empty string means no error. If downloading or base64 conversion fails, the error message will be stored here.
+### Enabling Base64 for Input Images
+- The image to base64 function is only populated when the "image base64" feature is enabled. Use the following command to enable it:
+  ```
+  #pb set <name> base64 on/off
+  ```
+- When enabled, the program will download and convert the input images to base64 before executing the code. This takes extra time for downloading and conversion.
+- Input images should not be too large. **The total download timeout for all images is 60 seconds**. If this limit is exceeded, subsequent images will only provide the URL, without base64 conversion.
+### Example
+- Python code example to retrieve input image data: [https://pastebin.ubuntu.com/p/SYyF2zCFxT/](https://pastebin.ubuntu.com/p/SYyF2zCFxT/)
 
 ---
 

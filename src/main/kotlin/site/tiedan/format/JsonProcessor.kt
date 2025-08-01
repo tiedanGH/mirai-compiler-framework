@@ -18,8 +18,8 @@ import net.mamoe.mirai.message.data.At
 import net.mamoe.mirai.message.data.MessageChain
 import net.mamoe.mirai.message.data.MessageChainBuilder
 import site.tiedan.utils.DownloadHelper.downloadImage
-import site.tiedan.format.MarkdownImageGenerator.TIMEOUT
-import site.tiedan.format.MarkdownImageGenerator.cacheFolder
+import site.tiedan.MiraiCompilerFramework.TIMEOUT
+import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.format.MarkdownImageGenerator.processMarkdown
 import net.mamoe.mirai.message.data.PlainText
 import site.tiedan.module.PastebinCodeExecutor.renderLatexOnline
@@ -68,7 +68,14 @@ object JsonProcessor {
         val storage: String = "",
         val userID: Long = 10001,
         val nickname: String = "",
-        val from: String = ""
+        val from: String = "",
+        val images: List<ImageData> = listOf(),
+    )
+    @Serializable
+    data class ImageData(
+        val url: String = "",
+        val base64: String? = null,
+        val error: String = "",
     )
 
     fun processDecode(jsonOutput: String): JsonMessage {
@@ -79,9 +86,9 @@ object JsonProcessor {
         }
     }
 
-    fun processEncode(global: String, storage: String, userID: Long, nickname: String, from: String): String {
+    fun processEncode(global: String, storage: String, userID: Long, nickname: String, from: String, images: List<ImageData>): String {
         return try {
-            val jsonStorageObject = JsonStorage(global, storage, userID, nickname, from)
+            val jsonStorageObject = JsonStorage(global, storage, userID, nickname, from, images)
             json.encodeToString<JsonStorage>(jsonStorageObject)
         } catch (e: Exception) {
             throw Exception("JSON编码错误【严重错误，理论不可能发生】，请提供日志反馈问题：\n${e.message}")

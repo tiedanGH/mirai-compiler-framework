@@ -14,6 +14,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import net.mamoe.mirai.console.util.ConsoleExperimentalApi
+import site.tiedan.MiraiCompilerFramework.TIMEOUT
+import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.module.Statistics
 import site.tiedan.module.Statistics.roundTo2
 import java.io.File
@@ -27,10 +29,8 @@ import kotlin.math.ceil
 
 @OptIn(ConsoleExperimentalApi::class)
 object MarkdownImageGenerator {
-    const val TIMEOUT = 60L
-    val cacheFolder = "./data/${MiraiCompilerFramework.dataHolderName}/cache/"
     private val MarkdownLock = Mutex()
-    // 操作系统相关信息
+    // 操作系统相关信息（仅用于监测内存用量）
     private val osBean = ManagementFactory.getOperatingSystemMXBean() as OperatingSystemMXBean
 
     data class MarkdownResult(val success: Boolean, val message: String, val duration: Long)

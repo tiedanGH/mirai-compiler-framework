@@ -8,6 +8,7 @@ import net.mamoe.mirai.message.data.ForwardMessage
 import net.mamoe.mirai.message.data.PlainText
 import net.mamoe.mirai.message.data.RawForwardMessage
 import net.mamoe.mirai.message.data.buildForwardMessage
+import site.tiedan.MiraiCompilerFramework.TIMEOUT
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.uploadFileToImage
 import site.tiedan.format.Base64Processor.fileToMessage
@@ -15,8 +16,7 @@ import site.tiedan.format.Base64Processor.processBase64
 import site.tiedan.format.JsonProcessor.JsonMessage
 import site.tiedan.format.JsonProcessor.generateMessageChain
 import site.tiedan.format.JsonProcessor.json
-import site.tiedan.format.MarkdownImageGenerator.TIMEOUT
-import site.tiedan.format.MarkdownImageGenerator.cacheFolder
+import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.format.MarkdownImageGenerator.processMarkdown
 import site.tiedan.module.PastebinCodeExecutor.renderLatexOnline
 import site.tiedan.utils.DownloadHelper.downloadImage

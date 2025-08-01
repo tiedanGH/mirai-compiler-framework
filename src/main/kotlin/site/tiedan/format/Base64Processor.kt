@@ -1,15 +1,22 @@
 package site.tiedan.format
 
-import site.tiedan.MiraiCompilerFramework.logger
-import site.tiedan.MiraiCompilerFramework.uploadFileToImage
-import site.tiedan.format.ForwardMessageGenerator.trimToMaxLength
-import site.tiedan.format.MarkdownImageGenerator.cacheFolder
 import net.mamoe.mirai.contact.AudioSupported
 import net.mamoe.mirai.contact.Contact
 import net.mamoe.mirai.message.data.Message
 import net.mamoe.mirai.message.data.PlainText
 import net.mamoe.mirai.utils.ExternalResource.Companion.toExternalResource
+import site.tiedan.MiraiCompilerFramework.MSG_TRANSFER_LENGTH
+import site.tiedan.MiraiCompilerFramework.cacheFolder
+import site.tiedan.MiraiCompilerFramework.logger
+import site.tiedan.MiraiCompilerFramework.uploadFileToImage
+import site.tiedan.config.PastebinConfig
+import site.tiedan.format.ForwardMessageGenerator.stringToForwardMessage
+import site.tiedan.format.JsonProcessor.ImageData
+import site.tiedan.MiraiCompilerFramework.TIMEOUT
+import site.tiedan.utils.DownloadHelper.downloadFile
 import java.io.File
+import java.net.URLConnection
+import java.nio.file.Files
 import java.util.*
 
 object Base64Processor {
@@ -103,12 +110,57 @@ object Base64Processor {
             }
 
             FileType.Text -> {
-                return PlainText(trimToMaxLength(file.readText(), 10000).first)
+                val output = file.readText()
+                return if ((output.length > MSG_TRANSFER_LENGTH || output.lines().size > 30) && PastebinConfig.enable_ForwardMessage) {
+                    stringToForwardMessage(StringBuilder(output), subject)
+                } else {
+                    PlainText(output)
+                }
             }
 
             FileType.Application -> return errorMessage
 
             else-> return errorMessage
+        }
+    }
+
+    fun encodeImagesToBase64(imageUrls: List<String>, encode: Boolean): List<ImageData> {
+        val imageData = mutableListOf<ImageData>()
+        val errorMessage = "[错误] 图片转换base64时出错，请联系管理员："
+
+        var timeUsed: Long = 0
+        for (url in imageUrls) {
+            if (!encode) {
+                imageData.add(ImageData(url, null))
+                continue
+            }
+            val downloadResult = downloadFile(null, url, cacheFolder, "base64_download", TIMEOUT - timeUsed, force = true)
+            if (!downloadResult.success) {
+                imageData.add(ImageData(url, null, downloadResult.message))
+                continue
+            }
+            timeUsed += downloadResult.duration
+            val result = fileToDataUri(File("${cacheFolder}base64_download"))
+            if (result.first) {
+                imageData.add(ImageData(url, result.second))
+            } else {
+                imageData.add(ImageData(url, null, "$errorMessage${result.second}"))
+            }
+        }
+        return imageData
+    }
+
+    fun fileToDataUri(file: File): Pair<Boolean, String> {
+        return try {
+            val bytes = Files.readAllBytes(file.toPath())
+            val mimeType = Files.probeContentType(file.toPath())
+                ?: URLConnection.guessContentTypeFromName(file.name)
+                ?: "application/octet-stream"
+            val base64 = Base64.getEncoder().encodeToString(bytes)
+            Pair(true, "data:$mimeType;base64,$base64")
+        } catch (e: Exception) {
+            logger.warning(e)
+            Pair(false, e.message.toString())
         }
     }
 }

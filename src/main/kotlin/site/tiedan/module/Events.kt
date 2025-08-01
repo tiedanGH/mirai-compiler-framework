@@ -14,6 +14,8 @@ import net.mamoe.mirai.event.SimpleListenerHost
 import net.mamoe.mirai.event.events.MessageEvent
 import net.mamoe.mirai.message.data.At
 import net.mamoe.mirai.message.data.ForwardMessage
+import net.mamoe.mirai.message.data.Image
+import net.mamoe.mirai.message.data.Image.Key.queryUrl
 import net.mamoe.mirai.message.data.Message
 import net.mamoe.mirai.message.data.MessageChain
 import net.mamoe.mirai.message.data.MessageChainBuilder
@@ -63,12 +65,14 @@ object Events : SimpleListenerHost() {
         if (args.isEmpty()) return
 
         val name = PastebinData.alias[args[0]] ?: args[0]
-        val userInput = args.drop(1).joinToString(separator = " ")
 
-        if (PastebinData.pastebin.containsKey(name).not()) return
+        if (PastebinData.pastebin.contains(name).not()) return
+
+        val userInput = args.drop(1).joinToString(separator = " ")
+        val imageUrls = message.filterIsInstance<Image>().map { it.queryUrl() }
 
         // 执行代码并输出
-        this.executeMainProcess(name, userInput)
+        this.executeMainProcess(name, userInput, imageUrls)
     }
 
     private suspend fun CommandSender.codeRunOnEvent(message: MessageChain) {

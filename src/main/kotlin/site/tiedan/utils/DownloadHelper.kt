@@ -2,7 +2,7 @@ package site.tiedan.utils
 
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.module.Statistics
-import site.tiedan.format.MarkdownImageGenerator.TIMEOUT
+import site.tiedan.MiraiCompilerFramework.TIMEOUT
 import site.tiedan.module.Statistics.roundTo2
 import java.io.File
 import java.io.FileOutputStream

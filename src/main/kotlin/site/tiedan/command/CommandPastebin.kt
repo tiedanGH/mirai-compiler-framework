@@ -1,35 +1,25 @@
 package site.tiedan.command
 
-import site.tiedan.MiraiCompilerFramework
-import site.tiedan.MiraiCompilerFramework.Command
-import site.tiedan.MiraiCompilerFramework.logger
-import site.tiedan.MiraiCompilerFramework.reload
-import site.tiedan.MiraiCompilerFramework.save
-import site.tiedan.MiraiCompilerFramework.sendQuoteReply
-import site.tiedan.MiraiCompilerFramework.uploadFileToImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.commandPrefix
 import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.console.command.RawCommand
-import net.mamoe.mirai.console.util.ConsoleExperimentalApi
+import net.mamoe.mirai.console.command.isNotConsole
 import net.mamoe.mirai.contact.MessageTooLargeException
 import net.mamoe.mirai.contact.PermissionDeniedException
 import net.mamoe.mirai.containsFriend
 import net.mamoe.mirai.message.data.*
 import net.mamoe.mirai.message.data.Image.Key.queryUrl
-import site.tiedan.utils.DownloadHelper.downloadFile
-import site.tiedan.utils.DownloadHelper.downloadImage
-import site.tiedan.module.GlotAPI
-import site.tiedan.format.MarkdownImageGenerator.cacheFolder
-import site.tiedan.format.MarkdownImageGenerator.generatePastebinHtml
-import site.tiedan.format.MarkdownImageGenerator.processMarkdown
-import site.tiedan.utils.PastebinUrlHelper.checkUrl
-import site.tiedan.utils.PastebinUrlHelper.supportedUrls
-import site.tiedan.module.Statistics
-import site.tiedan.module.buildMailContent
-import site.tiedan.module.buildMailSession
-import net.mamoe.mirai.console.command.isNotConsole
+import site.tiedan.MiraiCompilerFramework
+import site.tiedan.MiraiCompilerFramework.Command
+import site.tiedan.MiraiCompilerFramework.cacheFolder
+import site.tiedan.MiraiCompilerFramework.imageFolder
+import site.tiedan.MiraiCompilerFramework.logger
+import site.tiedan.MiraiCompilerFramework.reload
+import site.tiedan.MiraiCompilerFramework.save
+import site.tiedan.MiraiCompilerFramework.sendQuoteReply
+import site.tiedan.MiraiCompilerFramework.uploadFileToImage
 import site.tiedan.config.DockerConfig
 import site.tiedan.config.MailConfig
 import site.tiedan.config.PastebinConfig
@@ -39,6 +29,16 @@ import site.tiedan.data.CodeCache
 import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
 import site.tiedan.data.PastebinStorage
+import site.tiedan.format.MarkdownImageGenerator.generatePastebinHtml
+import site.tiedan.format.MarkdownImageGenerator.processMarkdown
+import site.tiedan.module.GlotAPI
+import site.tiedan.module.Statistics
+import site.tiedan.module.buildMailContent
+import site.tiedan.module.buildMailSession
+import site.tiedan.utils.DownloadHelper.downloadFile
+import site.tiedan.utils.DownloadHelper.downloadImage
+import site.tiedan.utils.PastebinUrlHelper.checkUrl
+import site.tiedan.utils.PastebinUrlHelper.supportedUrls
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -363,6 +363,7 @@ object CommandPastebin : RawCommand(
                             data["width"]?.let { w -> appendLine("图片宽度：$w") }
                         }
                         if (data["storage"] == "true") appendLine("存储功能：已开启")
+                        if (data["base64"] == "true") appendLine("输入图片base64：已开启")
                         appendLine(
                             if (data["stdin"].isNullOrEmpty()) "示例输入：无"
                             else "示例输入：${data["stdin"]}"
@@ -456,7 +457,8 @@ object CommandPastebin : RawCommand(
                         "仅限群聊" to "groupOnly",
                         "辅助文件" to "util",
                         "输出格式" to "format",
-                        "数据存储" to "storage"
+                        "数据存储" to "storage",
+                        "图片base64" to "base64",
                     )
                     option = paraMap[option] ?: option
                     if (paraMap.values.contains(option).not()) {
@@ -475,7 +477,8 @@ object CommandPastebin : RawCommand(
                             "groupOnly（仅限群聊）\n" +
                             "util（辅助文件）\n" +
                             "format（输出格式）\n" +
-                            "storage（数据存储）"
+                            "storage（数据存储）\n" +
+                            "base64（图片base64）"
                         )
                         return
                     }
@@ -543,6 +546,12 @@ object CommandPastebin : RawCommand(
                                 ExtraData.statistics[content] = it
                             }
                         }
+                        "alias"-> {
+                            PastebinData.alias.entries.removeIf { it.value == name }
+                            if (content.isNotEmpty()) {
+                                PastebinData.alias[content] = name
+                            }
+                        }
                         "userID"-> {
                             if (content.toLongOrNull() == null) {
                                 sendQuoteReply("转移失败：输入的 userID 不是整数")
@@ -564,10 +573,48 @@ object CommandPastebin : RawCommand(
                                 PastebinData.pastebin[name]?.set("userID", content)
                             }
                         }
-                        "alias"-> {
-                            PastebinData.alias.entries.removeIf { it.value == name }
-                            if (content.isNotEmpty()) {
-                                PastebinData.alias[content] = name
+                        "hide"-> {
+                            when (content) {
+                                in arrayListOf("enable","on","true","开启")-> {
+                                    content = "隐藏"
+                                    PastebinData.hiddenUrl.add(name)
+                                }
+                                in arrayListOf("disable","off","false","关闭")-> {
+                                    content = "显示"
+                                    PastebinData.hiddenUrl.remove(name)
+                                }
+                                else-> {
+                                    sendQuoteReply("无效的配置项：请设置 开启/关闭 隐藏链接功能")
+                                    return
+                                }
+                            }
+                        }
+                        "groupOnly"-> {
+                            when (content) {
+                                in arrayListOf("enable","on","true","开启")-> {
+                                    content = "仅限群聊执行"
+                                    PastebinData.groupOnly.add(name)
+                                }
+                                in arrayListOf("disable","off","false","关闭")-> {
+                                    content = "允许全局执行"
+                                    PastebinData.groupOnly.remove(name)
+                                }
+                                else-> {
+                                    sendQuoteReply("无效的配置项：请设置 开启/关闭 仅限群聊执行功能")
+                                    return
+                                }
+                            }
+                        }
+                        "util"-> {
+                            val files = File(GlotAPI.utilsFolder).listFiles()?.filter { it.isFile }?.map { it.name } ?: emptyList()
+                            if (content.isEmpty()) {
+                                PastebinData.pastebin[name]?.remove("util")
+                            } else {
+                                if (files.contains(content).not()) {
+                                    sendQuoteReply("未找到文件，请检查文件名\n辅助文件列表：\n${files.joinToString("\n")}")
+                                    return
+                                }
+                                PastebinData.pastebin[name]?.set("util", content)
                             }
                         }
                         "format"-> {
@@ -645,6 +692,10 @@ object CommandPastebin : RawCommand(
                                 in arrayListOf("disable","off","false","关闭")-> {
                                     content = "关闭"
                                     PastebinData.pastebin[name]?.remove("storage")
+                                    if (PastebinData.pastebin[name]?.get("base64") != null) {
+                                        content += "（关闭图片base64）"
+                                        PastebinData.pastebin[name]?.remove("base64")
+                                    }
                                     PastebinStorage.Storage.remove(name)
                                 }
                                 in arrayListOf("clear","清空")-> {
@@ -657,48 +708,25 @@ object CommandPastebin : RawCommand(
                                 }
                             }
                         }
-                        "hide"-> {
+                        "base64"-> {
                             when (content) {
                                 in arrayListOf("enable","on","true","开启")-> {
-                                    content = "隐藏"
-                                    PastebinData.hiddenUrl.add(name)
+                                    if (PastebinData.pastebin[name]?.get("storage") != "true") {
+                                        sendQuoteReply("启用失败：此项目未开启存储功能，无法使用输入图片base64功能")
+                                        return
+                                    }
+                                    content = "开启"
+                                    PastebinData.pastebin[name]?.set("base64", "true")
                                 }
                                 in arrayListOf("disable","off","false","关闭")-> {
-                                    content = "显示"
-                                    PastebinData.hiddenUrl.remove(name)
+                                    content = "关闭"
+                                    PastebinData.pastebin[name]?.remove("base64")
+                                    PastebinStorage.Storage.remove(name)
                                 }
                                 else-> {
-                                    sendQuoteReply("无效的配置项：请设置 开启/关闭 隐藏链接功能")
+                                    sendQuoteReply("无效的配置项：请设置 开启/关闭 输入图片转base64")
                                     return
                                 }
-                            }
-                        }
-                        "groupOnly"-> {
-                            when (content) {
-                                in arrayListOf("enable","on","true","开启")-> {
-                                    content = "仅限群聊执行"
-                                    PastebinData.groupOnly.add(name)
-                                }
-                                in arrayListOf("disable","off","false","关闭")-> {
-                                    content = "允许全局执行"
-                                    PastebinData.groupOnly.remove(name)
-                                }
-                                else-> {
-                                    sendQuoteReply("无效的配置项：请设置 开启/关闭 仅限群聊执行功能")
-                                    return
-                                }
-                            }
-                        }
-                        "util"-> {
-                            val files = File(GlotAPI.utilsFolder).listFiles()?.filter { it.isFile }?.map { it.name } ?: emptyList()
-                            if (content.isEmpty()) {
-                                PastebinData.pastebin[name]?.remove("util")
-                            } else {
-                                if (files.contains(content).not()) {
-                                    sendQuoteReply("未找到文件，请检查文件名\n辅助文件列表：\n${files.joinToString("\n")}")
-                                    return
-                                }
-                                PastebinData.pastebin[name]?.set("util", content)
                             }
                         }
                         else -> {
@@ -789,10 +817,8 @@ object CommandPastebin : RawCommand(
                                 "注意：图片名字后需要空格或换行分隔图片参数")
                         return
                     }
-                    @OptIn(ConsoleExperimentalApi::class)
-                    val outputDir = "./data/${MiraiCompilerFramework.dataHolderName}/images/"
-                    val downloadResult = if (isImage) downloadFile(null, imageUrl, outputDir, imageName)
-                        else downloadImage(null, imageUrl, outputDir, imageName)
+                    val downloadResult = if (isImage) downloadFile(null, imageUrl, imageFolder, imageName)
+                        else downloadImage(null, imageUrl, imageFolder, imageName)
                     if (!downloadResult.success) {
                         sendQuoteReply(downloadResult.message)
                         return

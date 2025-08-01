@@ -4,6 +4,7 @@ import net.mamoe.mirai.console.command.CommandManager.INSTANCE.commandPrefix
 import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.console.command.RawCommand
 import net.mamoe.mirai.message.data.*
+import net.mamoe.mirai.message.data.Image.Key.queryUrl
 import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.data.PastebinData
@@ -29,14 +30,15 @@ object CommandRun : RawCommand(
             sendQuoteReply("[指令无效]\n${commandPrefix}run <名称> [输入]\n运行保存的pastebin代码")
             return
         }
-        if (PastebinData.pastebin.containsKey(name).not()) {
+        if (PastebinData.pastebin.contains(name).not()) {
             sendQuoteReply("未知的名称：$name\n请使用「${commandPrefix}pb list」来查看完整列表")
             return
         }
 
         val userInput = args.drop(1).joinToString(separator = " ") { it.content }
+        val imageUrls = args.drop(1).filterIsInstance<Image>().map { it.queryUrl() }
 
         // 执行代码并输出
-        this.executeMainProcess(name, userInput)
+        this.executeMainProcess(name, userInput, imageUrls)
     }
 }

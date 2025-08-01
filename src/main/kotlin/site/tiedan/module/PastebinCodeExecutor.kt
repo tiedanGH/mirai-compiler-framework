@@ -29,6 +29,7 @@ import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
 import site.tiedan.data.PastebinStorage
 import site.tiedan.format.AudioGenerator.generateAudio
+import site.tiedan.format.Base64Processor.encodeImagesToBase64
 import site.tiedan.format.Base64Processor.fileToMessage
 import site.tiedan.format.Base64Processor.processBase64
 import site.tiedan.format.ForwardMessageGenerator.generateForwardMessage
@@ -41,7 +42,7 @@ import site.tiedan.format.JsonProcessor.outputMultipleMessage
 import site.tiedan.format.JsonProcessor.processDecode
 import site.tiedan.format.JsonProcessor.processEncode
 import site.tiedan.format.JsonProcessor.savePastebinStorage
-import site.tiedan.format.MarkdownImageGenerator.cacheFolder
+import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.format.MarkdownImageGenerator.processMarkdown
 import site.tiedan.module.RequestLimiter.newRequest
 import site.tiedan.utils.DownloadHelper.downloadImage
@@ -59,7 +60,7 @@ object PastebinCodeExecutor {
     private val OutputLock = Mutex()
     private val StorageLock = Mutex()
     
-    suspend fun CommandSender.executeMainProcess(name: String, userInput: String) {
+    suspend fun CommandSender.executeMainProcess(name: String, userInput: String, imageUrls: List<String>) {
 
         val userID = user?.id ?: 10000
 
@@ -155,7 +156,10 @@ object PastebinCodeExecutor {
                 val global = PastebinStorage.Storage[name]?.get(0) ?: ""
                 val storage = PastebinStorage.Storage[name]?.get(userID) ?: ""
                 val from = if (subject is Group) "${(subject as Group).name}(${(subject as Group).id})" else "private"
-                val jsonInput = processEncode(global, storage, userID, nickname, from)
+                val encodeBase64 = PastebinData.pastebin[name]?.get("base64") == "true"
+                val imageData = encodeImagesToBase64(imageUrls, encodeBase64)
+
+                val jsonInput = processEncode(global, storage, userID, nickname, from, imageData)
                 input = "$jsonInput\n$userInput"
                 logger.info("输入Storage数据: global{${global.length}} storage{${storage.length}} $nickname($userID) $from")
             }
@@ -258,6 +262,7 @@ object PastebinCodeExecutor {
                         return
                     }
                     fileToMessage(base64Result.fileType, base64Result.extension, subject, true)
+                        ?: return sendQuoteReply("[错误] Base64文件转换时出现未知错误，请联系管理员")
                 }
                 // 普通图片输出
                 "image"-> {
