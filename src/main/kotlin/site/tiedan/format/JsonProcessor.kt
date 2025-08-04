@@ -39,7 +39,7 @@ object JsonProcessor {
         val width: Int = 600,
         val content: String = "空消息",
         val messageList: List<JsonSingleMessage> = listOf(JsonSingleMessage()),
-        val active: ActiveMessage? = null,
+        val active: List<ActiveMessage>? = null,
         val storage: String? = null,
         val global: String? = null,
         val error: String = "",
@@ -52,14 +52,16 @@ object JsonProcessor {
     )
     @Serializable
     data class ActiveMessage(
-        val group: Long? = null,
-        val content: String = "空消息",
-        val private: List<SinglePrivateMessage>? = null,
+        val groupID: Long? = null,
+        val userID: Long? = null,
+        val message: ActiveSingleMessage = ActiveSingleMessage()
     )
     @Serializable
-    data class SinglePrivateMessage(
-        val userID: Long? = null,
+    data class ActiveSingleMessage(
+        val format: String = "text",
+        val width: Int = 600,
         val content: String = "空消息",
+        val messageList: List<JsonSingleMessage> = listOf(JsonSingleMessage()),
     )
 
     @Serializable
@@ -95,21 +97,27 @@ object JsonProcessor {
         }
     }
 
-    suspend fun generateMessageChain(name: String, jsonMessage: JsonMessage, sender: CommandSender, timeUsedRecord: Long = 0): Pair<MessageChain, Long> {
+    suspend fun generateMessageChain(
+        name: String,
+        messageList: List<JsonSingleMessage>,
+        outputAt: Boolean,
+        sender: CommandSender,
+        timeUsedRecord: Long = 0
+    ): Pair<MessageChain, Long> {
         val builder = MessageChainBuilder()
-        if (sender.subject is Group && jsonMessage.at) {
+        if (sender.subject is Group && outputAt) {
             builder.add(At(sender.user!!))
             builder.add("\n")
         }
         var timeUsed = timeUsedRecord
-        for ((index, m) in jsonMessage.messageList.withIndex()) {
+        for ((index, m) in messageList.withIndex()) {
             if (index > 0) builder.add("\n")
             val content = m.content
             when (m.format) {
                 "text"-> {
                     builder.add(
                         if (content.isBlank()) "　"
-                        else if(index == 0) blockProhibitedContent(content, jsonMessage.at, sender.subject is Group).first
+                        else if(index == 0) blockProhibitedContent(content, outputAt, sender.subject is Group).first
                         else content
                     )
                 }
@@ -162,7 +170,7 @@ object JsonProcessor {
                     }
                     builder.addImageFromFile("${cacheFolder}latex.png", sender)
                 }
-                "json", "ForwardMessage", "MessageChain", "MultipleMessage" -> {
+                "json", "ForwardMessage", "MessageChain", "MultipleMessage", "Audio"-> {
                     builder.add("[错误] 不支持在JsonSingleMessage内使用“${m.format}”输出格式")
                 }
                 else -> {
@@ -191,10 +199,15 @@ object JsonProcessor {
         }
     }
 
-    suspend fun outputMultipleMessage(name: String, jsonMessage: JsonMessage, sender: CommandSender): String? {
+    suspend fun outputMultipleMessage(
+        name: String,
+        messageList: List<JsonSingleMessage>,
+        outputAt: Boolean,
+        sender: CommandSender
+    ): String? {
         try {
             var timeUsed: Long = 0
-            for ((index, m) in jsonMessage.messageList.withIndex()) {
+            for ((index, m) in messageList.withIndex()) {
                 if (index >= 15) {
                     return "单次执行消息上限为15条"
                 }
@@ -202,13 +215,13 @@ object JsonProcessor {
                 when (m.format) {
                     "text"-> {
                         val builder = MessageChainBuilder()
-                        if (sender.subject is Group && jsonMessage.at) {
+                        if (sender.subject is Group && outputAt) {
                             builder.add(At(sender.user!!))
                             builder.add("\n")
                         }
                         builder.add(
                             if (content.isBlank()) "　"
-                            else blockProhibitedContent(content, jsonMessage.at, sender.subject is Group).first
+                            else blockProhibitedContent(content, outputAt, sender.subject is Group).first
                         )
                         sender.sendMessage(builder.build())
                     }
@@ -261,7 +274,7 @@ object JsonProcessor {
                         }
                         sendLocalImage("${cacheFolder}latex.png", sender)
                     }
-                    "json", "ForwardMessage", "MessageChain", "MultipleMessage" -> {
+                    "json", "ForwardMessage", "MessageChain", "MultipleMessage", "Audio"-> {
                         sender.sendMessage("[错误] 不支持在JsonSingleMessage内使用“${m.format}”输出格式")
                     }
                     else -> {

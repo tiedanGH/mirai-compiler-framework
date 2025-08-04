@@ -8,14 +8,17 @@ import net.mamoe.mirai.message.data.At
 import net.mamoe.mirai.message.data.Audio
 import net.mamoe.mirai.message.data.ForwardMessage
 import net.mamoe.mirai.message.data.Image
+import net.mamoe.mirai.message.data.Message
 import net.mamoe.mirai.message.data.MessageChain
 import net.mamoe.mirai.message.data.MessageChainBuilder
+import net.mamoe.mirai.message.data.PlainText
 import net.mamoe.mirai.message.data.RawForwardMessage
 import net.mamoe.mirai.message.data.ShortVideo
 import net.mamoe.mirai.message.data.buildForwardMessage
 import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.MSG_TRANSFER_LENGTH
 import site.tiedan.MiraiCompilerFramework.THREAD
+import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
@@ -32,7 +35,9 @@ import site.tiedan.format.AudioGenerator.generateAudio
 import site.tiedan.format.Base64Processor.encodeImagesToBase64
 import site.tiedan.format.Base64Processor.fileToMessage
 import site.tiedan.format.Base64Processor.processBase64
+import site.tiedan.format.ForwardMessageGenerator.anyMessageToForwardMessage
 import site.tiedan.format.ForwardMessageGenerator.generateForwardMessage
+import site.tiedan.format.ForwardMessageGenerator.lineCount
 import site.tiedan.format.ForwardMessageGenerator.stringToForwardMessage
 import site.tiedan.format.ForwardMessageGenerator.trimToMaxLength
 import site.tiedan.format.JsonProcessor
@@ -42,7 +47,6 @@ import site.tiedan.format.JsonProcessor.outputMultipleMessage
 import site.tiedan.format.JsonProcessor.processDecode
 import site.tiedan.format.JsonProcessor.processEncode
 import site.tiedan.format.JsonProcessor.savePastebinStorage
-import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.format.MarkdownImageGenerator.processMarkdown
 import site.tiedan.module.RequestLimiter.newRequest
 import site.tiedan.utils.DownloadHelper.downloadImage
@@ -53,6 +57,7 @@ import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URL
 import java.time.LocalTime
+import kotlin.collections.List
 import kotlin.collections.set
 import kotlin.text.isNotBlank
 
@@ -105,8 +110,8 @@ object PastebinCodeExecutor {
             var output = ""
             var outputFormat = format
             var outputAt = true
-            var jsonDecodeResult = JsonProcessor.JsonMessage()
-            var activeMessage: JsonProcessor.ActiveMessage? = null
+            var messageList: List<JsonProcessor.JsonSingleMessage> = listOf(JsonProcessor.JsonSingleMessage())
+            var activeMessage: List<JsonProcessor.ActiveMessage>? = null
             var outputGlobal: String? = null
             var outputStorage: String? = null
 
@@ -179,15 +184,15 @@ object PastebinCodeExecutor {
 
             // 解析json
             if (outputFormat == "json") {
-                jsonDecodeResult = processDecode(output)
-                if (jsonDecodeResult.error.isNotEmpty()) {
+                val jsonMessage = processDecode(output)
+                if (jsonMessage.error.isNotEmpty()) {
                     if (PastebinConfig.enable_ForwardMessage) {
                         val forward = buildForwardMessage(subject!!) {
                             displayStrategy = object : ForwardMessage.DisplayStrategy {
                                 override fun generateTitle(forward: RawForwardMessage): String = "输出解析错误"
                                 override fun generatePreview(forward: RawForwardMessage): List<String> = listOf("执行失败：JSON解析错误")
                             }
-                            subject!!.bot named "Error" says "[错误] ${jsonDecodeResult.error}"
+                            subject!!.bot named "Error" says "[错误] ${jsonMessage.error}"
                             val (resultString, tooLong) = trimToMaxLength(output, 10000)
                             if (tooLong) {
                                 subject!!.bot named "Error" says "原始输出过大，仅截取前10000个字符"
@@ -196,22 +201,23 @@ object PastebinCodeExecutor {
                         }
                         sendMessage(forward)
                     } else {
-                        sendQuoteReply("[错误] ${jsonDecodeResult.error}")
+                        sendQuoteReply("[错误] ${jsonMessage.error}")
                     }
                     return
                 }
-                outputFormat = jsonDecodeResult.format
-                outputAt = jsonDecodeResult.at
-                activeMessage = jsonDecodeResult.active
-                outputGlobal = jsonDecodeResult.global
-                outputStorage = jsonDecodeResult.storage
-                width = jsonDecodeResult.width.toString()
+                outputFormat = jsonMessage.format
+                outputAt = jsonMessage.at
+                width = jsonMessage.width.toString()
+                messageList = jsonMessage.messageList
+                activeMessage = jsonMessage.active
+                outputGlobal = jsonMessage.global
+                outputStorage = jsonMessage.storage
                 if (outputFormat != "MessageChain") {
-                    output = if (outputFormat in listOf("markdown", "base64")) jsonDecodeResult.content
-                    else blockProhibitedContent(jsonDecodeResult.content, outputAt, subject is Group).first
+                    output = if (outputFormat in listOf("markdown", "base64")) jsonMessage.content
+                    else blockProhibitedContent(jsonMessage.content, outputAt, subject is Group).first
                 }
-                if (outputFormat in listOf("json", "ForwardMessage")) {
-                    sendQuoteReply("禁止套娃：不支持在JsonMessage或JsonForwardMessage内使用“$outputFormat”输出格式")
+                if (outputFormat == "json") {
+                    sendQuoteReply("禁止套娃：不支持在JsonMessage内使用“json”输出格式")
                     return
                 }
             }
@@ -221,127 +227,29 @@ object PastebinCodeExecutor {
                 OutputLock.lock()
             }
             // 输出内容生成
-            val builder = when (outputFormat) {
-                // text文本输出
-                "text"-> {
-                    if ((output.length > MSG_TRANSFER_LENGTH || output.lines().size > 30) && PastebinConfig.enable_ForwardMessage) {
-                        stringToForwardMessage(StringBuilder(output), subject)
-                    } else {
-                        val messageBuilder = MessageChainBuilder()
-                        if (subject is Group && outputAt) {
-                            messageBuilder.add(At(user!!))
-                            messageBuilder.add("\n")
-                        } else {
-                            val ret = blockProhibitedContent(output, at = true, isGroup = false)
-                            if (ret.second) messageBuilder.add("${ret.first}\n")
-                        }
-                        if (output.isEmpty()) {
-                            messageBuilder.add("没有任何结果呢~")
-                        } else {
-                            messageBuilder.add(output)
-                        }
-                        messageBuilder.build()
-                    }
-                }
-                // markdown转图片输出
-                "markdown"-> {
-                    val markdownResult = processMarkdown(name, output, width ?: "600")
-                    if (!markdownResult.success) {
-                        sendQuoteReply(markdownResult.message)
-                        return
-                    }
-                    val file = File("${cacheFolder}markdown.png")
-                    subject?.uploadFileToImage(file)     // 返回结果图片
-                        ?: return sendQuoteReply("[错误] 图片文件异常：ExternalResource上传失败，请尝试重新执行")
-                }
-                // base64自定义格式输出
-                "base64"-> {
-                    val base64Result = processBase64(output)
-                    if (!base64Result.success) {
-                        sendQuoteReply(base64Result.extension)
-                        return
-                    }
-                    fileToMessage(base64Result.fileType, base64Result.extension, subject, true)
-                        ?: return sendQuoteReply("[错误] Base64文件转换时出现未知错误，请联系管理员")
-                }
-                // 普通图片输出
-                "image"-> {
-                    val file = if (output.startsWith("file:///")) {
-                        File(URI(output))
-                    } else {
-                        val downloadResult = downloadImage(name, output, cacheFolder, "image", force = true)
-                        if (!downloadResult.success) {
-                            sendQuoteReply(downloadResult.message)
-                            return
-                        }
-                        File("${cacheFolder}image")
-                    }
-                    if (!file.exists()) {
-                        sendQuoteReply("[错误] 本地图片文件不存在，请检查路径")
-                        return
-                    }
-                    subject?.uploadFileToImage(file)     // 返回结果图片
-                        ?: return sendQuoteReply("[错误] 图片文件异常：ExternalResource上传失败，请尝试重新执行")
-                }
-                // LaTeX转图片输出
-                "LaTeX"-> {
-                    val renderResult = renderLatexOnline(output)
-                    if (renderResult.startsWith("QuickLaTeX")) {
-                        sendQuoteReply("[错误] $renderResult")
-                        return
-                    }
-                    val file = File("${cacheFolder}latex.png")
-                    subject?.uploadFileToImage(file)     // 返回结果图片
-                        ?: return sendQuoteReply("[错误] 图片文件异常：ExternalResource上传失败，请尝试重新执行")
-                }
-                // json分支功能MessageChain
-                "MessageChain"-> {
-                    generateMessageChain(name, jsonDecodeResult, this).first
-                }
-                // json分支功能MultipleMessage
-                "MultipleMessage"-> {
-                    "MultipleMessage"
-                }
-                // 转发消息生成（JSON在内部进行解析）
-                "ForwardMessage"-> {
-                    val forwardMessageData = generateForwardMessage(name, output, this)
-                    outputGlobal = forwardMessageData.global
-                    outputStorage = forwardMessageData.storage
-                    forwardMessageData.forwardMessage     // 返回ForwardMessage
-                }
-                // TTS音频消息生成（JSON在内部进行解析）
-                "Audio"-> {
-                    val audioData = generateAudio(output, subject)
-                    outputGlobal = audioData.global
-                    outputStorage = audioData.storage
-                    if (audioData.success) {
-                        audioData.audio
-                    } else {
-                        sendQuoteReply(audioData.error)
-                    }
-                }
-                else -> {
-                    sendQuoteReply("代码执行完成但无法输出：无效的输出格式：$outputFormat，请联系创建者修改格式")
-                    return
-                }
+            val message = handleOutputFormats(
+                name, output, outputFormat, outputAt, width, messageList, null
+            ) { global, storage ->
+                outputGlobal = global
+                outputStorage = storage
             }
             // 根据消息类型进行回复
-            when (builder) {
-                is MessageChain -> sendMessage(builder)
-                is ForwardMessage -> sendMessage(builder)
-                is Image -> sendMessage(builder)
-                is Audio -> sendMessage(builder)
-                is ShortVideo -> sendMessage(builder)
+            when (message) {
+                is MessageChain -> sendMessage(message)
+                is ForwardMessage -> sendMessage(message)
+                is Image -> sendMessage(message)
+                is Audio -> sendMessage(message)
+                is ShortVideo -> sendMessage(message)
                 is String -> {
-                    val ret = outputMultipleMessage(name, jsonDecodeResult, this)
+                    val ret = outputMultipleMessage(name, messageList, outputAt, this)
                     if (ret != null) {
                         sendQuoteReply("【输出多条消息时出错】$ret")
                     }
                 }
-                is Unit -> { /* do nothing */ }
+                is Unit -> { /* ignore */ }
                 null -> sendQuoteReply("[处理消息失败] 意料之外的消息结果 null，请联系管理员")
                 else -> sendQuoteReply("[处理消息失败] 不识别的输出消息类型或内容，请联系管理员：\n" +
-                        trimToMaxLength(builder.toString(), 300).first
+                        trimToMaxLength(message.toString(), 300).first
                 )
             }
             // 原始格式支持且开启存储功能：在程序执行和输出均无错误，且发送消息成功时才进行保存
@@ -355,7 +263,7 @@ object PastebinCodeExecutor {
             }
             // 主动消息相关
             if (activeMessage != null) {
-                val ret = handleActiveMessage(activeMessage, this, name)
+                val ret = handleActiveMessage(name, activeMessage)
                 if (ret.isNotEmpty()) {
                     sendQuoteReply("【主动消息错误】$ret")
                 }
@@ -374,74 +282,226 @@ object PastebinCodeExecutor {
         }
     }
 
-    suspend fun handleActiveMessage(
-        activeMessage: JsonProcessor.ActiveMessage,
-        sender: CommandSender,
+    suspend fun CommandSender.handleOutputFormats(
         name: String,
-    ): String {
-        var result = ""
-        // 群聊主动消息
-        if (activeMessage.group != null) {
-            val group = sender.bot?.getGroup(activeMessage.group)
-            if (group != null) {
-                try {
-                    val message = activeMessage.content
-                    if ((message.length > MSG_TRANSFER_LENGTH || message.lines().size > 30) && PastebinConfig.enable_ForwardMessage) {
-                        group.sendMessage(stringToForwardMessage(StringBuilder(message), sender.subject, "$name[主动消息]"))
+        output: String,
+        outputFormat: String,
+        outputAt: Boolean,
+        width: String?,
+        messageList: List<JsonProcessor.JsonSingleMessage>,
+        title: String?,
+        updateStorage: (String?, String?) -> Unit
+    ): Any? {
+        var outputGlobal: String? = null
+        var outputStorage: String? = null
+        return when (outputFormat) {
+            // text文本输出
+            "text"-> {
+                if ((output.length > MSG_TRANSFER_LENGTH || output.lines().size > 30) && PastebinConfig.enable_ForwardMessage) {
+                    stringToForwardMessage(StringBuilder(output), subject, title)
+                } else {
+                    val messageBuilder = MessageChainBuilder()
+                    if (subject is Group && outputAt) {
+                        messageBuilder.add(At(user!!))
+                        messageBuilder.add("\n")
                     } else {
-                        group.sendMessage("【$name[主动消息]】\n$message")
+                        val ret = blockProhibitedContent(output, at = true, isGroup = false)
+                        if (ret.second) messageBuilder.add("${ret.first}\n")
                     }
-                } catch (e: Exception) {
-                    result += "\n[群聊] 消息发送出错：${e.message}"
+                    if (output.isEmpty()) {
+                        messageBuilder.add("没有任何结果呢~")
+                    } else {
+                        messageBuilder.add(output)
+                    }
+                    messageBuilder.build()
                 }
-            } else {
-                result += "\n[群聊] 消息发送失败：bot未加入此群聊(${activeMessage.group})，请检查群号是否正确或联系bot所有者"
+            }
+            // markdown转图片输出
+            "markdown"-> {
+                val markdownResult = processMarkdown(name, output, width ?: "600")
+                if (!markdownResult.success) {
+                    return sendQuoteReply(markdownResult.message)
+                }
+                val file = File("${cacheFolder}markdown.png")
+                subject?.uploadFileToImage(file)     // 返回结果图片
+                    ?: return sendQuoteReply("[错误] 图片文件异常：ExternalResource上传失败，请尝试重新执行")
+            }
+            // base64自定义格式输出
+            "base64"-> {
+                val base64Result = processBase64(output)
+                if (!base64Result.success) {
+                    return sendQuoteReply(base64Result.extension)
+                }
+                fileToMessage(base64Result.fileType, base64Result.extension, subject, true)
+                    ?: return sendQuoteReply("[错误] Base64文件转换时出现未知错误，请联系管理员")
+            }
+            // 普通图片输出
+            "image"-> {
+                val file = if (output.startsWith("file:///")) {
+                    File(URI(output))
+                } else {
+                    val downloadResult = downloadImage(name, output, cacheFolder, "image", force = true)
+                    if (!downloadResult.success) {
+                        return sendQuoteReply(downloadResult.message)
+                    }
+                    File("${cacheFolder}image")
+                }
+                if (!file.exists()) {
+                    return sendQuoteReply("[错误] 本地图片文件不存在，请检查路径")
+                }
+                subject?.uploadFileToImage(file)     // 返回结果图片
+                    ?: return sendQuoteReply("[错误] 图片文件异常：ExternalResource上传失败，请尝试重新执行")
+            }
+            // LaTeX转图片输出
+            "LaTeX"-> {
+                val renderResult = renderLatexOnline(output)
+                if (renderResult.startsWith("QuickLaTeX")) {
+                    return sendQuoteReply("[错误] $renderResult")
+                }
+                val file = File("${cacheFolder}latex.png")
+                subject?.uploadFileToImage(file)     // 返回结果图片
+                    ?: return sendQuoteReply("[错误] 图片文件异常：ExternalResource上传失败，请尝试重新执行")
+            }
+            // json分支功能MessageChain
+            "MessageChain"-> {
+                generateMessageChain(name, messageList, outputAt, this).first.let { messageChain ->
+                    if (messageChain.lineCount > 20)
+                        anyMessageToForwardMessage(messageChain, subject, title)
+                    else messageChain
+                }
+            }
+            // json分支功能MultipleMessage
+            "MultipleMessage"-> {
+                "MultipleMessage"
+            }
+            // 转发消息生成（JSON在内部进行解析）
+            "ForwardMessage"-> {
+                val forwardMessageData = generateForwardMessage(name, output, this)
+                outputGlobal = forwardMessageData.global
+                outputStorage = forwardMessageData.storage
+                forwardMessageData.forwardMessage     // 返回ForwardMessage
+            }
+            // TTS音频消息生成（JSON在内部进行解析）
+            "Audio"-> {
+                val audioData = generateAudio(output, subject)
+                outputGlobal = audioData.global
+                outputStorage = audioData.storage
+                if (audioData.success) {
+                    audioData.audio
+                } else {
+                    sendQuoteReply(audioData.error)
+                }
+            }
+            else -> {
+                sendQuoteReply("代码执行完成但无法输出：无效的输出格式：$outputFormat，请联系创建者修改格式")
             }
         }
-        // 私信主动消息
-        val seenIds = mutableSetOf<Long>()
-        activeMessage.private?.forEachIndexed { index, singlePrivateMessage ->
+        updateStorage(outputGlobal, outputStorage)
+    }
+
+    suspend fun CommandSender.handleActiveMessage(
+        name: String,
+        activeMessage: List<JsonProcessor.ActiveMessage>
+    ): String {
+        val senderID = user?.id ?: 10000
+        val senderName = this.name
+
+        var result = ""
+        val seenGroupIDs = mutableSetOf<Long>()
+        val seenUserIDs = mutableSetOf<Long>()
+        activeMessage.forEachIndexed { index, activeMessage ->
             if (index >= 10) {
-                return "$result\n[私信] 执行中断：单次私信主动消息上限为10条"
+                return "$result\n[上限] 执行中断：单次主动消息上限为10条"
             }
-            val id = singlePrivateMessage.userID
-            if (id == null) {
-                result += "\n[私信] 消息发送失败：userID为空"
+            val groupID = activeMessage.groupID
+            val userID = activeMessage.userID
+            val activeSingleMessage = activeMessage.message
+            if (groupID == null && userID == null) {
+                result += "\n[($index)参数] 目标无效：groupID和userID均为空"
                 return@forEachIndexed
             }
-            if (!seenIds.add(id)) {
-                result += "\n[私信] 消息发送失败：检测到重复userID($id)"
+
+            // 解析并生成输出内容
+            val message = handleOutputFormats(
+                name,
+                activeSingleMessage.content,
+                activeSingleMessage.format,
+                false,
+                activeSingleMessage.width.toString(),
+                activeSingleMessage.messageList,
+                "$name[主动消息]"
+            ) { _, _ -> /* ignore */ }
+            val msgToSend: Message = when (message) {
+                is MessageChain, is ForwardMessage, is Image -> message
+                null -> PlainText("[处理消息失败] 意料之外的消息结果 null，请联系管理员")
+                else -> PlainText("[处理消息失败] 主动消息不支持的输出消息类型或内容，请联系管理员：\n" +
+                        trimToMaxLength(message.toString(), 300).first
+                )
+            }
+
+            // 群聊主动消息
+            if (groupID != null) {
+                if (!seenGroupIDs.add(groupID)) {
+                    result += "\n[($index)群聊] 消息发送失败：检测到重复groupID($groupID)"
+                    return@forEachIndexed
+                }
+                val group = bot?.getGroup(groupID)
+                if (group != null) {
+                    try {
+                        if (msgToSend is ForwardMessage && PastebinConfig.enable_ForwardMessage) {
+                            group.sendMessage(msgToSend)
+                        } else {
+                            group.sendMessage(PlainText("【$name[主动消息]】\n").plus(msgToSend))
+                        }
+                        delay(1000)
+                    } catch (e: Exception) {
+                        result += "\n[($index)群聊] 消息发送出错：${e.message}"
+                    }
+                } else {
+                    result += "\n[($index)群聊] 消息发送失败：bot未加入此群聊($groupID)，请检查群号是否正确或联系bot所有者"
+                }
                 return@forEachIndexed
             }
-            val friend = sender.bot?.getFriend(id)
+            // 私信主动消息
+            if (userID == null) return@forEachIndexed
+            if (!seenUserIDs.add(userID)) {
+                result += "\n[($index)私信] 消息发送失败：检测到重复userID($userID)"
+                return@forEachIndexed
+            }
+            val friend = bot?.getFriend(userID)
             if (friend != null) {
                 val now = LocalTime.now().hour
-                val allowTime = ExtraData.private_allowTime[id]
+                val allowTime = ExtraData.private_allowTime[userID]
                 if (allowTime != null) {
                     if (notInAllowTime(now, allowTime.first, allowTime.second)) {
-                        result += "\n[私信] 权限不足：不在${id}设置的可用时间段内"
+                        result += "\n[($index)私信] 权限不足：不在${userID}设置的可用时间段内"
                         return@forEachIndexed
                     }
                 } else {
-                    result += "\n[私信] 权限不足：${id}不允许任何主动消息"
+                    result += "\n[($index)私信] 权限不足：${userID}不允许任何主动消息"
                     return@forEachIndexed
                 }
                 try {
-                    val message = "来自：${sender.name}(${sender.user?.id ?: 10000})\n【消息内容】\n${singlePrivateMessage.content}"
-                    if ((message.length > MSG_TRANSFER_LENGTH || message.lines().size > 30) && PastebinConfig.enable_ForwardMessage) {
-                        friend.sendMessage(stringToForwardMessage(StringBuilder(message), sender.subject, "$name[主动消息]"))
+                    val message = "来自：$senderName($senderID)\n【消息内容】\n"
+                    if (msgToSend is ForwardMessage && PastebinConfig.enable_ForwardMessage) {
+                        val forward = if (activeSingleMessage.format == "text") {
+                            stringToForwardMessage(StringBuilder(message.plus(activeSingleMessage.content)), subject, "$name[主动消息]")
+                        } else {
+                            anyMessageToForwardMessage(PlainText(message).plus(msgToSend), subject, "$name[主动消息]")
+                        }
+                        friend.sendMessage(forward)
                     } else {
-                        friend.sendMessage("【$name[主动消息]】\n$message")
+                        friend.sendMessage(PlainText("【$name[主动消息]】\n$message").plus(msgToSend))
                     }
+                    delay(1000)
                 } catch (e: Exception) {
-                    result += "\n[私信] 消息发送出错：${e.message}"
+                    result += "\n[($index)私信] 消息发送出错：${e.message}"
                     return@forEachIndexed
                 }
             } else {
-                result += "\n[私信] 消息发送失败：获取好友失败(${id})，请检查ID是否正确"
+                result += "\n[($index)私信] 消息发送失败：获取好友失败($userID)，请检查userID是否正确"
                 return@forEachIndexed
             }
-            delay(1000)
         }
         return result
     }

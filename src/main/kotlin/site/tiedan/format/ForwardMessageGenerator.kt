@@ -5,18 +5,22 @@ import kotlinx.serialization.decodeFromString
 import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.contact.Contact
 import net.mamoe.mirai.message.data.ForwardMessage
+import net.mamoe.mirai.message.data.Message
+import net.mamoe.mirai.message.data.MessageChain
 import net.mamoe.mirai.message.data.PlainText
 import net.mamoe.mirai.message.data.RawForwardMessage
 import net.mamoe.mirai.message.data.buildForwardMessage
+import net.mamoe.mirai.message.data.content
 import site.tiedan.MiraiCompilerFramework.TIMEOUT
+import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.uploadFileToImage
+import site.tiedan.format.AudioGenerator.generateAudio
 import site.tiedan.format.Base64Processor.fileToMessage
 import site.tiedan.format.Base64Processor.processBase64
 import site.tiedan.format.JsonProcessor.JsonMessage
 import site.tiedan.format.JsonProcessor.generateMessageChain
 import site.tiedan.format.JsonProcessor.json
-import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.format.MarkdownImageGenerator.processMarkdown
 import site.tiedan.module.PastebinCodeExecutor.renderLatexOnline
 import site.tiedan.utils.DownloadHelper.downloadImage
@@ -148,13 +152,22 @@ object ForwardMessageGenerator {
                                 subject.bot named "Error" says "[错误] 图片文件异常：${e.message}"
                             }
                         }
+                        // content中可使用Audio输出格式
+                        "Audio"-> {
+                            val audioData = generateAudio(content, subject)
+                            if (audioData.success) {
+                                subject.bot named result.name says (audioData.audio ?: PlainText("[语言消息错误]"))   // 添加语言消息
+                            } else {
+                                subject.bot named "Error" says audioData.error
+                            }
+                        }
                         // json分支功能MessageChain
                         "MessageChain"-> {
-                            val pair = generateMessageChain(name, m, sender, timeUsed)
+                            val pair = generateMessageChain(name, m.messageList, false, sender, timeUsed)
                             timeUsed = pair.second
                             subject.bot named result.name says pair.first
                         }
-                        "json", "ForwardMessage" -> {
+                        "json", "ForwardMessage"-> {
                             subject.bot named "Error" says "[错误] 不支持在JsonMessage内使用“${m.format}”输出格式"
                         }
                         "MultipleMessage"-> {
@@ -230,4 +243,26 @@ object ForwardMessageGenerator {
             }
         }
 
+    fun anyMessageToForwardMessage(message: Message, subject: Contact?, title: String? = null): ForwardMessage {
+        return buildForwardMessage(subject!!) {
+            displayStrategy = object : ForwardMessage.DisplayStrategy {
+                override fun generateTitle(forward: RawForwardMessage): String = title ?: "输出过长，请查看聊天记录"
+                override fun generateBrief(forward: RawForwardMessage): String = "[输出内容]"
+                override fun generatePreview(forward: RawForwardMessage): List<String> = listOf("输出内容: ${message.content.take(30)}...")
+                override fun generateSummary(forward: RawForwardMessage): String = "输出长度总计 ${message.content.length} 字符"
+            }
+            subject.bot named "输出内容" says message
+        }
+    }
+
+    val MessageChain.lineCount: Int
+        get() {
+            var lines = 0
+            for (message in this) {
+                lines += if (message is PlainText) {
+                    message.content.lines().size
+                } else 1
+            }
+            return lines
+        }
 }

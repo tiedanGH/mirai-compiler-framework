@@ -10,14 +10,16 @@
     "name": "帮助文档",
     "messages": [
         {
-            "content": "【2025/8/1更新公告】\n新增图片输入，支持获取输入图片的链接和base64字符串（需开启存储功能）\n【2025/7/22更新公告】\n1) python、cpp、c语言改用本地docker容器运行，已支持访问网络，python提供requests和aiohttp库的支持\n2) 新增 Glot Snippets 获取支持，使用`#pb support`查看完整列表\n\n【2025/6/22更新公告】\n1) base64输出重构：现在可根据文件类型自动选择输出格式（支持文本、图片、语音、视频）\n2) 新输出格式Audio：使用在线API实现文本转语音，可调音库、语速、音调、音量\n【2025/5/12更新公告】\n1) 新输出格式image：通过链接或路径直接发图，支持发送gif动图\n2) 私信主动消息：用户设置可用时间段后可向用户发送主动消息\n【2025/2/28更新公告】\n1) json分支功能MultipleMessage：让程序分多条消息输出\n2) 群聊主动消息：json格式支持向指定群聊发送消息"
+            "content": "=====【重要接口修改】=====\n【2025/8/4更新公告】\n主动消息接口修改，旧项目调用新接口会发生JSON解析错误，请参考主动消息最新文档重新适配项目：`active`改为数组，支持自定义格式输出，可以向多个群聊或私信发送主动消息"
         },
         {
-            "content": "【帮助文档】\n本文内容为`#pb`指令的使用说明，帮助你快速掌握指令和使用多种输出格式，和使用存储功能让程序支持多段式运行"
+            "content": "【2025/8/1更新公告】\n新增图片输入，支持获取输入图片的链接和base64字符串（需开启存储功能）\n【2025/7/22更新公告】\n1) python、cpp、c语言改用本地docker容器运行，已支持访问网络，python提供requests和aiohttp库的支持\n2) 新增 Glot Snippets 获取支持，使用`#pb support`查看完整列表\n\n【2025/6/22更新公告】\n1) base64输出重构：现在可根据文件类型自动选择输出格式（支持文本、图片、语音、视频）\n2) 新输出格式Audio：使用在线API实现文本转语音，可调音库、语速、音调、音量"
+        },
+        {
+            "content": "【帮助文档】\n本文内容为`#pb`指令的使用说明，帮助你快速掌握指令和使用多种输出格式，和使用存储功能让程序支持多段式运行\n-> Markdown格式文档请查看：\nhttps://github.com/tiedanGH/mirai-compiler-framework/blob/main/docs/pastebin.md"
         },
         {
             "format": "MessageChain",
-            "at": false,
             "messageList": [
                 {
                     "content": "一、查看本文下方内容前，您需要先了解`#pb`和`#run`指令的基本功能，如您已经掌握基本功能并熟练运用，可直接跳至第二点"
@@ -44,7 +46,6 @@
         },
         {
             "format": "MessageChain",
-            "at": false,
             "messageList": [
                 {
                     "format": "markdown",
@@ -73,7 +74,6 @@
         },
         {
             "format": "MessageChain",
-            "at": false,
             "messageList": [
                 {
                     "content": "json输出使用帮助"
@@ -106,13 +106,12 @@
                 {
                     "format": "markdown",
                     "width": 600,
-                    "content": "## active主动消息\n- 仅支持json输出格式使用\n- 在每次执行后可以向指定群聊发送一条文字消息（bot需要在目标群聊内才能发送）\n- 关于私信主动消息：**用户必须先执行指令`#pb private`设置可用时间段后，在此时间段bot才能够向该用户发送主动消息**，单次发送限制最多10条，且不能包含相同的用户ID\n- 注：群聊和私信主动消息可以同时使用\n- **※使用此功能即表示您同意在合理范围内使用，请勿用于任何刷屏或骚扰，机器人后台可查询一切行为记录**\n### 使用帮助\n- 此功能需要程序输出`JsonMessage`对象，并添加额外参数`active`（`format`可为任意格式）\n- **群聊主动消息：** `active`中需要包含两个参数：\n    + `group`(Long)——为发送消息的目标群号\n    + `content`(String)——为发送的消息内容，**消息前会有`[主动消息]`提示字样**\n- **私信主动消息：** `active`中需要包含`private`参数：\n    + `private`(List<SinglePrivateMessage>)——为发送私信的消息对象列表，其中每一项需要包含两个参数：\n        + `userID`(Long)——为发送目标的账号ID\n        + `content`(String)——为发送的消息内容，**消息会包含`[主动消息]`和执行人的账号ID**\n### 使用示例\n- 下方为使用群聊和私信主动消息的json输出示例：\n- 包含群聊主动消息的text格式输出，向群聊`114514`发送消息\n```json\n{\n    \"content\": \"这是一段文本\",\n    \"active\": {\n        \"group\": 114514,\n        \"content\": \"发送消息内容\"\n    }\n}\n```\n- 包含私信主动消息的text格式输出，向用户`12345`和`11111`发送消息\n```json\n{\n    \"content\": \"这是一段文本\",\n    \"active\": {\n        \"private\": [\n            {\n                \"userID\": 12345,\n                \"content\": \"私信主动消息1\"\n            },\n            {\n                \"userID\": 11111,\n                \"content\": \"私信主动消息2\"\n            }\n        ]\n    }\n}\n```\n- 同时包含群聊和私信主动消息的markdown格式输出，向群聊`1919810`和用户`54321`发送消息\n```json\n{\n    \"format\": \"markdown\",\n    \"width\": 800,\n    \"content\": \"### markdown标题\\n- 文本内容\",\n    \"active\": {\n        \"group\": 1919810,\n        \"content\": \"发送消息内容\",\n        \"private\": [\n            {\n                \"userID\": 54321,\n                \"content\": \"私信主动消息\"\n            }\n        ]\n    }\n}\n```"
+                    "content": "## active主动消息\n- 仅支持json输出格式使用\n- 在每次执行后可以向指定群聊或私信发送自定义消息，单次发送限制最多10条，且不能包含相同的群号或用户ID\n- 关于私信主动消息：**用户必须先执行指令`#pb private`设置可用时间段后，在此时间段bot才能够向该用户发送主动消息**\n- 注：群聊和私信主动消息可以同时使用\n- **※使用此功能即表示您同意在合理范围内使用，请勿用于任何刷屏或骚扰，机器人后台可查询一切行为记录**\n### 使用帮助\n- 此功能需要程序输出`JsonMessage`对象，并添加额外参数`active`<br>（`format`可为任意格式）\n- **【主动消息结构】** `active`是一个由多个主动消息构成的**数组**，详细参数见下方介绍：\n    + `groupID`(Long)——为发送消息的目标群号\n    + `userID`(Long)——为发送消息的目标用户\n    + `message`(`JsonMessage`对象)——为发送的消息对象，支持多格式，参考上文json输出部分的详细介绍\n- 发信目标`groupID`和`userID`需要二选一填写（如果两个都填仅`groupID`有效），**消息前会有`[主动消息]`提示字样**\n### 使用示例\n- 下方为使用群聊和私信主动消息的json输出示例：\n- 包含群聊主动消息的text格式输出，向群聊`114514`发送文字消息\n```json\n{\n    \"content\": \"这是一段文本\",\n    \"active\": [\n        {\n            \"groupID\": 114514,\n            \"message\": {\n                \"content\": \"发送消息内容\"\n            }\n        }\n    ]\n}\n```\n- 包含私信主动消息的text格式输出，向用户`12345`和`11111`发送图片和文字消息\n```json\n{\n    \"content\": \"这是一段文本\",\n    \"active\": [\n        {\n            \"userID\": 12345,\n            \"message\": {\n                \"format\": \"markdown\",\n                \"content\": \"[发送图片内容]\"\n            }\n        },\n        {\n            \"userID\": 11111,\n            \"message\": {\n                \"content\": \"发送消息内容\"\n            }\n        }\n    ]\n}\n```\n- 同时包含群聊和私信主动消息的markdown格式输出，向群聊`1919810`和用户`54321`发送图片和文字消息\n```json\n{\n    \"format\": \"markdown\",\n    \"width\": 800,\n    \"content\": \"### markdown标题\\n- 文本内容\",\n    \"active\": [\n        {\n            \"groupID\": 1919810,\n            \"message\": {\n                \"format\": \"markdown\",\n                \"content\": \"[发送图片内容]\"\n            }\n        },\n        {\n            \"userID\": 54321,\n            \"message\": {\n                \"content\": \"发送消息内容\"\n            }\n        }\n    ]\n}\n```"
                 }
             ]
         },
         {
             "format": "MessageChain",
-            "at": false,
             "messageList": [
                 {
                     "format": "markdown",
@@ -131,7 +130,6 @@
         },
         {
             "format": "MessageChain",
-            "at": false,
             "messageList": [
                 {
                     "content": "三、目前已成功支持数据存储功能，具体指令为：\n\n#pb set <名称> storage <开启/关闭>\n\n具体使用方法详见下图说明"
@@ -154,7 +152,6 @@
         },
         {
             "format": "MessageChain",
-            "at": false,
             "messageList": [
                 {
                     "content": "用户在执行代码时可以附带图片，下方将介绍程序如何获取用户输入的图片"
