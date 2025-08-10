@@ -38,6 +38,7 @@ import site.tiedan.format.Base64Processor.processBase64
 import site.tiedan.format.ForwardMessageGenerator.anyMessageToForwardMessage
 import site.tiedan.format.ForwardMessageGenerator.generateForwardMessage
 import site.tiedan.format.ForwardMessageGenerator.lineCount
+import site.tiedan.format.ForwardMessageGenerator.removeFirstAt
 import site.tiedan.format.ForwardMessageGenerator.stringToForwardMessage
 import site.tiedan.format.ForwardMessageGenerator.trimToMaxLength
 import site.tiedan.format.JsonProcessor
@@ -365,8 +366,8 @@ object PastebinCodeExecutor {
             // json分支功能MessageChain
             "MessageChain"-> {
                 generateMessageChain(name, messageList, outputAt, this).first.let { messageChain ->
-                    if (messageChain.lineCount > 20)
-                        anyMessageToForwardMessage(messageChain, subject, title)
+                    if (messageChain.lineCount > 20 && PastebinConfig.enable_ForwardMessage)
+                        anyMessageToForwardMessage(messageChain.removeFirstAt, subject, title)
                     else messageChain
                 }
             }

@@ -11,6 +11,7 @@ import net.mamoe.mirai.message.data.PlainText
 import net.mamoe.mirai.message.data.RawForwardMessage
 import net.mamoe.mirai.message.data.buildForwardMessage
 import net.mamoe.mirai.message.data.content
+import net.mamoe.mirai.message.data.toMessageChain
 import site.tiedan.MiraiCompilerFramework.TIMEOUT
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.logger
@@ -260,9 +261,18 @@ object ForwardMessageGenerator {
             var lines = 0
             for (message in this) {
                 lines += if (message is PlainText) {
-                    message.content.lines().size
-                } else 1
+                    message.content.lines().size - 1
+                } else 0
             }
             return lines
+        }
+    val MessageChain.removeFirstAt: MessageChain
+        get() {
+            if (this.isEmpty()) return this
+            return if (this.first().content.startsWith("@")) {
+                this.drop(2).toMessageChain()
+            } else {
+                this
+            }
         }
 }

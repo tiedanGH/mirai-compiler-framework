@@ -823,7 +823,7 @@ object CommandPastebin : RawCommand(
                         sendQuoteReply(downloadResult.message)
                         return
                     }
-                    sendQuoteReply("上传图片成功！您已经可以通过目录“image://$${imageName}”调用此图片（用时：${downloadResult.duration}秒）")
+                    sendQuoteReply("上传图片成功！您已经可以通过目录“image://$imageName”调用此图片（用时：${downloadResult.duration}秒）")
                 }
 
                 "storage", "查询存储", "存储"-> {   // 查询存储数据
