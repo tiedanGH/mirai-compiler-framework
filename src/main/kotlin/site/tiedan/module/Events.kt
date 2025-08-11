@@ -14,14 +14,13 @@ import net.mamoe.mirai.event.SimpleListenerHost
 import net.mamoe.mirai.event.events.MessageEvent
 import net.mamoe.mirai.message.data.At
 import net.mamoe.mirai.message.data.ForwardMessage
-import net.mamoe.mirai.message.data.Image
-import net.mamoe.mirai.message.data.Image.Key.queryUrl
 import net.mamoe.mirai.message.data.Message
 import net.mamoe.mirai.message.data.MessageChain
 import net.mamoe.mirai.message.data.MessageChainBuilder
 import net.mamoe.mirai.message.data.PlainText
 import net.mamoe.mirai.message.data.QuoteReply
 import net.mamoe.mirai.message.data.content
+import net.mamoe.mirai.message.data.findIsInstance
 import net.mamoe.mirai.utils.warning
 import site.tiedan.MiraiCompilerFramework.CMD_PREFIX
 import site.tiedan.MiraiCompilerFramework.MSG_MAX_LENGTH
@@ -29,6 +28,7 @@ import site.tiedan.MiraiCompilerFramework.MSG_TRANSFER_LENGTH
 import site.tiedan.MiraiCompilerFramework.THREAD
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
+import site.tiedan.command.CommandRun.queryImageUrls
 import site.tiedan.config.DockerConfig
 import site.tiedan.config.PastebinConfig
 import site.tiedan.data.ExtraData
@@ -69,7 +69,12 @@ object Events : SimpleListenerHost() {
         if (PastebinData.pastebin.contains(name).not()) return
 
         val userInput = args.drop(1).joinToString(separator = " ")
-        val imageUrls = message.filterIsInstance<Image>().map { it.queryUrl() }
+        val imageUrls = message.queryImageUrls()
+        if (message[QuoteReply.Key] != null) {
+            message.findIsInstance<QuoteReply>()
+                ?.source?.originalMessage?.queryImageUrls()
+                ?.let { imageUrls.addAll(0, it) }
+        }
 
         // 执行代码并输出
         this.executeMainProcess(name, userInput, imageUrls)

@@ -2,6 +2,7 @@ package site.tiedan.command
 
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.commandPrefix
 import net.mamoe.mirai.console.command.CommandSender
+import net.mamoe.mirai.console.command.CommandSenderOnMessage
 import net.mamoe.mirai.console.command.RawCommand
 import net.mamoe.mirai.message.data.*
 import net.mamoe.mirai.message.data.Image.Key.queryUrl
@@ -18,6 +19,9 @@ object CommandRun : RawCommand(
     usage = "${commandPrefix}run <名称> [输入]"
 ){
     val Image_Path = "file:///${MiraiCompilerFramework.dataFolderPath.toString().replace("\\", "/")}/images/"
+
+    suspend fun MessageChain.queryImageUrls(): MutableList<String> =
+        filterIsInstance<Image>().map { it.queryUrl() }.toMutableList()
 
     /**
      * 从保存的pastebin链接中直接运行
@@ -36,7 +40,12 @@ object CommandRun : RawCommand(
         }
 
         val userInput = args.drop(1).joinToString(separator = " ") { it.content }
-        val imageUrls = args.drop(1).filterIsInstance<Image>().map { it.queryUrl() }
+        val imageUrls = args.drop(1).toMessageChain().queryImageUrls()
+        if (this is CommandSenderOnMessage<*> && fromEvent.message[QuoteReply.Key] != null) {
+            fromEvent.message.findIsInstance<QuoteReply>()
+                ?.source?.originalMessage?.queryImageUrls()
+                ?.let { imageUrls.addAll(0, it) }
+        }
 
         // 执行代码并输出
         this.executeMainProcess(name, userInput, imageUrls)
