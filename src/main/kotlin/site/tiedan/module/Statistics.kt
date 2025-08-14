@@ -55,9 +55,13 @@ object Statistics {
 
         var totalGlobalStorage = 0L
         var totalUserStorage = 0L
-        for ((_, value) in PastebinStorage.Storage) {
+        for ((_, value) in PastebinStorage.storage) {
             totalGlobalStorage += value[0]?.length?.toLong() ?: 0L
             totalUserStorage += getUserStorageSize(value)
+        }
+        var totalCodeCache = 0L
+        for ((_, value) in CodeCache.CodeCache) {
+            totalCodeCache += value.length
         }
 
         return buildString {
@@ -75,9 +79,11 @@ object Statistics {
                 appendLine(" ⏱️ 总用时：${formatTime(totalDlTime)}")
                 appendLine(" ⚡ 平均用时：${"%.2f".format(avg)}秒")
             }
-            appendLine("💾 存储总数：${PastebinStorage.Storage.size}")
+            appendLine("💾 存储总数：${PastebinStorage.storage.size}")
             appendLine("  - 全局总大小：$totalGlobalStorage")
             appendLine("  - 用户总大小：$totalUserStorage")
+            appendLine("📦 代码缓存总数：${CodeCache.CodeCache.size}")
+            appendLine("  - 缓存总大小：$totalCodeCache")
         }
     }
 
@@ -89,7 +95,7 @@ object Statistics {
         val mdTime = stat?.get("mdTime")
         val download = stat?.get("download")?.toLong()
         val dlTime = stat?.get("dlTime")
-        val storage = PastebinStorage.Storage[name]
+        val storage = PastebinStorage.storage[name]
 
         return buildString {
             appendLine("📈 总执行次数：$run")
@@ -169,11 +175,13 @@ object Statistics {
             }
             .take(10)
             .joinToString(separator = "、") { (key, language) ->
-                "$key${if (userID == null) "（$language）" else ""}"
+                val info = if (userID != null) "（$language）" else ""
+                "$key$info"
             }
 
         return "📁 项目总数：$projectCount\n" +
-                "$langStats\n\n" +
+                "$langStats\n" +
+                "\n" +
                 "🔥 近期热门项目：\n" +
                 top10Project
     }
