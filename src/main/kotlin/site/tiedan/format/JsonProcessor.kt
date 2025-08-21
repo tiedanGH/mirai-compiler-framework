@@ -22,6 +22,8 @@ import site.tiedan.MiraiCompilerFramework.TIMEOUT
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.format.MarkdownImageGenerator.processMarkdown
 import net.mamoe.mirai.message.data.PlainText
+import site.tiedan.command.CommandBucket.linkedBucketID
+import site.tiedan.data.PastebinBucket
 import site.tiedan.module.PastebinCodeExecutor.renderLatexOnline
 import java.io.File
 import java.net.URI
@@ -42,6 +44,7 @@ object JsonProcessor {
         val active: List<ActiveMessage>? = null,
         val storage: String? = null,
         val global: String? = null,
+        val bucket: List<BucketData>? = null,
         val error: String = "",
     )
     @Serializable
@@ -54,7 +57,7 @@ object JsonProcessor {
     data class ActiveMessage(
         val groupID: Long? = null,
         val userID: Long? = null,
-        val message: ActiveSingleMessage = ActiveSingleMessage()
+        val message: ActiveSingleMessage = ActiveSingleMessage(),
     )
     @Serializable
     data class ActiveSingleMessage(
@@ -68,10 +71,17 @@ object JsonProcessor {
     data class JsonStorage(
         val global: String = "",
         val storage: String = "",
+        val bucket: List<BucketData> = listOf(),
         val userID: Long = 10001,
         val nickname: String = "",
         val from: String = "",
         val images: List<ImageData> = listOf(),
+    )
+    @Serializable
+    data class BucketData(
+        val id: Long? = null,
+        val name: String? = null,
+        val content: String? = null,
     )
     @Serializable
     data class ImageData(
@@ -88,9 +98,9 @@ object JsonProcessor {
         }
     }
 
-    fun processEncode(global: String, storage: String, userID: Long, nickname: String, from: String, images: List<ImageData>): String {
+    fun processEncode(global: String, storage: String, bucket: List<BucketData>, userID: Long, nickname: String, from: String, images: List<ImageData>): String {
         return try {
-            val jsonStorageObject = JsonStorage(global, storage, userID, nickname, from, images)
+            val jsonStorageObject = JsonStorage(global, storage, bucket, userID, nickname, from, images)
             json.encodeToString<JsonStorage>(jsonStorageObject)
         } catch (e: Exception) {
             throw Exception("JSON编码错误【严重错误，理论不可能发生】，请提供日志反馈问题：\n${e.message}")
@@ -308,25 +318,46 @@ object JsonProcessor {
         }
     }
 
-    // pastebin数据存储
-    fun savePastebinStorage(name: String, userID: Long, global: String?, storage: String?) {
-        if (global == null && storage == null) return
+    // pastebin及bucket数据存储
+    fun savePastebinStorage(
+        name: String,
+        userID: Long,
+        global: String?,
+        storage: String?,
+        bucket: List<BucketData>?
+    ): String? {
+        if (global == null && storage == null && bucket == null) return null
         logger.info("保存Storage数据：global{${global?.length}} storage{${storage?.length}}")
-        if (PastebinStorage.Storage.contains(name).not()) {
-            PastebinStorage.Storage[name] = mutableMapOf()
-            PastebinStorage.Storage[name]?.set(0, "")
+        val storageMap = PastebinStorage.storage.getOrPut(name) {
+            mutableMapOf<Long, String>().apply { put(0, "") }
         }
-        if (global != null) {
-            PastebinStorage.Storage[name]?.set(0, global)
-        }
-        if (storage != null) {
-            if (storage.isEmpty()) {
-                PastebinStorage.Storage[name]?.remove(userID)
+        global?.let { storageMap[0] = it }
+        storage?.let {
+            if (it.isEmpty()) {
+                storageMap.remove(userID)
             } else {
-                PastebinStorage.Storage[name]?.set(userID, storage)
+                storageMap[userID] = it
             }
         }
         PastebinStorage.save()
+
+        if (bucket == null) return null
+        logger.info("保存Bucket数据：" + bucket.joinToString(" ") { "[${it.id}]{${it.content?.length}}" })
+        val ret = StringBuilder()
+        val seenBucketIDs = mutableSetOf<Long>()
+        bucket.forEachIndexed { index, data ->
+            when (data.id) {
+                null -> ret.append("\n[(${index + 1})无效ID] 未指定目标存储库ID")
+                !in linkedBucketID(name) -> ret.append("\n[(${index + 1})拒绝访问] 当前项目未关联存储库 ${data.id}")
+                in seenBucketIDs -> ret.append("\n[(${index + 1})重复写入] 检测到对存储库 ${data.id} 的重复保存，单次输出仅支持写入同一存储库一次")
+                else -> if (data.content != null) {
+                        PastebinBucket.bucket[data.id]?.set("content", data.content)
+                        seenBucketIDs.add(data.id)
+                    }
+            }
+        }
+        PastebinBucket.save()
+        return ret.takeIf { it.isNotEmpty() }?.toString()
     }
 
     // 检查json和MessageChain中的禁用内容，发现则返回覆盖文本

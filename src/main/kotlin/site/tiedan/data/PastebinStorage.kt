@@ -10,7 +10,4 @@ internal object PastebinStorage : AutoSavePluginData("PastebinStorage") {
     @ValueDescription("项目独立存储数据")
     var storage: MutableMap<String, MutableMap<Long, String>> by value()
 
-    @ValueDescription("跨项目存储库")
-    var bucket: MutableMap<Long, MutableMap<String, String>> by value()
-
 }

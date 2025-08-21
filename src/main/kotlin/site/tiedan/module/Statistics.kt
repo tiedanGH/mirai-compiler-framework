@@ -17,7 +17,7 @@ object Statistics {
         val current = ExtraData.statistics[name]?.get("run") ?: 0.0
         val currentScore = ExtraData.statistics[name]?.get("score") ?: 0.0
         ExtraData.statistics[name]?.set("run", current + 1)
-        ExtraData.statistics[name]?.set("score", currentScore + 1)
+        ExtraData.statistics[name]?.set("score", (currentScore + 1).roundTo2())
         ExtraData.save()
     }
 

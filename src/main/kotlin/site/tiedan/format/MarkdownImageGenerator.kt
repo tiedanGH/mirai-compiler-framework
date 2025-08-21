@@ -16,6 +16,10 @@ import kotlinx.coroutines.sync.withLock
 import net.mamoe.mirai.console.util.ConsoleExperimentalApi
 import site.tiedan.MiraiCompilerFramework.TIMEOUT
 import site.tiedan.MiraiCompilerFramework.cacheFolder
+import site.tiedan.command.CommandBucket.formatTime
+import site.tiedan.command.CommandBucket.isBucketEmpty
+import site.tiedan.command.CommandBucket.projectsCount
+import site.tiedan.data.PastebinBucket
 import site.tiedan.module.Statistics
 import site.tiedan.module.Statistics.roundTo2
 import java.io.File
@@ -125,15 +129,14 @@ object MarkdownImageGenerator {
         logger.warning("${prefix}报错记录已保存为txt文件")
     }
 
-    fun generatePastebinHtml(): String {
+    fun generatePastebinListHtml(): String {
         val entriesList = PastebinData.pastebin.entries.toList()
         val pageLimit = ((entriesList.size + 19) / 20)
-        // 每行 5 页
-        val columnsPerRow = 5
+        val columnsPerRow = 5   // 每行 5 页
         val rowCount = ((pageLimit + columnsPerRow - 1) / columnsPerRow)
-        // 构造HTML字符串
+
         return buildString {
-            append("""
+            appendLine("""
             <style>
                 h1 {
                     text-align: center;
@@ -202,9 +205,9 @@ object MarkdownImageGenerator {
                             val author = value["author"] ?: "[数据异常]"
                             val censorNote = if (PastebinData.censorList.contains(key)) "（审核中）" else ""
                             appendLine("<tr>")
-                            appendLine("<td class='name-col$style'>$key${fire}${censorNote}</td>")
-                            appendLine("<td class='lang-col'>${language}</td>")
-                            appendLine("<td class='author-col'>${author}</td>")
+                            appendLine("<td class='name-col$style'>${esc(key)}$fire$censorNote</td>")
+                            appendLine("<td class='lang-col'>${esc(language)}</td>")
+                            appendLine("<td class='author-col'>${esc(author)}</td>")
                             appendLine("</tr>")
                         }
                         appendLine("</tbody></table></td>")
@@ -219,4 +222,173 @@ object MarkdownImageGenerator {
         }
     }
 
+    fun generateBucketListHtml(showBackups: Boolean): String {
+        return buildString {
+            appendLine("""
+            <style>
+              :root{
+                --card-height:80px;
+                --square-size:var(--card-height);
+                --stats-width:180px;
+                --gap:10px
+              }
+              .container{color:#222;padding:12px}
+              .title{font-size:20px;font-weight:700;text-align:center;margin-bottom:12px}
+              .card{margin-bottom:var(--gap)}
+              .bucket-table{
+                width:100%;border-collapse:collapse;table-layout:fixed;
+                height:var(--card-height);background:#fff;
+                box-shadow:0 1px 2px rgba(0,0,0,0.04);
+                border:2px solid #000;overflow:hidden
+              }
+              .bucket-table td{
+                padding:0;border:1px solid #888;
+                box-sizing:border-box;vertical-align:middle;text-align:center
+              }
+              .cell-image,.cell-id{
+                width:var(--square-size);height:var(--square-size);box-sizing:border-box
+              }
+              .cell-inner{
+                width:100%;height:100%;
+                display:flex;align-items:center;justify-content:center;
+                box-sizing:border-box;padding:8px;margin:0
+              }
+              .cell-image img{max-width:55px;max-height:55px;display:block;margin:0}
+              .cell-id .cell-inner{font-size:38px;font-weight:700}
+              .cell-meta{
+                padding:0;box-sizing:border-box;width:auto;
+                height:var(--card-height);
+                display:flex;flex-direction:column;align-items:stretch;justify-content:center;
+                overflow:hidden;flex:1
+              }
+              .meta-top{
+                height:calc(var(--card-height)*0.75);
+                display:flex;align-items:center;justify-content:center;
+                font-size:18px;font-weight:600;padding:4px 8px;
+                box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+              }
+              .meta-divider{
+                height:1px;width:100%;align-self:stretch;margin:0;
+                background:#888;box-sizing:border-box;flex:0 0 auto
+              }
+              .meta-bottom{
+                height:calc(var(--card-height)*0.25);
+                display:flex;align-items:center;justify-content:center;
+                font-size:12px;color:#666;padding:4px 8px;
+                box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+              }
+              .cell-stats{
+                width:var(--stats-width);padding:0;box-sizing:border-box;
+                height:var(--card-height);
+                display:flex;flex-direction:column;align-items:stretch;justify-content:center;
+                overflow:hidden;flex-shrink:0
+              }
+              .stats-row{
+                height:calc(var(--card-height)*0.5);
+                display:flex;align-items:center;justify-content:space-between;
+                padding:4px 12px;box-sizing:border-box;overflow:hidden
+              }
+              .stats-row .label{
+                font-size:14px;color:#000;flex:1;text-align:left;
+                overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+              }
+              .stats-row .value{
+                font-size:15px;color:#000;flex:0 0 auto;font-weight:bold;
+                text-align:right;padding-left:8px
+              }
+              .stats-divider{
+                height:1px;width:100%;align-self:stretch;margin:0;
+                background:#888;box-sizing:border-box;flex:0 0 auto
+              }
+              .empty{background:#d9d9d9;color:#7a7a7a}
+              .empty .cell-image img{opacity:0.35}
+              .empty .meta-top,.empty .meta-bottom,
+              .empty .stats-row .label,.empty .stats-row .value{color:#7a7a7a}
+              .backup-row td{padding:6px 8px;border-top:0}
+              .backup-strip{display:flex;gap:8px;width:100%}
+              .backup-cell{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3px;border:1px solid #e0e0e0;background:#fafafa;box-sizing:border-box;height:42px;overflow:hidden}
+              .backup-cell.empty{
+                background:#e6e6e6;color:#7a7a7a;border-color:#d0d0d0;
+                display:flex;align-items:center;justify-content:center;
+              }
+              .backup-cell.empty .backup-time{display:none}
+              .backup-cell.empty .backup-name{margin:0}
+              .backup-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;text-align:center}
+              .backup-time{font-size:10px;color:#666;margin-top:4px;text-align:center;width:100%;overflow:hidden;text-overflow:ellipsis}
+              @media (max-width:520px){:root{--card-height:120px;--stats-width:160px}.cell-id .cell-inner{font-size:36px}.meta-top{font-size:18px}.stats-row .value{font-size:14px}}
+            </style>
+            """.trimIndent())
+            appendLine("""<div class="container"><div class="title">bucket存储库列表</div>""")
+
+            PastebinBucket.bucket.entries
+                .sortedBy { it.key }
+                .forEach { (id, data) ->
+                    val empty = isBucketEmpty(id)
+                    val imgPath = if (empty) "${Image_Path}bucket_e.png" else "${Image_Path}bucket.png"
+                    appendLine("""
+                    <div class="card">
+                      <table class="bucket-table${if (empty) " empty" else ""}" role="presentation">
+                        <tr>
+                          <td class="cell-image"><div class="cell-inner"><img src="$imgPath" alt="bucket"/></div></td>
+                          <td class="cell-id"><div class="cell-inner">$id</div></td>
+                          <td class="cell-meta">
+                            <div class="meta-top">${if (empty) "&nbsp;" else esc(data["name"])}</div>
+                            <div class="meta-divider"></div>
+                            <div class="meta-bottom">${if (empty) "&nbsp;" else "所有者：${esc(data["owner"])} (${esc(data["userID"])})"}</div>
+                          </td>
+                          <td class="cell-stats">
+                            <div class="stats-row">
+                              <div class="label">${if (empty) "&nbsp;" else "关联项目数"}</div>
+                              <div class="value">${if (empty) "&nbsp;" else projectsCount(id)}</div>
+                            </div>
+                            <div class="stats-divider"></div>
+                            <div class="stats-row">
+                              <div class="label">${if (empty) "&nbsp;" else "存储库大小"}</div>
+                              <div class="value">${if (empty) "&nbsp;" else data["content"]?.length ?: 0}</div>
+                            </div>
+                          </td>
+                        </tr>
+                """.trimIndent())
+                    if (showBackups && !empty) {
+                        val list = PastebinBucket.backups[id] ?: emptyList()
+                        val firstThree = (0..2).map { idx -> list.getOrNull(idx) }
+                        appendLine("""<tr class="backup-row"><td colspan="4"><div class="backup-strip">""")
+                        firstThree.forEach { b ->
+                            if (b == null) {
+                                appendLine(
+                                    """
+                                <div class="backup-cell empty">
+                                  <div class="backup-name">空备份</div>
+                                  <div class="backup-time">&nbsp;</div>
+                                </div>
+                            """.trimIndent()
+                                )
+                            } else {
+                                val bn = esc(b.name)
+                                val bt = esc(formatTime(b.time))
+                                appendLine(
+                                    """
+                                <div class="backup-cell">
+                                  <div class="backup-name" title="$bn">$bn</div>
+                                  <div class="backup-time">$bt</div>
+                                </div>
+                            """.trimIndent()
+                                )
+                            }
+                        }
+                        appendLine("</div></td></tr>")
+                    }
+                    appendLine("</table></div>")
+                }
+            appendLine("</div>")
+        }
+    }
+
+    private fun esc(s: String?) = s
+        ?.replace("&", "&amp;")
+        ?.replace("<", "&lt;")
+        ?.replace(">", "&gt;")
+        ?.replace("\"", "&quot;")
+        ?.replace("'", "&#39;")
+        ?: ""
 }

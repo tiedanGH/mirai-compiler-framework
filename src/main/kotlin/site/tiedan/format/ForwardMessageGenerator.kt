@@ -39,9 +39,15 @@ object ForwardMessageGenerator {
         val messages: List<JsonMessage> = listOf(JsonMessage()),
         val storage: String? = null,
         val global: String? = null,
+        val bucket: List<JsonProcessor.BucketData>? = null,
     )
 
-    data class ForwardMessageData(val forwardMessage: ForwardMessage, val global: String? = null, val storage: String? = null)
+    data class ForwardMessageData(
+        val forwardMessage: ForwardMessage,
+        val global: String? = null,
+        val storage: String? = null,
+        val bucket: List<JsonProcessor.BucketData>? = null,
+    )
 
     suspend fun generateForwardMessage(name: String, forwardMessageOutput: String, sender: CommandSender): ForwardMessageData {
         val subject = sender.subject
@@ -180,7 +186,7 @@ object ForwardMessageGenerator {
                     }
                 }
             }
-            return ForwardMessageData(forward, result.global, result.storage)
+            return ForwardMessageData(forward, result.global, result.storage, result.bucket)
         } catch (e: Exception) {
             logger.warning(e)
             val forward = buildForwardMessage(subject!!) {

@@ -23,6 +23,8 @@ import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.uploadFileToImage
+import site.tiedan.command.CommandBucket.bucketIdsToBucketData
+import site.tiedan.command.CommandBucket.linkedBucketID
 import site.tiedan.command.CommandRun.Image_Path
 import site.tiedan.config.DockerConfig
 import site.tiedan.config.PastebinConfig
@@ -115,6 +117,7 @@ object PastebinCodeExecutor {
             var activeMessage: List<JsonProcessor.ActiveMessage>? = null
             var outputGlobal: String? = null
             var outputStorage: String? = null
+            var outputBucket: List<JsonProcessor.BucketData>? = null
 
             // 从url或缓存获取代码
             val code: String = try {
@@ -159,15 +162,18 @@ object PastebinCodeExecutor {
             if (storageMode == "true") {
                 if (StorageLock.isLocked) logger.info("(${userID})执行$name [存储]进程执行请求等待中...")
                 StorageLock.lock()
-                val global = PastebinStorage.Storage[name]?.get(0) ?: ""
-                val storage = PastebinStorage.Storage[name]?.get(userID) ?: ""
+                val global = PastebinStorage.storage[name]?.get(0) ?: ""
+                val storage = PastebinStorage.storage[name]?.get(userID) ?: ""
+                val bucket = bucketIdsToBucketData(linkedBucketID(name))
                 val from = if (subject is Group) "${(subject as Group).name}(${(subject as Group).id})" else "private"
                 val encodeBase64 = PastebinData.pastebin[name]?.get("base64") == "true"
                 val imageData = encodeImagesToBase64(imageUrls, encodeBase64)
 
-                val jsonInput = processEncode(global, storage, userID, nickname, from, imageData)
+                val jsonInput = processEncode(global, storage, bucket, userID, nickname, from, imageData)
                 input = "$jsonInput\n$userInput"
                 logger.info("输入Storage数据: global{${global.length}} storage{${storage.length}} $nickname($userID) $from")
+                if (bucket.isNotEmpty())
+                    logger.info("输入Bucket数据：" + bucket.joinToString(" ") { "[${it.id}]{${it.content?.length}}" })
             }
 
             logger.debug("[DEBUG] input:\n$input")
@@ -213,6 +219,7 @@ object PastebinCodeExecutor {
                 activeMessage = jsonMessage.active
                 outputGlobal = jsonMessage.global
                 outputStorage = jsonMessage.storage
+                outputBucket = jsonMessage.bucket
                 if (outputFormat != "MessageChain") {
                     output = if (outputFormat in listOf("markdown", "base64")) jsonMessage.content
                     else blockProhibitedContent(jsonMessage.content, outputAt, subject is Group).first
@@ -230,9 +237,10 @@ object PastebinCodeExecutor {
             // 输出内容生成
             val message = handleOutputFormats(
                 name, output, outputFormat, outputAt, width, messageList, null
-            ) { global, storage ->
+            ) { global, storage, bucket ->
                 outputGlobal = global
                 outputStorage = storage
+                outputBucket = bucket
             }
             // 根据消息类型进行回复
             when (message) {
@@ -253,21 +261,22 @@ object PastebinCodeExecutor {
                         trimToMaxLength(message.toString(), 300).first
                 )
             }
-            // 原始格式支持且开启存储功能：在程序执行和输出均无错误，且发送消息成功时才进行保存
-            if (format in MiraiCompilerFramework.enableStorageFormats && storageMode == "true") {
-                // 额外检测：执行后原项目消失（如被删除、存储被关闭），则不再保存存储
-                if (PastebinData.pastebin[name]?.get("storage") == null) {
-                    sendQuoteReply("[存储错误] 拒绝访问：名称 $name 不存在或未开启存储，保存数据失败！")
-                    return
-                }
-                savePastebinStorage(name, userID, outputGlobal, outputStorage)
-            }
             // 主动消息相关
             if (activeMessage != null) {
                 val ret = handleActiveMessage(name, activeMessage)
                 if (ret.isNotEmpty()) {
                     sendQuoteReply("【主动消息错误】$ret")
                 }
+            }
+            // 原始格式支持且开启存储功能：在程序执行和输出均无错误，且发送消息成功时才进行保存
+            if (format in MiraiCompilerFramework.enableStorageFormats && storageMode == "true") {
+                // 额外检测：执行后原项目消失（如被删除、存储被关闭），则不再保存存储
+                if (PastebinData.pastebin[name]?.get("storage") == null) {
+                    sendQuoteReply("【存储错误】拒绝访问：名称 $name 不存在或未开启存储，保存数据失败！")
+                    return
+                }
+                val ret = savePastebinStorage(name, userID, outputGlobal, outputStorage, outputBucket)
+                if (ret != null) sendQuoteReply("【存储错误】$ret")
             }
         } catch (e: Exception) {
             logger.warning(e)
@@ -291,10 +300,11 @@ object PastebinCodeExecutor {
         width: String?,
         messageList: List<JsonProcessor.JsonSingleMessage>,
         title: String?,
-        updateStorage: (String?, String?) -> Unit
+        updateStorage: (String?, String?, List<JsonProcessor.BucketData>?) -> Unit
     ): Any? {
         var outputGlobal: String? = null
         var outputStorage: String? = null
+        var outputBucket: List<JsonProcessor.BucketData>? = null
         return when (outputFormat) {
             // text文本输出
             "text"-> {
@@ -380,6 +390,7 @@ object PastebinCodeExecutor {
                 val forwardMessageData = generateForwardMessage(name, output, this)
                 outputGlobal = forwardMessageData.global
                 outputStorage = forwardMessageData.storage
+                outputBucket = forwardMessageData.bucket
                 forwardMessageData.forwardMessage     // 返回ForwardMessage
             }
             // TTS音频消息生成（JSON在内部进行解析）
@@ -387,6 +398,7 @@ object PastebinCodeExecutor {
                 val audioData = generateAudio(output, subject)
                 outputGlobal = audioData.global
                 outputStorage = audioData.storage
+                outputBucket = audioData.bucket
                 if (audioData.success) {
                     audioData.audio
                 } else {
@@ -397,7 +409,7 @@ object PastebinCodeExecutor {
                 sendQuoteReply("代码执行完成但无法输出：无效的输出格式：$outputFormat，请联系创建者修改格式")
             }
         }
-        updateStorage(outputGlobal, outputStorage)
+        updateStorage(outputGlobal, outputStorage, outputBucket)
     }
 
     suspend fun CommandSender.handleActiveMessage(
@@ -418,7 +430,7 @@ object PastebinCodeExecutor {
             val userID = activeMessage.userID
             val activeSingleMessage = activeMessage.message
             if (groupID == null && userID == null) {
-                result += "\n[($index)参数] 目标无效：groupID和userID均为空"
+                result += "\n[(${index + 1})参数] 目标无效：groupID和userID均为空"
                 return@forEachIndexed
             }
 
@@ -431,7 +443,7 @@ object PastebinCodeExecutor {
                 activeSingleMessage.width.toString(),
                 activeSingleMessage.messageList,
                 "$name[主动消息]"
-            ) { _, _ -> /* ignore */ }
+            ) { _, _, _ -> /* ignore */ }
             val msgToSend: Message = when (message) {
                 is MessageChain, is ForwardMessage, is Image -> message
                 null -> PlainText("[处理消息失败] 意料之外的消息结果 null，请联系管理员")
@@ -443,7 +455,7 @@ object PastebinCodeExecutor {
             // 群聊主动消息
             if (groupID != null) {
                 if (!seenGroupIDs.add(groupID)) {
-                    result += "\n[($index)群聊] 消息发送失败：检测到重复groupID($groupID)"
+                    result += "\n[(${index + 1})群聊] 消息发送失败：检测到重复groupID($groupID)"
                     return@forEachIndexed
                 }
                 val group = bot?.getGroup(groupID)
@@ -456,17 +468,17 @@ object PastebinCodeExecutor {
                         }
                         delay(1000)
                     } catch (e: Exception) {
-                        result += "\n[($index)群聊] 消息发送出错：${e.message}"
+                        result += "\n[(${index + 1})群聊] 消息发送出错：${e.message}"
                     }
                 } else {
-                    result += "\n[($index)群聊] 消息发送失败：bot未加入此群聊($groupID)，请检查群号是否正确或联系bot所有者"
+                    result += "\n[(${index + 1})群聊] 消息发送失败：bot未加入此群聊($groupID)，请检查群号是否正确或联系bot所有者"
                 }
                 return@forEachIndexed
             }
             // 私信主动消息
             if (userID == null) return@forEachIndexed
             if (!seenUserIDs.add(userID)) {
-                result += "\n[($index)私信] 消息发送失败：检测到重复userID($userID)"
+                result += "\n[(${index + 1})私信] 消息发送失败：检测到重复userID($userID)"
                 return@forEachIndexed
             }
             val friend = bot?.getFriend(userID)
@@ -475,11 +487,11 @@ object PastebinCodeExecutor {
                 val allowTime = ExtraData.private_allowTime[userID]
                 if (allowTime != null) {
                     if (notInAllowTime(now, allowTime.first, allowTime.second)) {
-                        result += "\n[($index)私信] 权限不足：不在${userID}设置的可用时间段内"
+                        result += "\n[(${index + 1})私信] 权限不足：不在${userID}设置的可用时间段内"
                         return@forEachIndexed
                     }
                 } else {
-                    result += "\n[($index)私信] 权限不足：${userID}不允许任何主动消息"
+                    result += "\n[(${index + 1})私信] 权限不足：${userID}不允许任何主动消息"
                     return@forEachIndexed
                 }
                 try {
@@ -496,11 +508,11 @@ object PastebinCodeExecutor {
                     }
                     delay(1000)
                 } catch (e: Exception) {
-                    result += "\n[($index)私信] 消息发送出错：${e.message}"
+                    result += "\n[(${index + 1})私信] 消息发送出错：${e.message}"
                     return@forEachIndexed
                 }
             } else {
-                result += "\n[($index)私信] 消息发送失败：获取好友失败($userID)，请检查userID是否正确"
+                result += "\n[(${index + 1})私信] 消息发送失败：获取好友失败($userID)，请检查userID是否正确"
                 return@forEachIndexed
             }
         }

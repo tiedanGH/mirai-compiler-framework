@@ -6,6 +6,7 @@ import net.mamoe.mirai.console.command.CommandManager.INSTANCE.commandPrefix
 import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.console.command.RawCommand
 import net.mamoe.mirai.console.command.isNotConsole
+import net.mamoe.mirai.contact.Group
 import net.mamoe.mirai.contact.MessageTooLargeException
 import net.mamoe.mirai.contact.PermissionDeniedException
 import net.mamoe.mirai.containsFriend
@@ -16,10 +17,15 @@ import site.tiedan.MiraiCompilerFramework.Command
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.imageFolder
 import site.tiedan.MiraiCompilerFramework.logger
+import site.tiedan.MiraiCompilerFramework.pendingCommand
 import site.tiedan.MiraiCompilerFramework.reload
+import site.tiedan.MiraiCompilerFramework.requestUserConfirmation
 import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.uploadFileToImage
+import site.tiedan.command.CommandBucket.bucketIDsToNames
+import site.tiedan.command.CommandBucket.linkedBucketID
+import site.tiedan.command.CommandBucket.removeProjectFromBucket
 import site.tiedan.config.DockerConfig
 import site.tiedan.config.MailConfig
 import site.tiedan.config.PastebinConfig
@@ -29,7 +35,7 @@ import site.tiedan.data.CodeCache
 import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
 import site.tiedan.data.PastebinStorage
-import site.tiedan.format.MarkdownImageGenerator.generatePastebinHtml
+import site.tiedan.format.MarkdownImageGenerator.generatePastebinListHtml
 import site.tiedan.format.MarkdownImageGenerator.processMarkdown
 import site.tiedan.module.GlotAPI
 import site.tiedan.module.Statistics
@@ -71,21 +77,20 @@ object CommandPastebin : RawCommand(
         Command("pb set <名称> format <输出格式> [宽度/存储]", "代码 修改 <名称> 输出格式 <输出格式> [宽度/存储]", "修改输出格式", 3),
         Command("pb upload <图片名称(需要包含拓展名)> <【图片/URL】>", "代码 上传 <图片名称(需要包含拓展名)> <【图片/URL】>", "上传图片至缓存", 3),
         Command("pb storage <名称> [查询ID]", "代码 存储 <名称> [查询ID]", "查询存储数据", 3),
+        Command("bucket help", "存储库 帮助", "跨项目存储库操作指令", 3),
 
         Command("pb handle <名称> <同意/拒绝> [备注]", "代码 处理 <名称> <同意/拒绝> [备注]", "处理添加和修改申请", 4),
         Command("pb black [qq]", "代码 黑名单 [QQ号]", "黑名单处理", 4),
         Command("pb reload", "代码 重载", "重载本地数据", 4),
     )
 
-    val pendingConfirmations = mutableMapOf<Long, String>()
-
     override suspend fun CommandSender.onCommand(args: MessageChain) {
 
         val userID = this.user?.id ?: 10000
+        val isAdmin = PastebinConfig.admins.contains(userID)
 
-        // 二次操作对比
-        if (pendingConfirmations[userID]?.let { it != args.content } == true) {
-            pendingConfirmations.remove(userID)
+        if (pendingCommand[userID]?.let { it != args.content } == true) {
+            pendingCommand.remove(userID)
             sendQuoteReply("指令不一致，操作已取消")
         }
 
@@ -99,7 +104,7 @@ object CommandPastebin : RawCommand(
                             commandList.filter { it.type == 2 }.joinToString("") { "${commandPrefix}${it.usage}　${it.desc}\n" } +
                             "⚙️ pastebin高级功能帮助：\n" +
                             commandList.filter { it.type == 3 }.joinToString("") { "${commandPrefix}${it.usage}　${it.desc}\n" }
-                    if (args.getOrNull(1)?.content == "all" && PastebinConfig.admins.contains(userID)) {
+                    if (args.getOrNull(1)?.content == "all" && isAdmin) {
                         reply += "\n" +
                                 "🛠️ pastebin管理指令帮助：\n" +
                                 commandList.filter { it.type == 4 }.joinToString("") { "${commandPrefix}${it.usage}　${it.desc}\n" }
@@ -114,7 +119,7 @@ object CommandPastebin : RawCommand(
                             commandList.filter { it.type == 2 }.joinToString("") { "${commandPrefix}${it.usageCN}　${it.desc}\n" } +
                             "⚙️ pastebin高级功能帮助：\n" +
                             commandList.filter { it.type == 3 }.joinToString("") { "${commandPrefix}${it.usageCN}　${it.desc}\n" }
-                    if (args.getOrNull(1)?.content == "all" && PastebinConfig.admins.contains(userID)) {
+                    if (args.getOrNull(1)?.content == "all" && isAdmin) {
                         reply += "\n" +
                                 "🛠️ pastebin管理指令帮助：\n" +
                                 commandList.filter { it.type == 4 }.joinToString("") { "${commandPrefix}${it.usageCN}　${it.desc}\n" }
@@ -222,7 +227,7 @@ object CommandPastebin : RawCommand(
                 "stats", "statistics", "统计"-> {
                     val name = args.getOrNull(1)?.content?.let { PastebinData.alias[it] ?: it }
                     val statistics = if (name != null) {
-                        if (PastebinData.pastebin.containsKey(name).not()) {
+                        if (PastebinData.pastebin.contains(name).not()) {
                             sendQuoteReply("未知的名称：$name\n请使用「${commandPrefix}pb list」来查看完整列表")
                             return
                         }
@@ -267,7 +272,7 @@ object CommandPastebin : RawCommand(
                         return
                     }
                     if (addPara in arrayOf("default", "全部", "all")) {
-                        val markdownResult = processMarkdown(null, generatePastebinHtml(), "2000")
+                        val markdownResult = processMarkdown(null, generatePastebinListHtml(), "2000")
                         if (!markdownResult.success) {
                             sendQuoteReply(markdownResult.message)
                             return
@@ -308,7 +313,7 @@ object CommandPastebin : RawCommand(
                                         override fun generatePreview(forward: RawForwardMessage): List<String> =
                                             mutableListOf("项目总数：${PastebinData.pastebin.size}",
                                                 "缓存数量：${CodeCache.CodeCache.size}",
-                                                "存储数量：${PastebinStorage.Storage.size}")
+                                                "存储数量：${PastebinStorage.storage.size}")
                                         override fun generateSummary(forward: RawForwardMessage): String = "总计 ${PastebinData.pastebin.size} 条代码链接"
                                     }
                                     for ((index, str) in pastebinList.withIndex()) {
@@ -322,21 +327,22 @@ object CommandPastebin : RawCommand(
                                 return
                             }
                         } else {
-                            sendQuoteReply("·pastebin列表：\n${pastebinList[page - 1]}")
+                            sendQuoteReply(" ·pastebin列表：\n${pastebinList[page - 1]}")
                         }
                     }
                 }
 
-                "info", "信息", "示例"-> {   // 查看数据具体参数
+                "info", "信息"-> {   // 查看数据具体参数
                     val name = PastebinData.alias[args[1].content] ?: args[1].content
-                    if (PastebinData.pastebin.containsKey(name).not()) {
+                    if (PastebinData.pastebin.contains(name).not()) {
                         sendQuoteReply("未知的名称：$name\n请使用「${commandPrefix}pb list」来查看完整列表")
                         return
                     }
-                    val data = PastebinData.pastebin[name] ?: emptyMap()
 
-                    val showAll = args.getOrNull(2)?.content == "show" &&
-                            (PastebinConfig.admins.contains(userID) || userID.toString() == PastebinData.pastebin[name]?.get("userID"))
+                    val data = PastebinData.pastebin[name].orEmpty()
+                    val ownerID = PastebinData.pastebin[name]?.get("userID")
+                    val isOwner = userID.toString() == ownerID
+                    val showAll = args.getOrNull(2)?.content == "show" && (isOwner || isAdmin)
                     val alias = PastebinData.alias.entries.find { it.value == name }?.key
                     val info = buildString {
                         if (showAll) appendLine("---[完整信息预览]---")
@@ -362,7 +368,13 @@ object CommandPastebin : RawCommand(
                             appendLine("输出格式：$fmt")
                             data["width"]?.let { w -> appendLine("图片宽度：$w") }
                         }
-                        if (data["storage"] == "true") appendLine("存储功能：已开启")
+                        if (data["storage"] == "true") {
+                            val linkedBuckets = bucketIDsToNames(linkedBucketID(name))
+                            val storageInfo =
+                                if (linkedBuckets.isEmpty()) "存储功能：已开启"
+                                else "关联存储库：$linkedBuckets"
+                            appendLine(storageInfo)
+                        }
                         if (data["base64"] == "true") appendLine("输入图片base64：已开启")
                         appendLine(
                             if (data["stdin"].isNullOrEmpty()) "示例输入：无"
@@ -374,17 +386,21 @@ object CommandPastebin : RawCommand(
                     }
                     sendQuoteReply(info)
                     if (PastebinData.censorList.contains(name).not()) {
-                        sendMessage("#run ${alias ?: name} ${PastebinData.pastebin[name]?.get("stdin")}")
+                        if (subject is Group) {
+                            sendMessage("${PastebinConfig.QUICK_PREFIX}${alias ?: name} ${PastebinData.pastebin[name]?.get("stdin")}")
+                        } else {
+                            sendMessage("#run ${alias ?: name} ${PastebinData.pastebin[name]?.get("stdin")}")
+                        }
                     }
                 }
 
                 "add", "添加", "新增"-> {   // 添加pastebin数据
                     val name = args[1].content
-                    if (PastebinData.pastebin.containsKey(name)) {
+                    if (PastebinData.pastebin.contains(name)) {
                         sendQuoteReply("添加失败：名称 $name 已存在")
                         return
                     }
-                    if (PastebinData.alias.containsKey(name)) {
+                    if (PastebinData.alias.contains(name)) {
                         sendQuoteReply("添加失败：名称 $name 已存在于别名中")
                         return
                     }
@@ -395,8 +411,8 @@ object CommandPastebin : RawCommand(
                     if (!checkUrl(url)) {
                         sendQuoteReply(
                             "添加失败：无效的链接 $url\n" +
-                                "\uD83D\uDD17 支持的URL格式如下方所示：\n" +
-                                supportedUrls.joinToString(separator = "") { "${it.url}...\n" }
+                            "🔗 支持的URL格式如下方所示：\n" +
+                            supportedUrls.joinToString(separator = "") { "${it.url}...\n" }
                         )
                         return
                     }
@@ -408,39 +424,41 @@ object CommandPastebin : RawCommand(
                             "url" to url,
                             "stdin" to stdin
                         )
-                    if (PastebinConfig.enable_censor && PastebinConfig.admins.contains(userID).not()) {
+                    if (PastebinConfig.enable_censor && !isAdmin) {
                         PastebinData.censorList.add(name)
                         sendQuoteReply("您已成功提交审核，此提交并不会发送提醒，管理员会定期查看并审核，您也可以主动联系进行催审")
                     } else {
                         sendQuoteReply(
                             "添加pastebin成功！\n" +
-                                    "名称：$name\n" +
-                                    "作者：$author\n" +
-                                    "userID：$userID\n" +
-                                    "语言：$language\n" +
-                                    "源代码URL：\n" +
-                                if (PastebinConfig.enable_censor) {
-                                    "审核功能已开启，链接无法查看\n"
-                                } else {
-                                    "${url}\n"
-                                } +
-                                    "示例输入：${stdin}"
+                            "名称：$name\n" +
+                            "作者：$author\n" +
+                            "userID：$userID\n" +
+                            "语言：$language\n" +
+                            "源代码URL：\n" +
+                            if (PastebinConfig.enable_censor) {
+                                "审核功能已开启，链接无法查看\n"
+                            } else {
+                                "${url}\n"
+                            } +
+                            "示例输入：${stdin}"
                         )
                     }
                     PastebinData.save()
                 }
 
-                "set", "修改", "设置"-> {   // 修改数据中某一项的参数
+                "set", "修改"-> {   // 修改数据中某一项的参数
                     val name = args[1].content
                     var option = args[2].content
                     var content = args.drop(3).joinToString(separator = " ")
                     var additionalOutput = ""
-                    if (PastebinData.pastebin.containsKey(name).not()) {
+                    if (PastebinData.pastebin.contains(name).not()) {
                         sendQuoteReply("未知的名称：$name\n请使用「${commandPrefix}pb list」来查看完整列表")
                         return
                     }
-                    if (userID.toString() != PastebinData.pastebin[name]?.get("userID") && PastebinConfig.admins.contains(userID).not()) {
-                        sendQuoteReply("无权修改此项目，如需修改请联系所有者：${PastebinData.pastebin[name]?.get("userID")}")
+                    val ownerID = PastebinData.pastebin[name]?.get("userID")
+                    val isOwner = userID.toString() == ownerID
+                    if (!isOwner && !isAdmin) {
+                        sendQuoteReply("无权修改此项目，如需修改请联系所有者：$ownerID")
                         return
                     }
                     val paraMap = mapOf(
@@ -483,7 +501,7 @@ object CommandPastebin : RawCommand(
                         return
                     }
                     if (option == "format" && args.size > 5) {
-                        sendQuoteReply("修改失败：format中仅能包含两个参数（输出格式，默认图片宽度）")
+                        sendQuoteReply("修改失败：format中仅能包含两个参数（输出格式，图片宽度/配置存储）")
                         return
                     }
                     if (option != "stdin" && option != "format" && args.size > 4) {
@@ -495,11 +513,11 @@ object CommandPastebin : RawCommand(
                         return
                     }
                     if (option == "name" || option == "alias") {
-                        if (PastebinData.pastebin.containsKey(content)) {
+                        if (PastebinData.pastebin.contains(content)) {
                             sendQuoteReply("修改失败：名称 $content 已存在")
                             return
                         }
-                        if (PastebinData.alias.containsKey(content)) {
+                        if (PastebinData.alias.contains(content)) {
                             sendQuoteReply("修改失败：名称 $content 已存在于别名中")
                             return
                         }
@@ -507,8 +525,8 @@ object CommandPastebin : RawCommand(
                     if (option == "url" && !checkUrl(content)) {
                         sendQuoteReply(
                             "修改失败：无效的链接 $content\n" +
-                                "\uD83D\uDD17 支持的URL格式如下方所示：\n" +
-                                supportedUrls.joinToString(separator = "") { "${it.url}...\n" }
+                            "🔗 支持的URL格式如下方所示：\n" +
+                            supportedUrls.joinToString(separator = "") { "${it.url}...\n" }
                         )
                         return
                     }
@@ -534,8 +552,8 @@ object CommandPastebin : RawCommand(
                                 PastebinData.groupOnly.add(content)
                             }
                             // 转移存储数据
-                            PastebinStorage.Storage.remove(name)?.let {
-                                PastebinStorage.Storage[content] = it
+                            PastebinStorage.storage.remove(name)?.let {
+                                PastebinStorage.storage[content] = it
                             }
                             // 转移缓存数据
                             CodeCache.CodeCache.remove(name)?.let {
@@ -557,21 +575,17 @@ object CommandPastebin : RawCommand(
                                 sendQuoteReply("转移失败：输入的 userID 不是整数")
                                 return
                             }
-                            if (pendingConfirmations.contains(userID).not() && userID !in PastebinConfig.admins) {
-                                pendingConfirmations.put(userID, args.content)
-                                sendQuoteReply(
-                                    " +++⚠️ 危险操作警告 ⚠️+++\n" +
-                                    "您正在转移项目所有权，转移前请确保您已知晓：\n" +
-                                    "- 此操作*不可撤销*\n" +
-                                    "- 转移后您将*完全失去*项目管理权\n" +
-                                    "- 请务必确认目标用户ID准确且有效\n" +
-                                    "如您确认无误，请再次执行转移指令以完成操作"
-                                )
-                                return
-                            } else {
-                                pendingConfirmations.remove(userID)
-                                PastebinData.pastebin[name]?.set("userID", content)
-                            }
+                            requestUserConfirmation(userID, args.content,
+                                " +++⚠️ 危险操作警告 ⚠️+++\n" +
+                                "您正在转移项目 $name 的所有权，转移前请确保您已知晓：\n" +
+                                "- 转移后您将*完全失去*项目管理权\n" +
+                                "- 此操作*不可撤销*\n" +
+                                "- 请务必确认目标用户ID准确且有效\n" +
+                                "\n" +
+                                "如您确认无误，请再次执行转移指令以完成操作"
+                            ) ?: return
+
+                            PastebinData.pastebin[name]?.set("userID", content)
                         }
                         "hide"-> {
                             when (content) {
@@ -674,11 +688,11 @@ object CommandPastebin : RawCommand(
                                     in arrayListOf("disable","off","false","关闭")-> {
                                         content = "$format（关闭存储）"
                                         PastebinData.pastebin[name]?.remove("storage")
-                                        PastebinStorage.Storage.remove(name)
+                                        PastebinStorage.storage.remove(name)
                                     }
                                     in arrayListOf("clear","清空")-> {
                                         content = "$format（清空存储）"
-                                        PastebinStorage.Storage.remove(name)
+                                        PastebinStorage.storage.remove(name)
                                     }
                                 }
                             }
@@ -696,11 +710,11 @@ object CommandPastebin : RawCommand(
                                         content += "（关闭图片base64）"
                                         PastebinData.pastebin[name]?.remove("base64")
                                     }
-                                    PastebinStorage.Storage.remove(name)
+                                    PastebinStorage.storage.remove(name)
                                 }
                                 in arrayListOf("clear","清空")-> {
                                     content = "清空"
-                                    PastebinStorage.Storage.remove(name)
+                                    PastebinStorage.storage.remove(name)
                                 }
                                 else-> {
                                     sendQuoteReply("无效的配置项：请设置 开启/关闭/清空 存储功能")
@@ -721,7 +735,7 @@ object CommandPastebin : RawCommand(
                                 in arrayListOf("disable","off","false","关闭")-> {
                                     content = "关闭"
                                     PastebinData.pastebin[name]?.remove("base64")
-                                    PastebinStorage.Storage.remove(name)
+                                    PastebinStorage.storage.remove(name)
                                 }
                                 else-> {
                                     sendQuoteReply("无效的配置项：请设置 开启/关闭 输入图片转base64")
@@ -744,7 +758,7 @@ object CommandPastebin : RawCommand(
                     } else if (option == "userID") {
                         sendQuoteReply("${additionalOutput}成功将 $name 的所有权转移至 $content")
                     } else if (option == "url" && PastebinConfig.enable_censor) {
-                        if (PastebinConfig.admins.contains(userID)) {
+                        if (isAdmin) {
                             sendQuoteReply("${additionalOutput}$name 的 url 参数的修改已生效")
                         } else {
                             PastebinData.censorList.add(name)
@@ -759,37 +773,47 @@ object CommandPastebin : RawCommand(
                     ExtraData.save()
                 }
 
-                "delete", "remove", "移除", "删除"-> {   // 删除pastebin数据
+                "delete", "remove", "删除", "移除"-> {   // 删除pastebin数据
                     val name = args[1].content
-                    if (PastebinData.pastebin.containsKey(name).not()) {
+                    if (PastebinData.pastebin.contains(name).not()) {
                         sendQuoteReply("删除失败：名称 $name 不存在")
                         return
                     }
-                    val isOwner = userID.toString() == PastebinData.pastebin[name]?.get("userID")
-                    val isAdmin = PastebinConfig.admins.contains(userID)
-                    val withAdmin = args.getOrNull(2)?.content == "admin"
+                    val ownerID = PastebinData.pastebin[name]?.get("userID")
+                    val isOwner = userID.toString() == ownerID
                     if (!isOwner && !isAdmin) {
-                        val ownerID = PastebinData.pastebin[name]?.get("userID")
                         sendQuoteReply("无权删除此项目，如需删除请联系所有者：$ownerID。如果您认为此条记录存在不合适的内容或其他问题，请联系指令管理员")
                         return
                     }
-                    if (isAdmin && !isOwner && !withAdmin) {
-                        sendQuoteReply("操作保护：该项目不属于您，如需以管理员权限强制删除，请在指令中附带 admin 参数")
-                        return
-                    }
+                    val storageMode = PastebinData.pastebin[name]?.get("storage") == "true"
+                    val linkedBuckets = bucketIDsToNames(linkedBucketID(name))
+                    requestUserConfirmation(userID, args.content,
+                        " +++🛑 高危操作警告 🛑+++\n" +
+                        "您正在删除项目 $name，删除前请确保您已知晓：\n" +
+                        "- 项目所有有关数据都将*删除*\n" +
+                        "- 删除操作*不可恢复*\n" +
+                        "- 项目的统计数据将被*清空*\n" +
+                        (if (storageMode) "⚠️ 此项目开启了存储功能，删除后所有存储数据将*永久丢失*\n" else "") +
+                        (if (linkedBuckets.isNotEmpty()) "⚠️ 此项目关联了存储库，删除后以下存储库将自动*解除关联*：$linkedBuckets\n" else "") +
+                        "\n" +
+                        "如您确认无误，请再次执行删除指令以完成操作"
+                    ) ?: return
+
                     PastebinData.alias.entries.removeIf { it.value == name }
                     PastebinData.hiddenUrl.remove(name)
                     PastebinData.groupOnly.remove(name)
                     PastebinData.censorList.remove(name)
                     PastebinData.pastebin.remove(name)
                     PastebinData.save()
-                    PastebinStorage.Storage.remove(name)
+                    PastebinStorage.storage.remove(name)
                     PastebinStorage.save()
                     CodeCache.CodeCache.remove(name)
                     CodeCache.save()
                     ExtraData.statistics.remove(name)
                     ExtraData.save()
-                    sendQuoteReply("删除 $name 成功！")
+                    removeProjectFromBucket(name)
+                    PastebinBucket.save()
+                    sendQuoteReply("删除项目 $name 成功！")
                 }
 
                 "upload", "上传"-> {   // 上传自定义图片
@@ -826,19 +850,17 @@ object CommandPastebin : RawCommand(
                     sendQuoteReply("上传图片成功！您已经可以通过目录“image://$imageName”调用此图片（用时：${downloadResult.duration}秒）")
                 }
 
-                "storage", "查询存储", "存储"-> {   // 查询存储数据
-                    if (!PastebinConfig.enable_ForwardMessage) {
-                        sendQuoteReply("当前未开启转发消息，无法使用此功能！")
-                        return
-                    }
+                "storage", "存储"-> {   // 查询存储数据
                     val name = PastebinData.alias[args[1].content] ?: args[1].content
-                    if (PastebinData.pastebin.containsKey(name).not()) {
+                    if (PastebinData.pastebin.contains(name).not()) {
                         sendQuoteReply("未知的名称：$name\n请使用「${commandPrefix}pb list」来查看完整列表")
                         return
                     }
-                    val storage = PastebinStorage.Storage[name]
-                    if (userID.toString() != PastebinData.pastebin[name]?.get("userID") && PastebinConfig.admins.contains(userID).not()) {
-                        sendQuoteReply("【查询名称】$name\n【用户数量】${storage?.size?.minus(1)}\n此条记录并非由您创建，仅创建者可查看存储数据详细内容")
+                    val storage = PastebinStorage.storage[name]
+                    val ownerID = PastebinData.pastebin[name]?.get("userID")
+                    val isOwner = userID.toString() == ownerID
+                    if (!isOwner && !isAdmin) {
+                        sendQuoteReply("【查询名称】$name\n【用户数量】${storage?.size?.minus(1)}\n无权查看数据内容，仅所有者可查看存储数据详细内容")
                         return
                     }
                     val mail = args.getOrNull(2)?.content == "邮件" || args.getOrNull(2)?.content == "mail"
@@ -853,6 +875,11 @@ object CommandPastebin : RawCommand(
                         }
                         logger.info("请求使用邮件发送结果：$name")
                         sendStorageMail(this, output, userID, name)
+                        return
+                    }
+
+                    if (!PastebinConfig.enable_ForwardMessage) {
+                        sendQuoteReply("当前未开启转发消息，仅能通过邮件查询存储数据")
                         return
                     }
                     val id = try {
@@ -912,7 +939,7 @@ object CommandPastebin : RawCommand(
 
                 // admin指令
                 "handle", "处理"-> {   // 处理添加和修改申请（审核功能）
-                    if (PastebinConfig.admins.contains(userID).not()) throw PermissionDeniedException()
+                    if (!isAdmin) throw PermissionDeniedException()
                     val name = args[1].content
                     var option = args[2].content
                     val remark = args.getOrElse(3) { "无" }.toString()
@@ -949,7 +976,7 @@ object CommandPastebin : RawCommand(
                 }
 
                 "black", "黑名单"-> {   // 添加/移除黑名单
-                    if (PastebinConfig.admins.contains(userID).not()) throw PermissionDeniedException()
+                    if (!isAdmin) throw PermissionDeniedException()
                     try {
                         val qq = args[1].content.toLong()
                         if (ExtraData.BlackList.contains(qq)) {
@@ -970,7 +997,7 @@ object CommandPastebin : RawCommand(
                 }
 
                 "reload", "重载"-> {   // 重载配置和数据文件
-                    if (PastebinConfig.admins.contains(userID).not()) throw PermissionDeniedException()
+                    if (!isAdmin) throw PermissionDeniedException()
                     try {
                         PastebinConfig.reload()
                         MailConfig.reload()
@@ -980,8 +1007,9 @@ object CommandPastebin : RawCommand(
                         PastebinData.reload()
                         ExtraData.reload()
                         PastebinStorage.reload()
+                        PastebinBucket.reload()
                         CodeCache.reload()
-                        sendQuoteReply("数据重载成功")
+                        sendQuoteReply("配置及数据重载成功")
                     } catch (e: Exception) {
                         logger.warning(e)
                         sendQuoteReply("出现错误：${e.message}")
@@ -1002,7 +1030,7 @@ object CommandPastebin : RawCommand(
         }
     }
 
-    private suspend fun sendStorageMail(
+    suspend fun sendStorageMail(
         sender: CommandSender,
         output: String,
         userID: Long,
@@ -1047,6 +1075,7 @@ object CommandPastebin : RawCommand(
             jakarta.mail.Transport.send(mail)
             sender.sendQuoteReply("[请求使用邮件发送]\n存储数据导出成功（文件总长度：${output.length}），并通过邮件发送，请您登录邮箱查看")
         } catch (cause: jakarta.mail.MessagingException) {
+            logger.warning(cause)
             sender.sendQuoteReply("[请求使用邮件发送]\n存储数据导出成功（文件总长度：${output.length}），但邮件发送失败，原因: ${cause.message}")
         } catch (e: Exception){
             logger.warning(e)

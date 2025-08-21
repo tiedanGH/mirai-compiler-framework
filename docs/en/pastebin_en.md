@@ -252,13 +252,13 @@ The user will see:
 - Sends multiple independent messages in sequence with a 2-second interval (images may take longer).
 ### Usage Help
 - This feature is similar to `MessageChain`. The program must output a `JsonMessage` object, but only the `format`, `at`, and `messageList` parameters are used. **All other parameters in `JsonMessage` will be ignored**.
-  + The `format` field must be set to `"MultipleMessage"` — case-sensitive.
-  + `at` (Boolean) — Specifies **whether to @ the command issuer at the start of each text message**.
-  + `messageList` is a list of `JsonSingleMessage` objects, used to store all messages to be output. **The bot will send the messages one by one in the order they appear in the list.**
+    + The `format` field must be set to `"MultipleMessage"` — case-sensitive.
+    + `at` (Boolean) — Specifies **whether to @ the command issuer at the start of each text message**.
+    + `messageList` is a list of `JsonSingleMessage` objects, used to store all messages to be output. **The bot will send the messages one by one in the order they appear in the list.**
 - The `JsonSingleMessage` object includes the following parameters:
-  + `format` (String) — Output format. The format **cannot** be `json`, `ForwardMessage`, `MessageChain`, or `MultipleMessage`. *(Default: `text`)*
-  + `width` (Int) — Default image width. Not effective when outputting text. *(Default: 600)*
-  + `content` (String) — The content to output, used for sending text or images. *(Default: empty message)*
+    + `format` (String) — Output format. The format **cannot** be `json`, `ForwardMessage`, `MessageChain`, or `MultipleMessage`. *(Default: `text`)*
+    + `width` (Int) — Default image width. Not effective when outputting text. *(Default: 600)*
+    + `content` (String) — The content to output, used for sending text or images. *(Default: empty message)*
 - All of the above parameters are optional. If omitted, the default values will be used.
 ### Output Limits and Markdown Time Limit
 - **A maximum of 15 messages can be output per execution. If this limit is exceeded, the output will be interrupted.**
@@ -308,66 +308,76 @@ The user will see:
 - And both `storage` and `global` are saved.
 
 ## active Proactive Messages
-- Supported only with JSON output.
-- After each execution, you can send a proactive message to a specified group chat (bot must be in the group).
-- For private proactive messages, the user must first execute `#pb private` to set an allowable time period. During this period, the bot can send up to 10 messages to different user IDs.
-- Group and private proactive messages can be used simultaneously.
-- **Use responsibly; logs are retained to prevent abuse.**
-### Usage Instructions
-- This feature requires the program to output a `JsonMessage` object and include an additional parameter `active` (the `format` can be any supported format).
-- **Group proactive messages:** The `active` object must contain two parameters:
-    + `group` (Long) — The target group ID to which the message will be sent.
-    + `content` (String) — The content of the message to be sent. **The message will be prefixed as a notice.**
-- **Private proactive messages:** The `active` object must include a `private` parameter:
-    + `private` (List<SinglePrivateMessage>) — A list of private message objects. Each item must contain two parameters:
-        + `userID` (Long) — The user ID of the message recipient.
-        + `content` (String) — The content of the message. **The message will include a notice and the sender’s user ID.**
+- Only supported in `json` output format.
+- After each execution, custom messages can be sent to specified group chats or private messages. A maximum of 10 messages can be sent per execution, and they cannot contain duplicate group IDs or user IDs.
+- Regarding private active messages: **Users must first run the command `#pb private` to set an available time period. The bot can only send active messages to the user during that period.**
+- Note: Group and private active messages can be used simultaneously.
+- **※ By using this feature, you agree to use it within reasonable limits. Do not use it for spam or harassment. All behavior records can be checked in the bot’s backend.**
+### Usage Help
+- This feature requires the program to output a `JsonMessage` object, with an additional `active` parameter (`format` can be any format).
+- **[Active Message Structure]** `active` is an **array** of multiple active messages, with the following parameters:
+    + `groupID` (Long) — The target group ID to send the message.
+    + `userID` (Long) — The target user ID to send the message.
+    + `message` (`JsonMessage` object) — The message object to be sent. Supports multiple formats; see the detailed description in the JSON output section above.
+- Either `groupID` or `userID` must be filled (if both are filled, only `groupID` is valid). **Messages will be prefixed with `[Active Message]`.**
 ### Examples
-- Below are JSON output examples that use both group and private proactive messaging:
+- Below are JSON output examples for using group and private active messages:
 - Text output with group proactive message, sent to group `114514`
 ```json
 {
     "content": "This is a text message",
-    "active": {
-        "group": 114514,
-        "content": "Message content"
-    }
+    "active": [
+        {
+            "groupID": 114514,
+            "message": {
+                "content": "Message content"
+            }
+        }
+    ]
 }
 ```
-- Text output with private proactive messages sent to users `12345` and `11111`
+- Text format output with private active messages, sending an image and text message to users `12345` and `11111`:
 ```json
 {
     "content": "This is a text message",
-    "active": {
-        "private": [
-            {
-                "userID": 12345,
-                "content": "Private active message 1"
-            },
-            {
-                "userID": 11111,
-                "content": "Private active message 2"
+    "active": [
+        {
+            "userID": 12345,
+            "message": {
+                "format": "markdown",
+                "content": "Private active message (markdown)"
             }
-        ]
-    }
+        },
+        {
+            "userID": 11111,
+            "message": {
+                "content": "Private active message"
+            }
+        }
+    ]
 }
 ```
-- Markdown output with both group and private proactive messages, sent to group `1919810` and user `54321`
+- Markdown format output with both group and private active messages, sending an image and text message to group `1919810` and user `54321`:
 ```json
 {
     "format": "markdown",
     "width": 800,
     "content": "### Markdown Title\n- Text content",
-    "active": {
-        "group": 1919810,
-        "content": "Message content",
-        "private": [
-            {
-                "userID": 54321,
+    "active": [
+        {
+            "groupID": 1919810,
+            "message": {
+                "format": "markdown",
+                "content": "Group active message (markdown)"
+            }
+        },
+        {
+            "userID": 54321,
+            "message": {
                 "content": "Private active message"
             }
-        ]
-    }
+        }
+    ]
 }
 ```
 
@@ -484,6 +494,69 @@ You can enable data storage with:
 ### Example Code Using [Storage + JSON Output]
 - Python example using the storage feature: [https://pastebin.ubuntu.com/p/8dBPp9KJkj/](https://pastebin.ubuntu.com/p/8dBPp9KJkj/)
 - In C++, using the storage feature requires importing `json.h`. (this helper file will be uploaded to Glot when configured). It includes functions for JSON parsing and encoding. See usage and code examples here: [https://pastebin.ubuntu.com/p/qXMJcBdGFt/](https://pastebin.ubuntu.com/p/qXMJcBdGFt/)
+
+## Bucket Cross-Project Storage
+- Buckets can be shared across multiple PB projects (even if the projects come from different authors), and a single project can be linked to multiple Buckets.
+- During input, the program can access data from all linked Buckets, and after execution, update the corresponding Buckets. This can be used for features like global currency, user data, etc.
+- **Buckets can only be linked if the project output format is `json`, `ForwardMessage`, or `Audio`, and storage is enabled.**
+### Command Help
+- Use `#bk help` to view all commands for cross-project Buckets.
+- Steps to create and link:
+    1. Use the `create` command to create a new Bucket.
+    2. Use the `add` command to link your project to the Bucket.
+    3. To unlink, use the `remove` command.
+- Use 「`#bk storage <ID/Name> [Password]`」 to query Bucket contents, useful for program debugging.
+### Usage Help
+- The parameter for Bucket functionality is `bucket`, which is an **array** of `BucketData` (but can be `null`).
+- Each `BucketData` in the array contains:
+    + `id` (Long) — The Bucket ID. **Generated by the system when created, immutable, used for globally unique identification.**
+    + `name` (String) — The Bucket name. **The name can be changed; do not use it for linking Buckets.**
+    + `content` (String) — The current data content of the Bucket. **All projects linked to this Bucket have permission to modify its content.**
+### Program Input Example
+- When storage is enabled and Buckets are linked, the program will input a line containing storage data in JSON format, as shown below:
+```text
+{"storage":"","global":"","bucket":[{"id":1,"name":"Bucket1Name","content":"bucket1Content"}],......}
+[First line of user input]
+[Second line of user input]
+......
+```
+### Program Output Example
+- To update Bucket data, add bucket with correctly configured parameters in the output. If no storage parameter is added, the Bucket will remain unaffected.
+- **If no Bucket ID is specified or the Bucket is not linked, Bucket data cannot be saved.**
+- **Important: Storage works with overwrite logic. Each save will overwrite existing data. If the Bucket is shared across multiple projects or users, be cautious to avoid disrupting other projects.**
+- Below are several output examples:
+- Example 1: Text format output linked to Bucket ID 1
+```json
+{
+    "content": "This is a piece of text",
+    "bucket": [
+        {
+            "id": 1,
+            "content": "Content saved in Bucket1"
+        }
+    ]
+}
+```
+- Example 2: Markdown format output linked to Bucket IDs 2 and 4
+```json
+{
+    "format": "markdown",
+    "width": 600,
+    "content": "### Markdown Title\n- Text content",
+    "bucket": [
+        {
+            "id": 2,
+            "content": "Content saved in Bucket2"
+        },
+        {
+            "id": 4,
+            "content": "Content saved in Bucket2"
+        }
+    ]
+}
+```
+
+---
 
 ## Image Input
 - Users can attach images when executing code. This section explains how to retrieve user-provided images in your program.

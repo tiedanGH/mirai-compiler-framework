@@ -18,6 +18,8 @@ import net.mamoe.mirai.console.util.ConsoleExperimentalApi
 import net.mamoe.mirai.contact.Contact
 import net.mamoe.mirai.contact.Group
 import net.mamoe.mirai.contact.User
+import net.mamoe.mirai.contact.getMember
+import net.mamoe.mirai.contact.nameCardOrNick
 import net.mamoe.mirai.event.GlobalEventChannel
 import net.mamoe.mirai.event.events.MessageEvent
 import net.mamoe.mirai.event.globalEventChannel
@@ -27,6 +29,9 @@ import net.mamoe.mirai.message.data.MessageSource.Key.quote
 import net.mamoe.mirai.utils.ExternalResource.Companion.DEFAULT_FORMAT_NAME
 import net.mamoe.mirai.utils.ExternalResource.Companion.toExternalResource
 import net.mamoe.mirai.utils.info
+import site.tiedan.command.CommandBucket
+import site.tiedan.command.CommandBucket.bucketInfo
+import site.tiedan.command.CommandBucket.formatTime
 import site.tiedan.format.ForwardMessageGenerator.stringToForwardMessage
 import site.tiedan.format.JsonProcessor.blockProhibitedContent
 import site.tiedan.utils.PastebinUrlHelper
@@ -83,6 +88,7 @@ object MiraiCompilerFramework : KotlinPlugin(
     override fun onEnable() {
         CommandGlot.register()
         CommandPastebin.register()
+        CommandBucket.register()
         CommandRun.register()
 
         PastebinConfig.reload()
@@ -93,6 +99,7 @@ object MiraiCompilerFramework : KotlinPlugin(
         PastebinData.reload()
         ExtraData.reload()
         PastebinStorage.reload()
+        PastebinBucket.reload()
         CodeCache.reload()
 
         startTimer()
@@ -105,6 +112,36 @@ object MiraiCompilerFramework : KotlinPlugin(
         GlobalEventChannel.registerListenerHost(Events)
 
         logger.info { "Mirai Compiler Framework loaded" }
+    }
+
+    override fun onDisable() {
+        CommandGlot.unregister()
+        CommandPastebin.unregister()
+        CommandBucket.unregister()
+        CommandRun.unregister()
+    }
+
+    val pendingCommand = mutableMapOf<Long, String>()
+    suspend fun CommandSender.requestUserConfirmation(userID: Long, command: String, alert: String): Boolean? {
+        if (!pendingCommand.contains(userID)) {
+            pendingCommand.put(userID, command)
+            sendQuoteReply(alert)
+            return null
+        }
+        pendingCommand.remove(userID)
+        return true
+    }
+
+    private fun startTimer() {
+        launch {
+            while (true) {
+                val delayTime = calculateNextClearDelay()
+                logger.info { "已重新加载协程，下次定时剩余时间 ${delayTime / 1000} 秒" }
+                delay(delayTime)
+                executeClearBlackList()
+                Statistics.dailyDecayScore()
+            }
+        }
     }
 
     suspend fun CommandSender.sendQuoteReply(msgToSend: String) {
@@ -127,21 +164,15 @@ object MiraiCompilerFramework : KotlinPlugin(
         }
     }
 
-    private fun startTimer() {
-        launch {
-            while (true) {
-                val delayTime = calculateNextClearDelay()
-                logger.info { "已重新加载协程，下次定时剩余时间 ${delayTime / 1000} 秒" }
-                delay(delayTime)
-                executeClearBlackList()
-                Statistics.dailyDecayScore()
-            }
+    fun getNickname(sender: CommandSender, qq: Long): String {
+        val subject = sender.subject
+        var nickname: String? = null
+        if (subject is Group) {
+            nickname = subject.getMember(qq)?.nameCardOrNick
         }
-    }
-
-    override fun onDisable() {
-        CommandGlot.unregister()
-        CommandPastebin.unregister()
-        CommandRun.unregister()
+        if (nickname == null) {
+            nickname = sender.bot?.getFriend(qq)?.nameCardOrNick
+        }
+        return nickname ?: "[未知]"
     }
 }

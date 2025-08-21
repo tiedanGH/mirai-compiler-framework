@@ -23,6 +23,7 @@ object AudioGenerator {
         val content: String = "",
         val storage: String? = null,
         val global: String? = null,
+        val bucket: List<JsonProcessor.BucketData>? = null,
     )
 
     data class AudioData(
@@ -30,46 +31,47 @@ object AudioGenerator {
         val success: Boolean,
         val global: String? = null,
         val storage: String? = null,
+        val bucket: List<JsonProcessor.BucketData>? = null,
         val error: String = "",
     )
 
     suspend fun generateAudio(audioOutput: String, subject: Contact?): AudioData {
-        val result = try {
+        val ret = try {
             json.decodeFromString<AudioMessage>(audioOutput)
         } catch (e: Exception) {
             return AudioData(success = false, error = "[错误] JSON解析错误：\n${e.message}")
         }
-        if (result.content.isBlank()) {
+        if (ret.content.isBlank()) {
             return AudioData(success = false, error = "生成语音失败：content内容为空")
         }
-        if (result.format == "text") {
-            return AudioData(null, false, result.global, result.storage, result.content)
+        if (ret.format == "text") {
+            return AudioData(null, false, ret.global, ret.storage, ret.bucket, ret.content)
         }
         val receiver = subject as? AudioSupported
             ?: return AudioData(success = false, error = "生成语音失败：当前执行环境不支持接收语音消息")
         try {
             val audio = textToSpeech(
-                result.person,
-                result.speed,
-                result.pitch,
-                result.volume,
-                result.content,
+                ret.person,
+                ret.speed,
+                ret.pitch,
+                ret.volume,
+                ret.content,
                 receiver
             )
-            return AudioData(audio, true, result.global, result.storage)
+            return AudioData(audio, true, ret.global, ret.storage, ret.bucket)
         } catch (e: IOException) {
-            return AudioData(null, false, result.global, result.storage, "上传语音失败：${e.message ?: e.toString()}")
+            return AudioData(null, false, ret.global, ret.storage, ret.bucket, "上传语音失败：${e.message ?: e.toString()}")
         } catch (e: IllegalStateException) {
             val message = e.message ?: e.toString()
             if (message.contains("parameter")) {
-                return AudioData(null, false, result.global, result.storage, "生成语音失败（请求参数错误，请查看person支持）：$message")
+                return AudioData(null, false, ret.global, ret.storage, ret.bucket, "生成语音失败（请求参数错误，请查看person支持）：$message")
             } else if (message.contains("rate")) {
-                return AudioData(null, false, result.global, result.storage, "生成语音失败（调用频率过快）：$message")
+                return AudioData(null, false, ret.global, ret.storage, ret.bucket, "生成语音失败（调用频率过快）：$message")
             }
-            return AudioData(null, false, result.global, result.storage, "生成语音失败：$message")
+            return AudioData(null, false, ret.global, ret.storage, ret.bucket, "生成语音失败：$message")
         } catch (e: Exception) {
             logger.warning(e)
-            return AudioData(null, false, result.global, result.storage, "[错误] 生成语音未知错误：${e.message}")
+            return AudioData(null, false, ret.global, ret.storage, ret.bucket, "[错误] 生成语音未知错误：${e.message}")
         }
     }
 
