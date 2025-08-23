@@ -15,8 +15,7 @@ import site.tiedan.format.JsonProcessor.ImageData
 import site.tiedan.MiraiCompilerFramework.TIMEOUT
 import site.tiedan.utils.DownloadHelper.downloadFile
 import java.io.File
-import java.net.URLConnection
-import java.nio.file.Files
+import org.apache.tika.Tika
 import java.util.*
 
 object Base64Processor {
@@ -80,8 +79,9 @@ object Base64Processor {
             "video/mp4" -> Base64Result(true, "mp4", FileType.Video)
             "video/webm" -> Base64Result(true, "webm", FileType.Video)
             "application/pdf" -> Base64Result(true, "pdf", FileType.Application)
+            "application/octet-stream"-> Base64Result(true, "octet-stream", FileType.Application)
             "text/plain" -> Base64Result(true, "txt", FileType.Text)
-            else -> Base64Result(false, "[unknown]", FileType.Error)
+            else -> Base64Result(false, mimeType, FileType.Error)
         }
     }
 
@@ -152,14 +152,12 @@ object Base64Processor {
 
     fun fileToDataUri(file: File): Pair<Boolean, String> {
         return try {
-            val bytes = Files.readAllBytes(file.toPath())
-            val mimeType = Files.probeContentType(file.toPath())
-                ?: URLConnection.guessContentTypeFromName(file.name)
-                ?: "application/octet-stream"
+            val bytes = file.readBytes()
+            val tika = Tika()
+            val mimeType = tika.detect(bytes, file.name)
             val base64 = Base64.getEncoder().encodeToString(bytes)
             Pair(true, "data:$mimeType;base64,$base64")
         } catch (e: Exception) {
-            logger.warning(e)
             Pair(false, e.message.toString())
         }
     }
