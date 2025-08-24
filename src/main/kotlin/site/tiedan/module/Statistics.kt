@@ -7,6 +7,8 @@ import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
 import site.tiedan.data.PastebinStorage
 import net.mamoe.mirai.utils.info
+import site.tiedan.command.CommandBucket.projectsCount
+import site.tiedan.data.PastebinBucket
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -79,6 +81,18 @@ object Statistics {
             totalGlobalStorage += value[0]?.length?.toLong() ?: 0L
             totalUserStorage += getUserStorageSize(value)
         }
+        val totalBucketNum = PastebinBucket.bucket.values.count { it.isNotEmpty() }
+        var totalLinkedProjects = 0L
+        var totalBucketSize = 0L
+        for ((key, value) in PastebinBucket.bucket) {
+            totalLinkedProjects += projectsCount(key)
+            totalBucketSize += value["content"]?.length?.toLong() ?: 0L
+        }
+        val totalBackupSize =
+            PastebinBucket.backups.values
+                .flatten()
+                .filterNotNull()
+                .sumOf { it.content.length }
         var totalCodeCache = 0L
         for ((_, value) in CodeCache.CodeCache) {
             totalCodeCache += value.length
@@ -102,6 +116,10 @@ object Statistics {
             appendLine("💾 存储总数：${PastebinStorage.storage.size}")
             appendLine("  - 全局总大小：$totalGlobalStorage")
             appendLine("  - 用户总大小：$totalUserStorage")
+            appendLine("🗄 存储库总数：$totalBucketNum")
+            appendLine("  - 关联项目数：$totalLinkedProjects")
+            appendLine("  - 存储总大小：$totalBucketSize")
+            appendLine("  - 备份总大小：$totalBackupSize")
             appendLine("📦 代码缓存总数：${CodeCache.CodeCache.size}")
             appendLine("  - 缓存总大小：$totalCodeCache")
         }
