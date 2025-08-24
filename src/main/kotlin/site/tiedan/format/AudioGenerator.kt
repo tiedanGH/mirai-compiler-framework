@@ -12,7 +12,25 @@ import site.tiedan.module.FreeTextToSpeech
 import xyz.cssxsh.baidu.aip.BaiduAipClient
 import java.io.IOException
 
+/**
+ * ## Audio (TTS) 音频输出格式
+ * 输出结构：[AudioMessage]
+ *
+ * @author tiedanGH
+ */
 object AudioGenerator {
+    /**
+     * ### AudioMessage
+     * @param format 仅提供`text`格式输出帮助或调试文本
+     * @param person 音库：设置转换语音的音色
+     * @param speed 语速：支持范围 0-15
+     * @param pitch 音调：支持范围 0-15
+     * @param volume 音量：支持范围 0-15
+     * @param content 要播放的文本内容
+     * @param storage 用户存储数据
+     * @param global 全局存储数据
+     * @param bucket 跨项目存储库数据
+     */
     @Serializable
     data class AudioMessage(
         val format: String = "Audio",
@@ -35,6 +53,11 @@ object AudioGenerator {
         val error: String = "",
     )
 
+    /**
+     * ### 生成音频消息 Audio
+     * @param audioOutput 程序输出JSON格式字符串 [AudioMessage]
+     * @param subject 发送对象
+     */
     suspend fun generateAudio(audioOutput: String, subject: Contact?): AudioData {
         val ret = try {
             json.decodeFromString<AudioMessage>(audioOutput)

@@ -22,6 +22,7 @@ import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
+import site.tiedan.MiraiCompilerFramework.trimToMaxLength
 import site.tiedan.MiraiCompilerFramework.uploadFileToImage
 import site.tiedan.command.CommandBucket.bucketIdsToBucketData
 import site.tiedan.command.CommandBucket.linkedBucketID
@@ -33,25 +34,13 @@ import site.tiedan.data.CodeCache
 import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
 import site.tiedan.data.PastebinStorage
-import site.tiedan.format.AudioGenerator.generateAudio
-import site.tiedan.format.Base64Processor.encodeImagesToBase64
-import site.tiedan.format.Base64Processor.fileToMessage
-import site.tiedan.format.Base64Processor.processBase64
-import site.tiedan.format.ForwardMessageGenerator.anyMessageToForwardMessage
-import site.tiedan.format.ForwardMessageGenerator.generateForwardMessage
+import site.tiedan.format.AudioGenerator
+import site.tiedan.format.Base64Processor
+import site.tiedan.format.ForwardMessageGenerator
 import site.tiedan.format.ForwardMessageGenerator.lineCount
 import site.tiedan.format.ForwardMessageGenerator.removeFirstAt
-import site.tiedan.format.ForwardMessageGenerator.stringToForwardMessage
-import site.tiedan.format.ForwardMessageGenerator.trimToMaxLength
 import site.tiedan.format.JsonProcessor
-import site.tiedan.format.JsonProcessor.blockProhibitedContent
-import site.tiedan.format.JsonProcessor.generateMessageChain
-import site.tiedan.format.JsonProcessor.outputMultipleMessage
-import site.tiedan.format.JsonProcessor.processDecode
-import site.tiedan.format.JsonProcessor.processEncode
-import site.tiedan.format.JsonProcessor.savePastebinStorage
-import site.tiedan.format.MarkdownImageGenerator.processMarkdown
-import site.tiedan.module.RequestLimiter.newRequest
+import site.tiedan.format.MarkdownImageGenerator
 import site.tiedan.utils.DownloadHelper.downloadImage
 import site.tiedan.utils.PastebinUrlHelper
 import java.io.File
@@ -64,10 +53,27 @@ import kotlin.collections.List
 import kotlin.collections.set
 import kotlin.text.isNotBlank
 
+/**
+ * # PastebinCodeExecutor
+ * - 代码执行主进程 [executeMainProcess]
+ * - 处理程序输出格式 [handleOutputFormats]
+ * - 处理并发送主动消息 [handleActiveMessage]
+ * - 辅助模块：
+ *   + 在线API将 LaTeX 转换为图片 [renderLatexOnline]
+ *   + 运行代码并返回输出字符串 [runCodeToString]
+ *
+ * @author tiedanGH
+ */
 object PastebinCodeExecutor {
     private val OutputLock = Mutex()
     private val StorageLock = Mutex()
-    
+
+    /**
+     * ## pb代码执行主进程
+     * @param name 项目名称
+     * @param userInput 用户输入
+     * @param imageUrls 输入图片URL链接
+     */
     suspend fun CommandSender.executeMainProcess(name: String, userInput: String, imageUrls: List<String>) {
 
         val userID = user?.id ?: 10000
@@ -77,7 +83,7 @@ object PastebinCodeExecutor {
             return
         }
 
-        val request = newRequest(userID)
+        val request = RequestLimiter.newRequest(userID)
         if (request.first.isNotEmpty()) {
             sendQuoteReply(request.first)
             if (request.second) return
@@ -167,9 +173,9 @@ object PastebinCodeExecutor {
                 val bucket = bucketIdsToBucketData(linkedBucketID(name))
                 val from = if (subject is Group) "${(subject as Group).name}(${(subject as Group).id})" else "private"
                 val encodeBase64 = PastebinData.pastebin[name]?.get("base64") == "true"
-                val imageData = encodeImagesToBase64(imageUrls, encodeBase64)
+                val imageData = Base64Processor.encodeImagesToBase64(imageUrls, encodeBase64)
 
-                val jsonInput = processEncode(global, storage, bucket, userID, nickname, from, imageData)
+                val jsonInput = JsonProcessor.processEncode(global, storage, bucket, userID, nickname, from, imageData)
                 input = "$jsonInput\n$userInput"
                 logger.info("输入Storage数据: global{${global.length}} storage{${storage.length}} $nickname($userID) $from")
                 if (bucket.isNotEmpty())
@@ -191,7 +197,7 @@ object PastebinCodeExecutor {
 
             // 解析json
             if (outputFormat == "json") {
-                val jsonMessage = processDecode(output)
+                val jsonMessage = JsonProcessor.processDecode(output)
                 if (jsonMessage.error.isNotEmpty()) {
                     if (PastebinConfig.enable_ForwardMessage) {
                         val forward = buildForwardMessage(subject!!) {
@@ -222,7 +228,7 @@ object PastebinCodeExecutor {
                 outputBucket = jsonMessage.bucket
                 if (outputFormat != "MessageChain") {
                     output = if (outputFormat in listOf("markdown", "base64")) jsonMessage.content
-                    else blockProhibitedContent(jsonMessage.content, outputAt, subject is Group).first
+                    else JsonProcessor.blockProhibitedContent(jsonMessage.content, outputAt, subject is Group).first
                 }
                 if (outputFormat == "json") {
                     sendQuoteReply("禁止套娃：不支持在JsonMessage内使用“json”输出格式")
@@ -250,7 +256,7 @@ object PastebinCodeExecutor {
                 is Audio -> sendMessage(message)
                 is ShortVideo -> sendMessage(message)
                 is String -> {
-                    val ret = outputMultipleMessage(name, messageList, outputAt, this)
+                    val ret = JsonProcessor.outputMultipleMessage(name, messageList, outputAt, this)
                     if (ret != null) {
                         sendQuoteReply("【输出多条消息时出错】$ret")
                     }
@@ -275,7 +281,7 @@ object PastebinCodeExecutor {
                     sendQuoteReply("【存储错误】拒绝访问：名称 $name 不存在或未开启存储，保存数据失败！")
                     return
                 }
-                val ret = savePastebinStorage(name, userID, outputGlobal, outputStorage, outputBucket)
+                val ret = JsonProcessor.savePastebinStorage(name, userID, outputGlobal, outputStorage, outputBucket)
                 if (ret != null) sendQuoteReply("【存储错误】$ret")
             }
         } catch (e: Exception) {
@@ -292,6 +298,16 @@ object PastebinCodeExecutor {
         }
     }
 
+    /**
+     * ## 处理程序输出格式
+     * @param name 项目名称
+     * @param output 输出内容
+     * @param outputFormat 输出格式
+     * @param width 图片宽度
+     * @param messageList 消息列表参数
+     * @param title 转发消息的标题
+     * @param updateStorage 更新存储数据函数
+     */
     suspend fun CommandSender.handleOutputFormats(
         name: String,
         output: String,
@@ -309,14 +325,14 @@ object PastebinCodeExecutor {
             // text文本输出
             "text"-> {
                 if ((output.length > MSG_TRANSFER_LENGTH || output.lines().size > 30) && PastebinConfig.enable_ForwardMessage) {
-                    stringToForwardMessage(StringBuilder(output), subject, title)
+                    ForwardMessageGenerator.stringToForwardMessage(StringBuilder(output), subject, title)
                 } else {
                     val messageBuilder = MessageChainBuilder()
                     if (subject is Group && outputAt) {
                         messageBuilder.add(At(user!!))
                         messageBuilder.add("\n")
                     } else {
-                        val ret = blockProhibitedContent(output, at = true, isGroup = false)
+                        val ret = JsonProcessor.blockProhibitedContent(output, at = true, isGroup = false)
                         if (ret.second) messageBuilder.add("${ret.first}\n")
                     }
                     if (output.isEmpty()) {
@@ -329,7 +345,7 @@ object PastebinCodeExecutor {
             }
             // markdown转图片输出
             "markdown"-> {
-                val markdownResult = processMarkdown(name, output, width ?: "600")
+                val markdownResult = MarkdownImageGenerator.processMarkdown(name, output, width ?: "600")
                 if (!markdownResult.success) {
                     return sendQuoteReply(markdownResult.message)
                 }
@@ -339,11 +355,11 @@ object PastebinCodeExecutor {
             }
             // base64自定义格式输出
             "base64"-> {
-                val base64Result = processBase64(output)
+                val base64Result = Base64Processor.processBase64(output)
                 if (!base64Result.success) {
                     return sendQuoteReply(base64Result.extension)
                 }
-                fileToMessage(base64Result.fileType, base64Result.extension, subject, true)
+                Base64Processor.fileToMessage(base64Result.fileType, base64Result.extension, subject, true)
                     ?: return sendQuoteReply("[错误] Base64文件转换时出现未知错误，请联系管理员")
             }
             // 普通图片输出
@@ -375,9 +391,9 @@ object PastebinCodeExecutor {
             }
             // json分支功能MessageChain
             "MessageChain"-> {
-                generateMessageChain(name, messageList, outputAt, this).first.let { messageChain ->
+                JsonProcessor.generateMessageChain(name, messageList, outputAt, this).first.let { messageChain ->
                     if (messageChain.lineCount > 20 && PastebinConfig.enable_ForwardMessage)
-                        anyMessageToForwardMessage(messageChain.removeFirstAt, subject, title)
+                        ForwardMessageGenerator.anyMessageToForwardMessage(messageChain.removeFirstAt, subject, title)
                     else messageChain
                 }
             }
@@ -387,7 +403,7 @@ object PastebinCodeExecutor {
             }
             // 转发消息生成（JSON在内部进行解析）
             "ForwardMessage"-> {
-                val forwardMessageData = generateForwardMessage(name, output, this)
+                val forwardMessageData = ForwardMessageGenerator.generateForwardMessage(name, output, this)
                 outputGlobal = forwardMessageData.global
                 outputStorage = forwardMessageData.storage
                 outputBucket = forwardMessageData.bucket
@@ -395,7 +411,7 @@ object PastebinCodeExecutor {
             }
             // TTS音频消息生成（JSON在内部进行解析）
             "Audio"-> {
-                val audioData = generateAudio(output, subject)
+                val audioData = AudioGenerator.generateAudio(output, subject)
                 outputGlobal = audioData.global
                 outputStorage = audioData.storage
                 outputBucket = audioData.bucket
@@ -412,6 +428,11 @@ object PastebinCodeExecutor {
         updateStorage(outputGlobal, outputStorage, outputBucket)
     }
 
+    /**
+     * ## 处理并发送主动消息
+     * @param name 项目名称
+     * @param activeMessage 主动消息列表
+     */
     suspend fun CommandSender.handleActiveMessage(
         name: String,
         activeMessage: List<JsonProcessor.ActiveMessage>
@@ -498,9 +519,9 @@ object PastebinCodeExecutor {
                     val message = "来自：$senderName($senderID)\n【消息内容】\n"
                     if (msgToSend is ForwardMessage && PastebinConfig.enable_ForwardMessage) {
                         val forward = if (activeSingleMessage.format == "text") {
-                            stringToForwardMessage(StringBuilder(message.plus(activeSingleMessage.content)), subject, "$name[主动消息]")
+                            ForwardMessageGenerator.stringToForwardMessage(StringBuilder(message.plus(activeSingleMessage.content)), subject, "$name[主动消息]")
                         } else {
-                            anyMessageToForwardMessage(PlainText(message).plus(msgToSend), subject, "$name[主动消息]")
+                            ForwardMessageGenerator.anyMessageToForwardMessage(PlainText(message).plus(msgToSend), subject, "$name[主动消息]")
                         }
                         friend.sendMessage(forward)
                     } else {
@@ -527,6 +548,10 @@ object PastebinCodeExecutor {
         }
     }
 
+    /**
+     * ### 在线API将 LaTeX 转换为图片
+     * @param latex 待转换 LaTeX 字符串
+     */
     fun renderLatexOnline(latex: String): String {
         val apiUrl = "https://quicklatex.com/latex3.f"
         val outputFilePath = "${cacheFolder}latex.png"
@@ -565,6 +590,9 @@ object PastebinCodeExecutor {
         }
     }
 
+    /**
+     * 运行代码并返回输出字符串
+     */
     fun runCodeToString(
         name: String,
         language: String,

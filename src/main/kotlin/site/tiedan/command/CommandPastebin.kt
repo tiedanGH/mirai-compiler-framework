@@ -35,8 +35,7 @@ import site.tiedan.data.CodeCache
 import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
 import site.tiedan.data.PastebinStorage
-import site.tiedan.format.MarkdownImageGenerator.generatePastebinListHtml
-import site.tiedan.format.MarkdownImageGenerator.processMarkdown
+import site.tiedan.format.MarkdownImageGenerator
 import site.tiedan.module.GlotAPI
 import site.tiedan.module.Statistics
 import site.tiedan.module.buildMailContent
@@ -52,13 +51,15 @@ import kotlin.io.path.inputStream
 import kotlin.math.ceil
 
 /**
- * 保存部分常用的pastebin链接
+ * # pb代码项目操作指令
+ *
+ * @author tiedanGH
  */
 object CommandPastebin : RawCommand(
     owner = MiraiCompilerFramework,
     primaryName = "pastebin",
     secondaryNames = arrayOf("pb", "代码"),
-    description = "查看和添加pastebin代码",
+    description = "pb代码项目操作指令",
     usage = "${commandPrefix}pb help"
 ){
     private val commandList = arrayOf(
@@ -68,7 +69,7 @@ object CommandPastebin : RawCommand(
         Command("pb stats [名称]", "代码 统计 [名称]", "查看统计", 1),
         Command("pb list [页码/作者]", "代码 列表 [页码/作者]", "查看完整列表", 1),
         Command("pb info <名称>", "代码 信息 <名称>", "查看信息&运行示例", 1),
-        Command("run <名称> [stdin]", "代码 运行 <名称> [输入]", "运行代码", 1),
+        Command("run <名称> [stdin]", "代码 运行 <名称> [输入]", "运行代码项目", 1),
 
         Command("pb add <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]", "代码 添加 <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]", "添加pastebin数据", 2),
         Command("pb set <名称> <参数名> <内容>", "代码 修改 <名称> <参数名> <内容>", "修改程序属性", 2),
@@ -272,7 +273,11 @@ object CommandPastebin : RawCommand(
                         return
                     }
                     if (addPara in arrayOf("default", "全部", "all")) {
-                        val markdownResult = processMarkdown(null, generatePastebinListHtml(), "2000")
+                        val markdownResult = MarkdownImageGenerator.processMarkdown(
+                            name = null,
+                            MarkdownImageGenerator.generatePastebinListHtml(),
+                            width = "2000"
+                        )
                         if (!markdownResult.success) {
                             sendQuoteReply(markdownResult.message)
                             return

@@ -26,13 +26,17 @@ import site.tiedan.config.PastebinConfig
 import site.tiedan.data.PastebinBucket
 import site.tiedan.data.PastebinData
 import site.tiedan.format.JsonProcessor
-import site.tiedan.format.MarkdownImageGenerator.generateBucketListHtml
-import site.tiedan.format.MarkdownImageGenerator.processMarkdown
+import site.tiedan.format.MarkdownImageGenerator
 import java.io.File
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+/**
+ * # 跨项目存储库操作指令
+ *
+ * @author tiedanGH
+ */
 object CommandBucket : RawCommand(
     owner = MiraiCompilerFramework,
     primaryName = "bucket",
@@ -98,7 +102,11 @@ object CommandBucket : RawCommand(
                         sendQuoteReply(" ·bucket存储库列表：\n$bucketList")
                     } else {
                         val showBackups = option in arrayOf("全部", "all", "备份", "backup")
-                        val markdownResult = processMarkdown(null, generateBucketListHtml(showBackups), "750")
+                        val markdownResult = MarkdownImageGenerator.processMarkdown(
+                            name = null,
+                            MarkdownImageGenerator.generateBucketListHtml(showBackups),
+                            width = "750"
+                        )
                         if (!markdownResult.success) {
                             sendQuoteReply(markdownResult.message)
                             return

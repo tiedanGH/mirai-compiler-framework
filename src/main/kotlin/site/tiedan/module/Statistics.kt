@@ -10,8 +10,19 @@ import net.mamoe.mirai.utils.info
 import java.math.BigDecimal
 import java.math.RoundingMode
 
+/**
+ * # 数据统计
+ * - 获取全部统计数据 [getAllStatistics]
+ * - 获取项目统计数据 [getStatistic]
+ * - 汇总语言比例和热门项目统计 [summarizeStatistics]
+ *
+ * @author tiedanGH
+ */
 object Statistics {
 
+    /**
+     * 统计运行次数和热度
+     */
     fun countRun(name: String) {
         createIfNotExist(name)
         val current = ExtraData.statistics[name]?.get("run") ?: 0.0
@@ -21,6 +32,9 @@ object Statistics {
         ExtraData.save()
     }
 
+    /**
+     * 统计调用 markdown 次数和用时
+     */
     fun countMarkdown(name: String, mdTime: Double) {
         createIfNotExist(name)
         val current = ExtraData.statistics[name]?.get("markdown") ?: 0.0
@@ -30,6 +44,9 @@ object Statistics {
         ExtraData.save()
     }
 
+    /**
+     * 统计下载次数和用时
+     */
     fun countDownload(name: String, dlTime: Double) {
         createIfNotExist(name)
         val current = ExtraData.statistics[name]?.get("download") ?: 0.0
@@ -39,6 +56,9 @@ object Statistics {
         ExtraData.save()
     }
 
+    /**
+     * 获取全部统计数据
+     */
     fun getAllStatistics(): String {
         var totalRun = 0L
         var totalMarkdown = 0L
@@ -87,6 +107,9 @@ object Statistics {
         }
     }
 
+    /**
+     * 获取项目统计数据
+     */
     fun getStatistic(name: String): String {
         val stat = ExtraData.statistics[name]
         val run = stat?.get("run")?.toLong() ?: 0L
@@ -142,6 +165,9 @@ object Statistics {
         }
     }
 
+    /**
+     * 汇总语言比例和热门项目统计
+     */
     fun summarizeStatistics(userID: Long?): String {
         val filtered = if (userID == null) {
             PastebinData.pastebin
@@ -186,6 +212,9 @@ object Statistics {
                 top10Project
     }
 
+    /**
+     * 每日热度指数衰减
+     */
     fun dailyDecayScore() {
         for (entry in ExtraData.statistics.values) {
             val rawScore = entry["score"] ?: 0.0

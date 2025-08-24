@@ -1,8 +1,8 @@
 package site.tiedan.utils
 
+import site.tiedan.MiraiCompilerFramework.TIMEOUT
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.module.Statistics
-import site.tiedan.MiraiCompilerFramework.TIMEOUT
 import site.tiedan.module.Statistics.roundTo2
 import java.io.File
 import java.io.FileOutputStream
@@ -14,6 +14,13 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.math.ceil
 
+/**
+ * # 文件下载帮助类
+ * - 下载图片 [downloadImage]
+ * - 下载文件 [downloadFile]
+ *
+ * @author tiedanGH
+ */
 object DownloadHelper {
     private const val CONNECT_TIMEOUT = 6000   // 连接超时时间
     private const val READ_TIMEOUT = 6000      // 读取超时时间

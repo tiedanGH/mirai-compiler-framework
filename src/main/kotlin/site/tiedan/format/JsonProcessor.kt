@@ -1,12 +1,5 @@
 package site.tiedan.format
 
-import site.tiedan.MiraiCompilerFramework.logger
-import site.tiedan.MiraiCompilerFramework.save
-import site.tiedan.MiraiCompilerFramework.uploadFileToImage
-import site.tiedan.config.SystemConfig
-import site.tiedan.data.PastebinStorage
-import site.tiedan.format.Base64Processor.fileToMessage
-import site.tiedan.format.Base64Processor.processBase64
 import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -17,23 +10,46 @@ import net.mamoe.mirai.contact.Group
 import net.mamoe.mirai.message.data.At
 import net.mamoe.mirai.message.data.MessageChain
 import net.mamoe.mirai.message.data.MessageChainBuilder
-import site.tiedan.utils.DownloadHelper.downloadImage
+import net.mamoe.mirai.message.data.PlainText
 import site.tiedan.MiraiCompilerFramework.TIMEOUT
 import site.tiedan.MiraiCompilerFramework.cacheFolder
-import site.tiedan.format.MarkdownImageGenerator.processMarkdown
-import net.mamoe.mirai.message.data.PlainText
+import site.tiedan.MiraiCompilerFramework.logger
+import site.tiedan.MiraiCompilerFramework.save
+import site.tiedan.MiraiCompilerFramework.uploadFileToImage
 import site.tiedan.command.CommandBucket.linkedBucketID
+import site.tiedan.config.SystemConfig
 import site.tiedan.data.PastebinBucket
+import site.tiedan.data.PastebinStorage
 import site.tiedan.module.PastebinCodeExecutor.renderLatexOnline
+import site.tiedan.utils.DownloadHelper.downloadImage
 import java.io.File
 import java.net.URI
 
+/**
+ * ## json 输出格式
+ * 输出结构：[JsonMessage]
+ *
+ * @author tiedanGH
+ */
 object JsonProcessor {
     val json = Json {
         encodeDefaults = true
         ignoreUnknownKeys = true
         coerceInputValues = true
     }
+    /**
+     * ### JsonMessage
+     * @param format 输出格式
+     * @param at 文本消息前是否@指令执行者，**仅在`format`为text和MessageChain时生效**
+     * @param width 图片的默认宽度，当以text输出时，此项参数不生效
+     * @param content 输出的内容，用于输出文字或生成图片
+     * @param messageList 消息链中包含的所有消息，和`content`参数之间仅有一个有效。单条消息结构：[JsonSingleMessage]
+     * @param active 发送主动消息，消息结构：[ActiveMessage]
+     * @param storage 用户存储数据
+     * @param global 全局存储数据
+     * @param bucket 跨项目存储库数据
+     * @param error 用于抛出中断异常。当为非空时，bot会直接发送`error`中的消息，**并停止解析输出中的其他任何参数，存储数据也不会保存**
+     */
     @Serializable
     data class JsonMessage(
         val format: String = "text",
@@ -47,18 +63,37 @@ object JsonProcessor {
         val bucket: List<BucketData>? = null,
         val error: String = "",
     )
+    /**
+     * ### JsonSingleMessage
+     * @param format 输出格式
+     * @param width 图片的默认宽度，当以text输出时，此项参数不生效
+     * @param content 输出的内容，用于输出文字或生成图片
+     */
     @Serializable
     data class JsonSingleMessage(
         val format: String = "text",
         val width: Int = 600,
         val content: String = "空消息",
     )
+    /**
+     * ### ActiveMessage
+     * @param groupID 发送消息的目标群号
+     * @param userID 发送消息的目标用户
+     * @param message 发送的消息对象，支持多格式，消息结构：[ActiveSingleMessage]
+     */
     @Serializable
     data class ActiveMessage(
         val groupID: Long? = null,
         val userID: Long? = null,
         val message: ActiveSingleMessage = ActiveSingleMessage(),
     )
+    /**
+     * ### ActiveSingleMessage
+     * @param format 输出格式
+     * @param width 图片的默认宽度，当以text输出时，此项参数不生效
+     * @param content 输出的内容，用于输出文字或生成图片
+     * @param messageList 消息链中包含的所有消息，和`content`参数之间仅有一个有效。单条消息结构：[JsonSingleMessage]
+     */
     @Serializable
     data class ActiveSingleMessage(
         val format: String = "text",
@@ -90,6 +125,9 @@ object JsonProcessor {
         val error: String = "",
     )
 
+    /**
+     * 解析JSON字符串
+     */
     fun processDecode(jsonOutput: String): JsonMessage {
         return try {
             json.decodeFromString<JsonMessage>(jsonOutput)
@@ -98,6 +136,9 @@ object JsonProcessor {
         }
     }
 
+    /**
+     * 编码JSON字符串
+     */
     fun processEncode(global: String, storage: String, bucket: List<BucketData>, userID: Long, nickname: String, from: String, images: List<ImageData>): String {
         return try {
             val jsonStorageObject = JsonStorage(global, storage, bucket, userID, nickname, from, images)
@@ -107,6 +148,14 @@ object JsonProcessor {
         }
     }
 
+    /**
+     * ###　生成消息链 MessageChain
+     * @param name 项目名称
+     * @param messageList 消息列表，单条消息：[JsonSingleMessage]
+     * @param outputAt 文本消息前是否@指令执行者
+     * @param sender 指令发送者
+     * @param timeUsedRecord 执行已用时间
+     */
     suspend fun generateMessageChain(
         name: String,
         messageList: List<JsonSingleMessage>,
@@ -132,7 +181,7 @@ object JsonProcessor {
                     )
                 }
                 "markdown"-> {
-                    val markdownResult = processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
+                    val markdownResult = MarkdownImageGenerator.processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
                     timeUsed += markdownResult.duration
                     if (!markdownResult.success) {
                         builder.add("[markdown2image错误] ${markdownResult.message}")
@@ -141,13 +190,13 @@ object JsonProcessor {
                     builder.addImageFromFile("${cacheFolder}markdown.png", sender)
                 }
                 "base64"-> {
-                    val base64Result = processBase64(content)
+                    val base64Result = Base64Processor.processBase64(content)
                     if (!base64Result.success) {
                         builder.add(base64Result.extension)
                         continue
                     }
                     builder.add(
-                        fileToMessage(
+                        Base64Processor.fileToMessage(
                             base64Result.fileType,
                             base64Result.extension,
                             sender.subject,
@@ -209,6 +258,13 @@ object JsonProcessor {
         }
     }
 
+    /**
+     * ###　输出多条消息 MultipleMessage
+     * @param name 项目名称
+     * @param messageList 消息列表，单条消息：[JsonSingleMessage]
+     * @param outputAt 文本消息前是否@指令执行者
+     * @param sender 指令发送者
+     */
     suspend fun outputMultipleMessage(
         name: String,
         messageList: List<JsonSingleMessage>,
@@ -236,7 +292,7 @@ object JsonProcessor {
                         sender.sendMessage(builder.build())
                     }
                     "markdown"-> {
-                        val markdownResult = processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
+                        val markdownResult = MarkdownImageGenerator.processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
                         timeUsed += markdownResult.duration
                         if (!markdownResult.success) {
                             sender.sendMessage("[markdown2image错误] ${markdownResult.message}")
@@ -245,13 +301,13 @@ object JsonProcessor {
                         sendLocalImage("${cacheFolder}markdown.png", sender)
                     }
                     "base64"-> {
-                        val base64Result = processBase64(content)
+                        val base64Result = Base64Processor.processBase64(content)
                         if (!base64Result.success) {
                             sender.sendMessage(base64Result.extension)
                             continue
                         }
                         sender.sendMessage(
-                            fileToMessage(
+                            Base64Processor.fileToMessage(
                                 base64Result.fileType,
                                 base64Result.extension,
                                 sender.subject,
@@ -318,7 +374,9 @@ object JsonProcessor {
         }
     }
 
-    // pastebin及bucket数据存储
+    /**
+     * 保存 storage、global、bucket 存储数据
+     */
     fun savePastebinStorage(
         name: String,
         userID: Long,
@@ -360,7 +418,9 @@ object JsonProcessor {
         return ret.takeIf { it.isNotEmpty() }?.toString()
     }
 
-    // 检查json和MessageChain中的禁用内容，发现则返回覆盖文本
+    /**
+     * 检查 json 和 MessageChain 中的禁用内容，发现则返回覆盖文本
+     */
     fun blockProhibitedContent(content: String, at: Boolean, isGroup: Boolean): Pair<String, Boolean> {
         val (blacklist, warning) = if (isGroup) {
             if (at) return content to false

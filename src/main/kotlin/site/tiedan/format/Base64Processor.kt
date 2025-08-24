@@ -5,19 +5,23 @@ import net.mamoe.mirai.contact.Contact
 import net.mamoe.mirai.message.data.Message
 import net.mamoe.mirai.message.data.PlainText
 import net.mamoe.mirai.utils.ExternalResource.Companion.toExternalResource
+import org.apache.tika.Tika
 import site.tiedan.MiraiCompilerFramework.MSG_TRANSFER_LENGTH
+import site.tiedan.MiraiCompilerFramework.TIMEOUT
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.uploadFileToImage
 import site.tiedan.config.PastebinConfig
-import site.tiedan.format.ForwardMessageGenerator.stringToForwardMessage
 import site.tiedan.format.JsonProcessor.ImageData
-import site.tiedan.MiraiCompilerFramework.TIMEOUT
 import site.tiedan.utils.DownloadHelper.downloadFile
 import java.io.File
-import org.apache.tika.Tika
 import java.util.*
 
+/**
+ * ## Base64 输出格式
+ *
+ * @author tiedanGH
+ */
 object Base64Processor {
     enum class FileType {
         Text,
@@ -36,6 +40,9 @@ object Base64Processor {
 
     data class Base64Result(val success: Boolean, val extension: String, val fileType: FileType)
 
+    /**
+     * 解析base64字符串
+     */
     fun processBase64(base64Str: String): Base64Result {
         try {
             val input = base64Str.trim()
@@ -116,6 +123,9 @@ object Base64Processor {
         }
     }
 
+    /**
+     * 将本地文件上传为在线消息
+     */
     suspend fun fileToMessage(fileType: FileType, extension: String, subject: Contact?, supportAll: Boolean): Message? {
         val errorMessage = PlainText("[错误] base64在MessageChain输出格式下不兼容此文件格式，请更换其他输出格式")
         val file = File("${cacheFolder}base64.$extension")
@@ -143,7 +153,7 @@ object Base64Processor {
             FileType.Text -> {
                 val output = file.readText()
                 return if ((output.length > MSG_TRANSFER_LENGTH || output.lines().size > 30) && PastebinConfig.enable_ForwardMessage) {
-                    stringToForwardMessage(StringBuilder(output), subject)
+                    ForwardMessageGenerator.stringToForwardMessage(StringBuilder(output), subject)
                 } else {
                     PlainText(output)
                 }
@@ -155,6 +165,9 @@ object Base64Processor {
         }
     }
 
+    /**
+     * 将图片下载并编码base64
+     */
     fun encodeImagesToBase64(imageUrls: List<String>, encode: Boolean): List<ImageData> {
         val imageData = mutableListOf<ImageData>()
         val errorMessage = "[错误] 图片转换base64时出错，请联系管理员："

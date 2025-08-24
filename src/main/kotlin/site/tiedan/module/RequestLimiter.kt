@@ -4,22 +4,27 @@ import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.data.ExtraData
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * ### 代码请求限制
+ * - 初次警告：最近60秒内达到 15 次
+ * - 二次警告：最近60秒总次数达到 20 次
+ * - 黑名单：最近60秒总次数达到 25 次
+ *
+ * @author tiedanGH
+ */
 object RequestLimiter {
     enum class WarningLevel {
         NONE, FIRST, SECOND
     }
 
-    /**
-     * ### 代码请求限制
-     * - 初次警告：最近60秒内达到 15 次
-     * - 二次警告：最近60秒总次数达到 20 次
-     * - 黑名单：最近60秒总次数达到 25 次
-     */
     private val warningTime: List<Int> = listOf(15, 20, 25)
     private const val DETECTION_TIME: Long = 60_000
     private val userRequestTimes = ConcurrentHashMap<Long, MutableList<Long>>()
     private val userWarningLevels = ConcurrentHashMap<Long, WarningLevel>()
 
+    /**
+     * 记录新执行请求
+     */
     fun newRequest(userID: Long): Pair<String, Boolean> {
         val currentTime = System.currentTimeMillis()
         val requestTimes = userRequestTimes.computeIfAbsent(userID) { mutableListOf() }

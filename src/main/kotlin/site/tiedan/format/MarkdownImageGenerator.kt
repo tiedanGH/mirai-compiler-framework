@@ -31,7 +31,11 @@ import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 import kotlin.math.ceil
 
-@OptIn(ConsoleExperimentalApi::class)
+/**
+ * ## Markdown 输出格式
+ *
+ * @author tiedanGH
+ */
 object MarkdownImageGenerator {
     private val MarkdownLock = Mutex()
     // 操作系统相关信息（仅用于监测内存用量）
@@ -39,7 +43,19 @@ object MarkdownImageGenerator {
 
     data class MarkdownResult(val success: Boolean, val message: String, val duration: Long)
 
-    suspend fun processMarkdown(name: String?, originalContent: String, width: String = "600", timeout: Long = TIMEOUT): MarkdownResult = MarkdownLock.withLock {
+    /**
+     * ### 调用 markdown2image
+     * @param name 项目名称
+     * @param originalContent 待转换原始文本
+     * @param width 图片宽度
+     * @param timeout 时限
+     */
+    suspend fun processMarkdown(
+        name: String?,
+        originalContent: String,
+        width: String = "600",
+        timeout: Long = TIMEOUT
+    ): MarkdownResult = MarkdownLock.withLock {
         var duration = 0.0
         val result = run {
             val content = originalContent.ifBlank { "[警告] `content`内容为空或仅包含空白字符" }
@@ -125,10 +141,14 @@ object MarkdownImageGenerator {
     private fun saveErrorRecord(content: String, prefix: String) {
         val formatter = DateTimeFormatter.ofPattern("yyyyMMdd-HH.mm.ss")
         val dateTime = LocalDateTime.now().format(formatter)
+        @OptIn(ConsoleExperimentalApi::class)
         File("./data/${MiraiCompilerFramework.dataHolderName}/errors/${dateTime}_${prefix}.txt").writeText(content)
         logger.warning("${prefix}报错记录已保存为txt文件")
     }
 
+    /**
+     * 生成pb列表html
+     */
     fun generatePastebinListHtml(): String {
         val entriesList = PastebinData.pastebin.entries.toList()
         val pageLimit = ((entriesList.size + 19) / 20)
@@ -222,6 +242,9 @@ object MarkdownImageGenerator {
         }
     }
 
+    /**
+     * 生成bucket列表html
+     */
     fun generateBucketListHtml(showBackups: Boolean): String {
         return buildString {
             appendLine("""

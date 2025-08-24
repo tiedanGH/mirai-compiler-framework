@@ -12,6 +12,11 @@ import net.mamoe.mirai.message.data.MessageChain
 import net.mamoe.mirai.message.data.content
 import site.tiedan.module.GlotAPI
 
+/**
+ * # 查看框架信息和帮助
+ *
+ * @author tiedanGH
+ */
 object CommandGlot : RawCommand(
     owner = MiraiCompilerFramework,
     primaryName = "glot",
@@ -23,8 +28,9 @@ object CommandGlot : RawCommand(
         Command("glot help", "glot 帮助", "查看框架信息和帮助", 1),
         Command("glot list", "glot 列表", "列出所有支持的编程语言", 1),
         Command("glot template [语言]", "glot 模版 [语言]", "获取指定语言的模板", 1),
-        Command("pb help", "代码 帮助", "查看和添加pastebin代码", 1),
-        Command("run <名称> [输入]", "运行 <名称> [输入]", "运行pastebin中的代码", 1),
+        Command("pb help", "代码 帮助", "pb代码项目操作指令", 1),
+        Command("bucket help", "存储库 帮助", "跨项目存储库操作指令", 1),
+        Command("run <名称> [输入]", "运行 <名称> [输入]", "运行代码项目", 1),
     )
 
     override suspend fun CommandSender.onCommand(args: MessageChain) {

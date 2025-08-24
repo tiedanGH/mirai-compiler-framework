@@ -1,13 +1,7 @@
 package site.tiedan
 
-import site.tiedan.config.MailConfig
-import site.tiedan.config.PastebinConfig
-import site.tiedan.config.SystemConfig
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import net.mamoe.mirai.console.command.CommandManager.INSTANCE.commandPrefix
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.register
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.unregister
 import net.mamoe.mirai.console.command.CommandSender
@@ -17,34 +11,20 @@ import net.mamoe.mirai.console.plugin.jvm.KotlinPlugin
 import net.mamoe.mirai.console.util.ConsoleExperimentalApi
 import net.mamoe.mirai.contact.Contact
 import net.mamoe.mirai.contact.Group
-import net.mamoe.mirai.contact.User
 import net.mamoe.mirai.contact.getMember
 import net.mamoe.mirai.contact.nameCardOrNick
 import net.mamoe.mirai.event.GlobalEventChannel
-import net.mamoe.mirai.event.events.MessageEvent
-import net.mamoe.mirai.event.globalEventChannel
-import net.mamoe.mirai.event.subscribeMessages
-import net.mamoe.mirai.message.data.*
-import net.mamoe.mirai.message.data.MessageSource.Key.quote
+import net.mamoe.mirai.message.data.Image
+import net.mamoe.mirai.message.data.PlainText
+import net.mamoe.mirai.message.data.QuoteReply
+import net.mamoe.mirai.message.data.buildMessageChain
 import net.mamoe.mirai.utils.ExternalResource.Companion.DEFAULT_FORMAT_NAME
 import net.mamoe.mirai.utils.ExternalResource.Companion.toExternalResource
 import net.mamoe.mirai.utils.info
-import site.tiedan.command.CommandBucket
-import site.tiedan.command.CommandBucket.bucketInfo
-import site.tiedan.command.CommandBucket.formatTime
-import site.tiedan.format.ForwardMessageGenerator.stringToForwardMessage
-import site.tiedan.format.JsonProcessor.blockProhibitedContent
-import site.tiedan.utils.PastebinUrlHelper
-import site.tiedan.module.GlotAPI
-import site.tiedan.module.Statistics
-import site.tiedan.module.calculateNextClearDelay
-import site.tiedan.module.executeClearBlackList
-import site.tiedan.command.CommandGlot
-import site.tiedan.command.CommandPastebin
-import site.tiedan.command.CommandRun
-import site.tiedan.config.DockerConfig
+import site.tiedan.command.*
+import site.tiedan.config.*
 import site.tiedan.data.*
-import site.tiedan.module.Events
+import site.tiedan.module.*
 import java.io.File
 
 object MiraiCompilerFramework : KotlinPlugin(
@@ -77,9 +57,9 @@ object MiraiCompilerFramework : KotlinPlugin(
         "Audio",
     )
     @OptIn(ConsoleExperimentalApi::class)
-    val cacheFolder = "./data/${MiraiCompilerFramework.dataHolderName}/cache/"
+    val cacheFolder = "./data/$dataHolderName/cache/"
     @OptIn(ConsoleExperimentalApi::class)
-    val imageFolder = "./data/${MiraiCompilerFramework.dataHolderName}/images/"
+    val imageFolder = "./data/$dataHolderName/images/"
 
     var THREAD = 0
 
@@ -144,6 +124,9 @@ object MiraiCompilerFramework : KotlinPlugin(
         }
     }
 
+    /**
+     * 发送引用消息
+     */
     suspend fun CommandSender.sendQuoteReply(msgToSend: String) {
         if (this is CommandSenderOnMessage<*>) {
             sendMessage(buildMessageChain {
@@ -155,6 +138,9 @@ object MiraiCompilerFramework : KotlinPlugin(
         }
     }
 
+    /**
+     * 上传文件至在线图片
+     */
     suspend fun Contact.uploadFileToImage(file: File): Image? {
         return file.toExternalResource().use { resource ->     // 返回结果图片
             if (resource.formatName == DEFAULT_FORMAT_NAME) {
@@ -164,6 +150,39 @@ object MiraiCompilerFramework : KotlinPlugin(
         }
     }
 
+    /**
+     * 按最大长度截断字符串
+     */
+    fun trimToMaxLength(input: String, maxLength: Int = 30000): Pair<String, Boolean> {
+        var currentCount = 0
+        val sb = StringBuilder()
+        for (ch in input) {
+            val len = ch.chineseLength
+            if (currentCount + len > maxLength) {
+                return sb.toString() to true
+            }
+            sb.append(ch)
+            currentCount += len
+        }
+        return sb.toString() to false
+    }
+
+    /**
+     * 中文字符长度
+     */
+    private val Char.chineseLength: Int
+        get() {
+            return when (this) {
+                in '\u0000'..'\u007F' -> 1
+                in '\u0080'..'\u07FF' -> 2
+                in '\u0800'..'\uFFFF' -> 3
+                else -> 4
+            }
+        }
+
+    /**
+     * 获取用户昵称
+     */
     fun getNickname(sender: CommandSender, qq: Long): String {
         val subject = sender.subject
         var nickname: String? = null

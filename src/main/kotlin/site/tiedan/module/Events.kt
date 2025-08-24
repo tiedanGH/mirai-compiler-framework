@@ -28,18 +28,25 @@ import site.tiedan.MiraiCompilerFramework.MSG_TRANSFER_LENGTH
 import site.tiedan.MiraiCompilerFramework.THREAD
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
+import site.tiedan.MiraiCompilerFramework.trimToMaxLength
 import site.tiedan.command.CommandRun.queryImageUrls
 import site.tiedan.config.DockerConfig
 import site.tiedan.config.PastebinConfig
 import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
-import site.tiedan.format.ForwardMessageGenerator.stringToForwardMessage
-import site.tiedan.format.ForwardMessageGenerator.trimToMaxLength
-import site.tiedan.format.JsonProcessor.blockProhibitedContent
+import site.tiedan.format.ForwardMessageGenerator
+import site.tiedan.format.JsonProcessor
 import site.tiedan.module.PastebinCodeExecutor.executeMainProcess
 import site.tiedan.utils.PastebinUrlHelper
 import kotlin.coroutines.CoroutineContext
 
+/**
+ * # 事件监听
+ * - 快捷前缀执行pastebin中的代码 [commandRunOnEvent]
+ * - 直接run任意代码 [codeRunOnEvent]
+ *
+ * @author tiedanGH
+ */
 object Events : SimpleListenerHost() {
 
     override fun handleException(context: CoroutineContext, exception: Throwable) {
@@ -49,16 +56,17 @@ object Events : SimpleListenerHost() {
     @Suppress("unused")
     @EventHandler(priority = EventPriority.NORMAL)
     internal suspend fun MessageEvent.process() {
-        // 快捷前缀执行pastebin中的代码
         if (message.content.startsWith(PastebinConfig.QUICK_PREFIX)) {
             return toCommandSender().commandRunOnEvent(message)
         }
-        // 直接run任意代码
         if (message.content.startsWith(CMD_PREFIX)) {
             return toCommandSender().codeRunOnEvent(message)
         }
     }
 
+    /**
+     * 快捷前缀执行pastebin中的代码
+     */
     suspend fun CommandSender.commandRunOnEvent(message: MessageChain) {
         val msg = message.content.removePrefix(PastebinConfig.QUICK_PREFIX).trim()
         val args = msg.split(" ")
@@ -76,10 +84,12 @@ object Events : SimpleListenerHost() {
                 ?.let { imageUrls.addAll(0, it) }
         }
 
-        // 执行代码并输出
         this.executeMainProcess(name, userInput, imageUrls)
     }
 
+    /**
+     * 直接run任意代码
+     */
     private suspend fun CommandSender.codeRunOnEvent(message: MessageChain) {
         if (ExtraData.BlackList.contains(user?.id)) {
             return logger.info("${user?.id}已被拉黑，请求被拒绝")
@@ -195,7 +205,7 @@ object Events : SimpleListenerHost() {
             builder.add(At(sender.user!!))
             builder.add("\n")
         } else {
-            val ret = blockProhibitedContent(result.stdout, at = true, isGroup = false)
+            val ret = JsonProcessor.blockProhibitedContent(result.stdout, at = true, isGroup = false)
             if (ret.second) builder.add("${ret.first}\n")
         }
 
@@ -217,7 +227,7 @@ object Events : SimpleListenerHost() {
             }
             // 输出内容过长，改为转发消息
             if ((sb.length > MSG_TRANSFER_LENGTH || sb.lines().size > 30) && PastebinConfig.enable_ForwardMessage) {
-                return stringToForwardMessage(sb, sender.subject)
+                return ForwardMessageGenerator.stringToForwardMessage(sb, sender.subject)
             }
             // 非转发消息截断
             if (sb.length > MSG_MAX_LENGTH) {

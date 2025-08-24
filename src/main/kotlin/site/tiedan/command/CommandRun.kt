@@ -11,11 +11,16 @@ import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.data.PastebinData
 import site.tiedan.module.PastebinCodeExecutor.executeMainProcess
 
+/**
+ * # 运行代码项目
+ *
+ * @author tiedanGH
+ */
 object CommandRun : RawCommand(
     owner = MiraiCompilerFramework,
     primaryName = "run",
     secondaryNames = arrayOf("运行"),
-    description = "运行pastebin中的代码",
+    description = "运行代码项目",
     usage = "${commandPrefix}run <名称> [输入]"
 ){
     val Image_Path = "file:///${MiraiCompilerFramework.dataFolderPath.toString().replace("\\", "/")}/images/"

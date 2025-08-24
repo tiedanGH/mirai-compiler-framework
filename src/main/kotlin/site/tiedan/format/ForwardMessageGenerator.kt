@@ -16,19 +16,32 @@ import site.tiedan.MiraiCompilerFramework.TIMEOUT
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.uploadFileToImage
-import site.tiedan.format.AudioGenerator.generateAudio
-import site.tiedan.format.Base64Processor.fileToMessage
-import site.tiedan.format.Base64Processor.processBase64
-import site.tiedan.format.JsonProcessor.JsonMessage
-import site.tiedan.format.JsonProcessor.generateMessageChain
+import site.tiedan.MiraiCompilerFramework.trimToMaxLength
 import site.tiedan.format.JsonProcessor.json
-import site.tiedan.format.MarkdownImageGenerator.processMarkdown
 import site.tiedan.module.PastebinCodeExecutor.renderLatexOnline
 import site.tiedan.utils.DownloadHelper.downloadImage
 import java.io.File
 import java.net.URI
 
+/**
+ * ## ForwardMessage 输出格式
+ * 输出结构：[JsonForwardMessage]
+ *
+ * @author tiedanGH
+ */
 object ForwardMessageGenerator {
+    /**
+     * ### JsonForwardMessage
+     * @param title 转发消息卡片的标题，点开后也会显示在页面最上方
+     * @param brief 转发消息显示在消息列表中的预览，仅在消息列表中可见
+     * @param preview 转发消息卡片的预览，可添加多条（但最多只能显示前3条），展示在标题下方。
+     * @param summary 展示在转发消息卡片的底部
+     * @param name 转发消息内部bot显示的昵称
+     * @param messages 转发消息内包含的所有消息，消息结构：[JsonProcessor.JsonMessage]
+     * @param storage 用户存储数据
+     * @param global 全局存储数据
+     * @param bucket 跨项目存储库数据
+     */
     @Serializable
     data class JsonForwardMessage(
         val title: String = "运行结果",
@@ -36,7 +49,7 @@ object ForwardMessageGenerator {
         val preview: List<String> = listOf("无预览"),
         val summary: String = "聊天记录",
         val name: String = "输出内容",
-        val messages: List<JsonMessage> = listOf(JsonMessage()),
+        val messages: List<JsonProcessor.JsonMessage> = listOf(JsonProcessor.JsonMessage()),
         val storage: String? = null,
         val global: String? = null,
         val bucket: List<JsonProcessor.BucketData>? = null,
@@ -49,6 +62,12 @@ object ForwardMessageGenerator {
         val bucket: List<JsonProcessor.BucketData>? = null,
     )
 
+    /**
+     * ### 生成转发消息 ForwardMessage
+     * @param name 项目名称
+     * @param forwardMessageOutput 程序输出JSON格式字符串 [JsonForwardMessage]
+     * @param sender 指令发送者
+     */
     suspend fun generateForwardMessage(name: String, forwardMessageOutput: String, sender: CommandSender): ForwardMessageData {
         val subject = sender.subject
         val result = try {
@@ -84,7 +103,7 @@ object ForwardMessageGenerator {
                             subject.bot named result.name says content
                         }
                         "markdown"-> {
-                            val markdownResult = processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
+                            val markdownResult = MarkdownImageGenerator.processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
                             timeUsed += markdownResult.duration
                             if (!markdownResult.success) {
                                 subject.bot named "Error" says "[markdown2image错误] ${markdownResult.message}"
@@ -102,13 +121,13 @@ object ForwardMessageGenerator {
                             }
                         }
                         "base64"-> {
-                            val base64Result = processBase64(content)
+                            val base64Result = Base64Processor.processBase64(content)
                             if (!base64Result.success) {
                                 subject.bot named "Error" says base64Result.extension
                                 continue
                             }
                             subject.bot named result.name says (
-                                fileToMessage(
+                                Base64Processor.fileToMessage(
                                     base64Result.fileType,
                                     base64Result.extension,
                                     subject,
@@ -161,7 +180,7 @@ object ForwardMessageGenerator {
                         }
                         // content中可使用Audio输出格式
                         "Audio"-> {
-                            val audioData = generateAudio(content, subject)
+                            val audioData = AudioGenerator.generateAudio(content, subject)
                             if (audioData.success) {
                                 subject.bot named result.name says (audioData.audio ?: PlainText("[语言消息错误]"))   // 添加语言消息
                             } else {
@@ -170,7 +189,7 @@ object ForwardMessageGenerator {
                         }
                         // json分支功能MessageChain
                         "MessageChain"-> {
-                            val pair = generateMessageChain(name, m.messageList, false, sender, timeUsed)
+                            val pair = JsonProcessor.generateMessageChain(name, m.messageList, false, sender, timeUsed)
                             timeUsed = pair.second
                             subject.bot named result.name says pair.first
                         }
@@ -202,7 +221,9 @@ object ForwardMessageGenerator {
     }
 
 
-    // 字符串转ForwardMessage
+    /**
+     * 字符串转 ForwardMessage
+     */
     fun stringToForwardMessage(sb: StringBuilder, subject: Contact?, title: String? = null): ForwardMessage {
         val (resultString, tooLong) = trimToMaxLength(sb.toString())
         return buildForwardMessage(subject!!) {
@@ -226,30 +247,9 @@ object ForwardMessageGenerator {
         }
     }
 
-    fun trimToMaxLength(input: String, maxLength: Int = 30000): Pair<String, Boolean> {
-        var currentCount = 0
-        val sb = StringBuilder()
-        for (ch in input) {
-            val len = ch.chineseLength
-            if (currentCount + len > maxLength) {
-                return sb.toString() to true
-            }
-            sb.append(ch)
-            currentCount += len
-        }
-        return sb.toString() to false
-    }
-
-    private val Char.chineseLength: Int
-        get() {
-            return when (this) {
-                in '\u0000'..'\u007F' -> 1
-                in '\u0080'..'\u07FF' -> 2
-                in '\u0800'..'\uFFFF' -> 3
-                else -> 4
-            }
-        }
-
+    /**
+     * Message 转 ForwardMessage
+     */
     fun anyMessageToForwardMessage(message: Message, subject: Contact?, title: String? = null): ForwardMessage {
         return buildForwardMessage(subject!!) {
             displayStrategy = object : ForwardMessage.DisplayStrategy {
