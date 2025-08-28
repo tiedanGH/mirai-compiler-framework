@@ -269,7 +269,8 @@ object JsonProcessor {
         name: String,
         messageList: List<JsonSingleMessage>,
         outputAt: Boolean,
-        sender: CommandSender
+        sender: CommandSender,
+        extraText: PlainText = PlainText("")
     ): String? {
         try {
             var timeUsed: Long = 0
@@ -289,62 +290,62 @@ object JsonProcessor {
                             if (content.isBlank()) "　"
                             else blockProhibitedContent(content, outputAt, sender.subject is Group).first
                         )
-                        sender.sendMessage(builder.build())
+                        sender.sendMessage(extraText + builder.build())
                     }
                     "markdown"-> {
                         val markdownResult = MarkdownImageGenerator.processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
                         timeUsed += markdownResult.duration
                         if (!markdownResult.success) {
-                            sender.sendMessage("[markdown2image错误] ${markdownResult.message}")
+                            sender.sendMessage(extraText + "[markdown2image错误] ${markdownResult.message}")
                             continue
                         }
-                        sendLocalImage("${cacheFolder}markdown.png", sender)
+                        sendLocalImage("${cacheFolder}markdown.png", sender, extraText)
                     }
                     "base64"-> {
                         val base64Result = Base64Processor.processBase64(content)
                         if (!base64Result.success) {
-                            sender.sendMessage(base64Result.extension)
+                            sender.sendMessage(extraText + base64Result.extension)
                             continue
                         }
-                        sender.sendMessage(
+                        sender.sendMessage(extraText.plus(
                             Base64Processor.fileToMessage(
                                 base64Result.fileType,
                                 base64Result.extension,
                                 sender.subject,
                                 true
                             ) ?: PlainText("[错误] Base64文件转换时出现未知错误，请联系管理员")
-                        )
+                        ))
                     }
                     "image"-> {
                         if (content.startsWith("file:///")) {
                             if (!File(URI(content)).exists()) {
-                                sender.sendMessage("[错误] 本地图片文件不存在，请检查路径")
+                                sender.sendMessage(extraText + "[错误] 本地图片文件不存在，请检查路径")
                                 continue
                             }
-                            sendLocalImage(content, sender)
+                            sendLocalImage(content, sender, extraText)
                         } else {
                             val downloadResult = downloadImage(name, content, cacheFolder, "image", TIMEOUT - timeUsed, force = true)
                             timeUsed += downloadResult.duration
                             if (!downloadResult.success) {
-                                sender.sendMessage(downloadResult.message)
+                                sender.sendMessage(extraText + downloadResult.message)
                                 continue
                             }
-                            sendLocalImage("${cacheFolder}image", sender)
+                            sendLocalImage("${cacheFolder}image", sender, extraText)
                         }
                     }
                     "LaTeX"-> {
                         val renderResult = renderLatexOnline(content)
                         if (renderResult.startsWith("QuickLaTeX")) {
-                            sender.sendMessage("[错误] $renderResult")
+                            sender.sendMessage(extraText + "[错误] $renderResult")
                             continue
                         }
-                        sendLocalImage("${cacheFolder}latex.png", sender)
+                        sendLocalImage("${cacheFolder}latex.png", sender, extraText)
                     }
                     "json", "ForwardMessage", "MessageChain", "MultipleMessage", "Audio"-> {
-                        sender.sendMessage("[错误] 不支持在JsonSingleMessage内使用“${m.format}”输出格式")
+                        sender.sendMessage(extraText + "[错误] 不支持在JsonSingleMessage内使用“${m.format}”输出格式")
                     }
                     else -> {
-                        sender.sendMessage("[错误] 无效的输出格式：${m.format}，请检查此条消息的format参数")
+                        sender.sendMessage(extraText + "[错误] 无效的输出格式：${m.format}，请检查此条消息的format参数")
                     }
                 }
                 delay(2000)
@@ -356,7 +357,7 @@ object JsonProcessor {
         }
     }
 
-    private suspend fun sendLocalImage(filePath: String, sender: CommandSender) {
+    private suspend fun sendLocalImage(filePath: String, sender: CommandSender, extraText: PlainText) {
         val file = if (filePath.startsWith("file:///")) {
             File(URI(filePath))
         } else {
@@ -365,12 +366,12 @@ object JsonProcessor {
         try {
             val image = sender.subject?.uploadFileToImage(file)
             if (image == null)
-                sender.sendMessage("[错误] 图片文件异常：ExternalResource上传失败")
+                sender.sendMessage(extraText + "[错误] 图片文件异常：ExternalResource上传失败")
             else
-                sender.sendMessage(image)       // 发送图片
+                sender.sendMessage(extraText + image)       // 发送图片
         } catch (e: Exception) {
             logger.warning(e)
-            sender.sendMessage("[错误] 图片文件异常：${e.message}")
+            sender.sendMessage(extraText + "[错误] 图片文件异常：${e.message}")
         }
     }
 

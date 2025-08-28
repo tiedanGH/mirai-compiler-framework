@@ -3,6 +3,7 @@ package site.tiedan.module
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import net.mamoe.mirai.console.command.CommandSender
+import net.mamoe.mirai.console.command.CommandSender.Companion.asCommandSender
 import net.mamoe.mirai.contact.Group
 import net.mamoe.mirai.message.data.At
 import net.mamoe.mirai.message.data.Audio
@@ -441,8 +442,33 @@ object PastebinCodeExecutor {
         val senderName = this.name
 
         var result = ""
-        val seenGroupIDs = mutableSetOf<Long>()
-        val seenUserIDs = mutableSetOf<Long>()
+
+        /**
+         * 发送消息接口函数
+         */
+        suspend fun <T> sendMessageToTarget(
+            index: Int,
+            idLabel: String,
+            idValue: Long,
+            target: T?,
+            sendAction: suspend (T) -> Unit
+        ) {
+            if (target != null) {
+                try {
+                    sendAction(target)
+                    delay(1000)
+                } catch (e: Exception) {
+                    result += "\n[(${index + 1})$idLabel] 消息发送出错：${e.message}"
+                }
+            } else {
+                result += if (idLabel == "群聊") {
+                    "\n[(${index + 1})群聊] 消息发送失败：bot未加入此群聊($idValue)，请检查群号是否正确或联系bot所有者"
+                } else {
+                    "\n[(${index + 1})私信] 消息发送失败：获取好友失败($idValue)，请检查userID是否正确"
+                }
+            }
+        }
+
         activeMessage.forEachIndexed { index, activeMessage ->
             if (index >= 10) {
                 return "$result\n[上限] 执行中断：单次主动消息上限为10条"
@@ -455,6 +481,7 @@ object PastebinCodeExecutor {
                 return@forEachIndexed
             }
 
+            var isMultipleMessage = false
             // 解析并生成输出内容
             val message = handleOutputFormats(
                 name,
@@ -467,6 +494,10 @@ object PastebinCodeExecutor {
             ) { _, _, _ -> /* ignore */ }
             val msgToSend: Message = when (message) {
                 is MessageChain, is ForwardMessage, is Image -> message
+                is String -> {
+                    isMultipleMessage = true
+                    PlainText("主动消息MultipleMessage输出模式")
+                }
                 null -> PlainText("[处理消息失败] 意料之外的消息结果 null，请联系管理员")
                 else -> PlainText("[处理消息失败] 主动消息不支持的输出消息类型或内容，请联系管理员：\n" +
                         trimToMaxLength(message.toString(), 300).first
@@ -475,67 +506,80 @@ object PastebinCodeExecutor {
 
             // 群聊主动消息
             if (groupID != null) {
-                if (!seenGroupIDs.add(groupID)) {
-                    result += "\n[(${index + 1})群聊] 消息发送失败：检测到重复groupID($groupID)"
-                    return@forEachIndexed
-                }
                 val group = bot?.getGroup(groupID)
-                if (group != null) {
-                    try {
-                        if (msgToSend is ForwardMessage && PastebinConfig.enable_ForwardMessage) {
-                            group.sendMessage(msgToSend)
+                sendMessageToTarget(index, "群聊", groupID, group) { g ->
+                    if (msgToSend is ForwardMessage && PastebinConfig.enable_ForwardMessage) {
+                        g.sendMessage(msgToSend)
+                    } else if (isMultipleMessage) {
+                        val groupCommandSender = user?.id?.let { g[it]?.asCommandSender(false) }
+                        val ret: String? = if (groupCommandSender != null) {
+                            JsonProcessor.outputMultipleMessage(
+                                name,
+                                activeSingleMessage.messageList,
+                                false,
+                                groupCommandSender,
+                                PlainText("【$name[多条主动消息]】\n")
+                            )
                         } else {
-                            group.sendMessage(PlainText("【$name[主动消息]】\n").plus(msgToSend))
+                            result += "\n[(${index + 1})群聊] 输出多条消息出错：从目标群获取用户(${user?.id})失败"
+                            null
                         }
-                        delay(1000)
-                    } catch (e: Exception) {
-                        result += "\n[(${index + 1})群聊] 消息发送出错：${e.message}"
+                        if (ret != null) {
+                            result += "\n[(${index + 1})群聊] 输出多条消息出错：$ret"
+                        }
+                    } else {
+                        g.sendMessage(PlainText("【$name[主动消息]】\n").plus(msgToSend))
                     }
-                } else {
-                    result += "\n[(${index + 1})群聊] 消息发送失败：bot未加入此群聊($groupID)，请检查群号是否正确或联系bot所有者"
                 }
                 return@forEachIndexed
             }
             // 私信主动消息
             if (userID == null) return@forEachIndexed
-            if (!seenUserIDs.add(userID)) {
-                result += "\n[(${index + 1})私信] 消息发送失败：检测到重复userID($userID)"
-                return@forEachIndexed
-            }
             val friend = bot?.getFriend(userID)
-            if (friend != null) {
-                val now = LocalTime.now().hour
-                val allowTime = ExtraData.private_allowTime[userID]
-                if (allowTime != null) {
-                    if (notInAllowTime(now, allowTime.first, allowTime.second)) {
-                        result += "\n[(${index + 1})私信] 权限不足：不在${userID}设置的可用时间段内"
-                        return@forEachIndexed
-                    }
-                } else {
-                    result += "\n[(${index + 1})私信] 权限不足：${userID}不允许任何主动消息"
-                    return@forEachIndexed
-                }
-                try {
-                    val message = "来自：$senderName($senderID)\n【消息内容】\n"
-                    if (msgToSend is ForwardMessage && PastebinConfig.enable_ForwardMessage) {
-                        val forward = if (activeSingleMessage.format == "text") {
-                            ForwardMessageGenerator.stringToForwardMessage(StringBuilder(message.plus(activeSingleMessage.content)), subject, "$name[主动消息]")
-                        } else {
-                            ForwardMessageGenerator.anyMessageToForwardMessage(PlainText(message).plus(msgToSend), subject, "$name[主动消息]")
-                        }
-                        friend.sendMessage(forward)
-                    } else {
-                        friend.sendMessage(PlainText("【$name[主动消息]】\n$message").plus(msgToSend))
-                    }
-                    delay(1000)
-                } catch (e: Exception) {
-                    result += "\n[(${index + 1})私信] 消息发送出错：${e.message}"
+            val now = LocalTime.now().hour
+            val allowTime = ExtraData.private_allowTime[userID]
+            if (allowTime != null) {
+                if (notInAllowTime(now, allowTime.first, allowTime.second)) {
+                    result += "\n[(${index + 1})私信] 权限不足：不在${userID}设置的可用时间段内"
                     return@forEachIndexed
                 }
             } else {
-                result += "\n[(${index + 1})私信] 消息发送失败：获取好友失败($userID)，请检查userID是否正确"
+                result += "\n[(${index + 1})私信] 权限不足：${userID}不允许任何主动消息"
                 return@forEachIndexed
             }
+            sendMessageToTarget(index, "私信", userID, friend) { f ->
+                val preMessage = "来自：$senderName($senderID)\n【消息内容】\n"
+                if (msgToSend is ForwardMessage && PastebinConfig.enable_ForwardMessage) {
+                    val forward = if (activeSingleMessage.format == "text") {
+                        ForwardMessageGenerator.stringToForwardMessage(
+                            StringBuilder(preMessage.plus(activeSingleMessage.content)),
+                            subject,
+                            "$name[主动消息]"
+                        )
+                    } else {
+                        ForwardMessageGenerator.anyMessageToForwardMessage(
+                            PlainText(preMessage).plus(msgToSend),
+                            subject,
+                            "$name[主动消息]"
+                        )
+                    }
+                    f.sendMessage(forward)
+                } else if (isMultipleMessage) {
+                    val ret = JsonProcessor.outputMultipleMessage(
+                        name,
+                        activeSingleMessage.messageList,
+                        false,
+                        f.asCommandSender(),
+                        PlainText("【$name[多条主动消息]】\n$preMessage")
+                    )
+                    if (ret != null) {
+                        result += "\n[(${index + 1})私信] 输出多条消息出错：$ret"
+                    }
+                } else {
+                    f.sendMessage(PlainText("【$name[主动消息]】\n$preMessage").plus(msgToSend))
+                }
+            }
+            return@forEachIndexed
         }
         return result
     }
