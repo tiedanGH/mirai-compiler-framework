@@ -386,7 +386,10 @@ object JsonProcessor {
         bucket: List<BucketData>?
     ): String? {
         if (global == null && storage == null && bucket == null) return null
-        logger.info("保存Storage数据：global{${global?.length}} storage{${storage?.length}}")
+        logger.info (
+            "保存存储数据: global{${global?.length}} storage{${storage?.length}} " +
+            "bucket{${bucket?.joinToString(" ") { "[${it.id}](${it.content?.length})" }}}"
+        )
         val storageMap = PastebinStorage.storage.getOrPut(name) {
             mutableMapOf<Long, String>().apply { put(0, "") }
         }
@@ -401,7 +404,6 @@ object JsonProcessor {
         PastebinStorage.save()
 
         if (bucket == null) return null
-        logger.info("保存Bucket数据：" + bucket.joinToString(" ") { "[${it.id}]{${it.content?.length}}" })
         val ret = StringBuilder()
         val seenBucketIDs = mutableSetOf<Long>()
         bucket.forEachIndexed { index, data ->

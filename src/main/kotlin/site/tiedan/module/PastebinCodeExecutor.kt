@@ -167,7 +167,7 @@ object PastebinCodeExecutor {
 
             // 输入存储的数据
             if (storageMode == "true") {
-                if (StorageLock.isLocked) logger.info("(${userID})执行$name [存储]进程执行请求等待中...")
+                if (StorageLock.isLocked) logger.debug("(${userID})执行$name [存储]进程执行请求等待中...")
                 StorageLock.lock()
                 val global = PastebinStorage.storage[name]?.get(0) ?: ""
                 val storage = PastebinStorage.storage[name]?.get(userID) ?: ""
@@ -178,9 +178,11 @@ object PastebinCodeExecutor {
 
                 val jsonInput = JsonProcessor.processEncode(global, storage, bucket, userID, nickname, from, imageData)
                 input = "$jsonInput\n$userInput"
-                logger.info("输入Storage数据: global{${global.length}} storage{${storage.length}} $nickname($userID) $from")
-                if (bucket.isNotEmpty())
-                    logger.info("输入Bucket数据：" + bucket.joinToString(" ") { "[${it.id}]{${it.content?.length}}" })
+                logger.info(
+                    "输入存储数据: global{${global.length}} storage{${storage.length}} " +
+                    "bucket{${bucket.joinToString(" ") { "[${it.id}](${it.content?.length})" }}} " +
+                    "$nickname($userID) $from"
+                )
             }
 
             logger.debug("[DEBUG] input:\n$input")
@@ -238,7 +240,7 @@ object PastebinCodeExecutor {
             }
             // 非text输出需锁定输出进程
             if (outputFormat != "text") {
-                if (OutputLock.isLocked) logger.info("(${userID})执行$name [输出]进程执行请求等待中...")
+                if (OutputLock.isLocked) logger.debug("(${userID})执行$name [输出]进程执行请求等待中...")
                 OutputLock.lock()
             }
             // 输出内容生成
