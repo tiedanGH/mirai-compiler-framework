@@ -1,12 +1,6 @@
 package site.tiedan.format
 
-import site.tiedan.command.CommandRun.Image_Path
-import site.tiedan.MiraiCompilerFramework
-import site.tiedan.MiraiCompilerFramework.logger
 import com.sun.management.OperatingSystemMXBean
-import site.tiedan.config.SystemConfig
-import site.tiedan.data.ExtraData
-import site.tiedan.data.PastebinData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -14,12 +8,18 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import net.mamoe.mirai.console.util.ConsoleExperimentalApi
+import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.TIMEOUT
 import site.tiedan.MiraiCompilerFramework.cacheFolder
+import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.command.CommandBucket.formatTime
 import site.tiedan.command.CommandBucket.isBucketEmpty
 import site.tiedan.command.CommandBucket.projectsCount
+import site.tiedan.command.CommandRun.Image_Path
+import site.tiedan.config.SystemConfig
+import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinBucket
+import site.tiedan.data.PastebinData
 import site.tiedan.module.Statistics
 import site.tiedan.module.Statistics.roundTo2
 import java.io.File
@@ -149,17 +149,68 @@ object MarkdownImageGenerator {
     /**
      * 生成pb列表html
      */
-    fun generatePastebinListHtml(): String {
-        val entriesList = PastebinData.pastebin.entries.toList()
-        val pageLimit = ((entriesList.size + 19) / 20)
-        val columnsPerRow = 5   // 每行 5 页
-        val rowCount = ((pageLimit + columnsPerRow - 1) / columnsPerRow)
+    data class Filter(
+        val project: String? = null,
+        val author: String? = null,
+        val page: Int? = null,
+    )
+    fun generatePastebinListHtml(sortMode: String, f: Filter): String {
+        val isFilterEnabled = f.author != null || f.project != null || f.page != null
+        val columnsPerRow = if (isFilterEnabled) 1 else 5
+        val projectsPerPage = 20
+
+        val titleText = if (isFilterEnabled) "Pastebin列表" else "Pastebin完整列表"
+        val sortText = when (sortMode) {
+            "run"-> "（总执行次数排序）"
+            "score"-> "（热度排序）"
+            else-> ""
+        }
+        val filterText = listOfNotNull(
+            f.project?.let { "项目筛选：$it" },
+            f.author?.let { "作者筛选：$it" },
+            f.page?.let { "页码查询：$it" }
+        ).takeIf { it.isNotEmpty() }?.joinToString("；", prefix = "<br>[", postfix = "]") ?: ""
+
+        val baseEntries = PastebinData.pastebin.entries
+            .asSequence()
+            .filter { entry ->
+                val projectMatch = f.project?.let { keyword ->
+                    entry.key.contains(keyword, ignoreCase = true) ||
+                            PastebinData.alias.entries.find { it.value == entry.key }?.key?.contains(keyword, ignoreCase = true) == true
+                } != false
+                val authorMatch = f.author?.let { keyword ->
+                    entry.value["author"]?.contains(keyword, ignoreCase = true) == true ||
+                            entry.value["userID"]?.contains(keyword) == true
+                } != false
+                projectMatch && authorMatch
+            }
+        val filteredEntries = f.page?.let { page ->
+            val pageIndex = (page - 1).coerceAtLeast(0)
+            baseEntries.drop(pageIndex * projectsPerPage).take(projectsPerPage)
+        } ?: baseEntries
+        val entriesList: List<Map.Entry<String, MutableMap<String, String>>> = when (sortMode) {
+            "run" -> filteredEntries
+                .sortedByDescending { entry -> ExtraData.statistics[entry.key]?.get("run") ?: 0.0 }
+                .toList()
+            "score" -> filteredEntries
+                .sortedByDescending { entry -> ExtraData.statistics[entry.key]?.get("score") ?: 0.0 }
+                .toList()
+            else -> filteredEntries.toList()
+        }
+
+        val totalPage = ((entriesList.size + 19) / 20)
+        val rowCount = ((totalPage + columnsPerRow - 1) / columnsPerRow)
 
         return buildString {
             appendLine("""
             <style>
                 h1 {
                     text-align: center;
+                    margin-bottom: 0;
+                }
+                h3 {
+                    text-align: center;
+                    margin-top: 0;
                     margin-bottom: 16px;
                 }
                 .main-table {
@@ -200,16 +251,17 @@ object MarkdownImageGenerator {
                 .inner-table th.author-col, .inner-table td.author-col { width: 35%; }
             </style>
             """.trimIndent())
-            appendLine("<h1>Pastebin完整列表</h1>")
+            appendLine("<h1>$titleText$sortText</h1><h3>$filterText</h3>")
             appendLine("<table class='main-table'><tbody>")
             for (row in 0 until rowCount) {
                 appendLine("<tr>")
                 for (col in 0 until columnsPerRow) {
                     val pageIndex = row * columnsPerRow + col
-                    if (pageIndex < pageLimit) {
-                        val start = pageIndex * 20
-                        val end = minOf(start + 20, entriesList.size)
-                        appendLine("<td><div class='page-caption'>第 ${pageIndex + 1} 页</div>")
+                    if (pageIndex < totalPage) {
+                        val start = pageIndex * projectsPerPage
+                        val end = minOf(start + projectsPerPage, entriesList.size)
+                        val page = if (f.page != null) f.page.coerceAtLeast(1) else pageIndex + 1
+                        appendLine("<td><div class='page-caption'>第 $page 页</div>")
                         appendLine("<table class='inner-table'><thead>")
                         appendLine("<tr><th class='name-col'>名称</th><th class='lang-col'>语言</th><th class='author-col'>作者</th></tr>")
                         appendLine("</thead><tbody>")
@@ -238,7 +290,7 @@ object MarkdownImageGenerator {
                 appendLine("</tr>")
             }
             appendLine("</tbody></table>")
-            appendLine("<p style='text-align:center; margin-top:16px;'>共 ${entriesList.size} 条，分 $pageLimit 页显示</p>")
+            appendLine("<p style='text-align:center; margin-top:16px;'>共 ${entriesList.size} 条，分 $totalPage 页显示</p>")
         }
     }
 

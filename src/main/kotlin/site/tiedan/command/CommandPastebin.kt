@@ -63,26 +63,26 @@ object CommandPastebin : RawCommand(
     usage = "${commandPrefix}pb help"
 ){
     private val commandList = arrayOf(
-        Command("pb support", "代码 支持", "目前pb支持的网站", 1),
-        Command("pb profile [QQ]", "代码 简介 [QQ]", "查看个人信息", 1),
-        Command("pb private", "代码 私信时段", "允许私信主动消息", 1),
-        Command("pb stats [名称]", "代码 统计 [名称]", "查看统计", 1),
-        Command("pb list [页码/作者]", "代码 列表 [页码/作者]", "查看完整列表", 1),
-        Command("pb info <名称>", "代码 信息 <名称>", "查看信息&运行示例", 1),
-        Command("run <名称> [stdin]", "代码 运行 <名称> [输入]", "运行代码项目", 1),
+        Command("pb support", "pb 支持", "目前pb支持的网站", 1),
+        Command("pb profile [QQ]", "pb 简介 [QQ]", "查看个人信息", 1),
+        Command("pb private", "pb 私信时段", "允许私信主动消息", 1),
+        Command("pb stats [名称]", "pb 统计 [名称]", "查看统计", 1),
+        Command("pb list [查询模式]", "pb 列表 [查询模式]", "查看完整列表", 1),
+        Command("pb info <名称>", "pb 信息 <名称>", "查看信息&运行示例", 1),
+        Command("run <名称> [stdin]", "pb 运行 <名称> [输入]", "运行代码项目", 1),
 
-        Command("pb add <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]", "代码 添加 <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]", "添加pastebin数据", 2),
-        Command("pb set <名称> <参数名> <内容>", "代码 修改 <名称> <参数名> <内容>", "修改程序属性", 2),
-        Command("pb delete <名称>", "代码 删除 <名称>", "删除一条数据", 2),
+        Command("pb add <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]", "pb 添加 <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]", "添加pastebin数据", 2),
+        Command("pb set <名称> <参数名> <内容>", "pb 修改 <名称> <参数名> <内容>", "修改程序属性", 2),
+        Command("pb delete <名称>", "pb 删除 <名称>", "删除一条数据", 2),
 
-        Command("pb set <名称> format <输出格式> [宽度/存储]", "代码 修改 <名称> 输出格式 <输出格式> [宽度/存储]", "修改输出格式", 3),
-        Command("pb upload <图片名称(需要包含拓展名)> <【图片/URL】>", "代码 上传 <图片名称(需要包含拓展名)> <【图片/URL】>", "上传图片至缓存", 3),
-        Command("pb storage <名称> [查询ID]", "代码 存储 <名称> [查询ID]", "查询存储数据", 3),
+        Command("pb set <名称> format <输出格式> [宽度/存储]", "pb 修改 <名称> 输出格式 <输出格式> [宽度/存储]", "修改输出格式", 3),
+        Command("pb upload <图片名称(需要包含拓展名)> <【图片/URL】>", "pb 上传 <图片名称(需要包含拓展名)> <【图片/URL】>", "上传图片至缓存", 3),
+        Command("pb storage <名称> [查询ID]", "pb 存储 <名称> [查询ID]", "查询存储数据", 3),
         Command("bucket help", "存储库 帮助", "跨项目存储库操作指令", 3),
 
-        Command("pb handle <名称> <同意/拒绝> [备注]", "代码 处理 <名称> <同意/拒绝> [备注]", "处理添加和修改申请", 4),
-        Command("pb black [qq]", "代码 黑名单 [QQ号]", "黑名单处理", 4),
-        Command("pb reload", "代码 重载", "重载本地数据", 4),
+        Command("pb handle <名称> <同意/拒绝> [备注]", "pb 处理 <名称> <同意/拒绝> [备注]", "处理添加和修改申请", 4),
+        Command("pb black [qq]", "pb 黑名单 [QQ号]", "黑名单处理", 4),
+        Command("pb reload", "pb 重载", "重载本地数据", 4),
     )
 
     override suspend fun CommandSender.onCommand(args: MessageChain) {
@@ -243,83 +243,124 @@ object CommandPastebin : RawCommand(
                 }
 
                 "list", "列表"-> {   // 查看完整列表
-                    val pageLimit = ceil(PastebinData.pastebin.size.toDouble() / 20).toInt()
-                    val addPara = args.getOrElse(1) { "default" }.toString()
-                    var page = addPara.toIntOrNull() ?: 0
-                    if (page < 0) page = 0
-                    if (!PastebinConfig.enable_ForwardMessage && page == 0) { page = 1 }
-                    if (page > pageLimit) {
-                        sendQuoteReply("指定的页码 $page 超过了最大页数 $pageLimit")
-                        return
-                    }
-                    val pastebinList: MutableList<String> = mutableListOf("")
-                    val findAuthorMode = addPara != page.toString() && arrayOf("作者", "author", "全部", "all", "default", "0", "转发").contains(addPara).not()
-                    if (findAuthorMode) {
-                        var found = false
-                        for ((key, value) in PastebinData.pastebin) {
-                            val author = value["author"] ?: continue
-                            if (author.contains(addPara, ignoreCase = true)) {
-                                found = true
+                    val commandPbList = arrayOf(
+                        Command("pb list [all]", "pb 列表 [全部]", "图片输出完整列表", 1),
+                        Command("pb list forward [作者]", "pb 列表 转发 [作者]", "转发消息输出完整列表", 1),
+
+                        Command("pb list run [作者名]", "pb 列表 次数 [作者名]", "根据总执行次数排序", 2),
+                        Command("pb list heat [作者名]", "pb 列表 热度 [作者名]", "根据热度排序", 2),
+
+                        Command("pb list search <项目名> [作者名]", "pb 列表 搜索 <项目名> [作者名]", "根据关键词搜索项目", 3),
+                        Command("pb list author <作者名>", "pb 列表 作者 <作者名>", "根据作者关键词筛选", 3),
+                        Command("pb list page <页数>", "pb 列表 页码 <页数>", "根据页码查询", 3),
+                    )
+                    val mode = args.getOrElse(1) { PlainText("all") }.content
+                    val para1 = args.getOrNull(2)?.content
+                    val para2 = args.getOrNull(3)?.content
+                    val totalPage = ceil(PastebinData.pastebin.size.toDouble() / 20).toInt()
+                    when (mode) {
+                        "help"-> {
+                            var reply = "📜 查看完整列表：\n" +
+                                    commandPbList.filter { it.type == 1 }.joinToString("") { "${commandPrefix}${it.usage}　${it.desc}\n" } +
+                                    "📊 列表统计与排序：\n" +
+                                    commandPbList.filter { it.type == 2 }.joinToString("") { "${commandPrefix}${it.usage}　${it.desc}\n" } +
+                                    "🔍 列表搜索与筛选：\n" +
+                                    commandPbList.filter { it.type == 3 }.joinToString("") { "${commandPrefix}${it.usage}　${it.desc}\n" }
+                            sendQuoteReply(reply)
+                        }
+
+                        "帮助"-> {
+                            var reply = "📜 查看完整列表：\n" +
+                                    commandPbList.filter { it.type == 1 }.joinToString("") { "${commandPrefix}${it.usageCN}　${it.desc}\n" } +
+                                    "📊 列表统计与排序：\n" +
+                                    commandPbList.filter { it.type == 2 }.joinToString("") { "${commandPrefix}${it.usageCN}　${it.desc}\n" } +
+                                    "🔍 列表搜索与筛选：\n" +
+                                    commandPbList.filter { it.type == 3 }.joinToString("") { "${commandPrefix}${it.usageCN}　${it.desc}\n" }
+                            sendQuoteReply(reply)
+                        }
+
+                        "all", "全部",
+                        "run", "次数",
+                        "heat", "热度",
+                        "author", "作者",
+                        "search", "搜索",
+                        "page", "页码"-> {
+                            val sortMode = when (mode) {
+                                in arrayOf("run", "次数")-> "run"
+                                in arrayOf("heat", "热度")-> "score"
+                                else-> "normal"
+                            }
+                            val filter = when (mode) {
+                                in arrayOf("all", "全部", "run", "次数", "heat", "热度", "author", "作者") ->
+                                    MarkdownImageGenerator.Filter(author = para1)
+                                in arrayOf("search", "搜索") ->
+                                    MarkdownImageGenerator.Filter(project = para1, author = para2)
+                                in arrayOf("page", "页码") ->
+                                    MarkdownImageGenerator.Filter(page = para1?.toIntOrNull())
+                                else ->
+                                    MarkdownImageGenerator.Filter()
+                            }
+                            val markdownResult = MarkdownImageGenerator.processMarkdown(
+                                name = null,
+                                MarkdownImageGenerator.generatePastebinListHtml(sortMode, filter),
+                                width = if (para1 == null) "2000" else "600"
+                            )
+                            if (!markdownResult.success) {
+                                sendQuoteReply(markdownResult.message)
+                                return
+                            }
+                            val file = File("${cacheFolder}markdown.png")
+                            val image = subject?.uploadFileToImage(file)
+                                ?: return sendQuoteReply("[错误] 图片文件异常：ExternalResource上传失败，请尝试重新执行")
+                            sendMessage(image)
+                        }
+
+                        "forward", "转发"-> {
+                            if (!PastebinConfig.enable_ForwardMessage) {
+                                sendQuoteReply("当前未开启转发消息，无法使用此方法查询列表！")
+                                return
+                            }
+                            val pastebinList: MutableList<String> = mutableListOf("")
+                            var pageIndex = 0
+                            PastebinData.pastebin.entries.forEachIndexed { index, (key, value) ->
                                 val language = value["language"] ?: "[数据异常]"
+                                val author = value["author"] ?: "[数据异常]"
+                                val isShowAuthor = para1 in listOf("author", "作者") || mode in listOf("page", "页码")
                                 val censorNote = if (PastebinData.censorList.contains(key)) "（审核中）" else ""
-                                pastebinList[0] += "$key     $language $author$censorNote\n"
-                            }
-                        }
-                        if (found) {
-                            sendQuoteReply("·根据作者的查找结果：\n${pastebinList[0]}")
-                        } else {
-                            sendQuoteReply("在全部pastebin列表中未能找到此作者的记录：$addPara")
-                        }
-                        return
-                    }
-                    if (addPara in arrayOf("default", "全部", "all")) {
-                        val markdownResult = MarkdownImageGenerator.processMarkdown(
-                            name = null,
-                            MarkdownImageGenerator.generatePastebinListHtml(),
-                            width = "2000"
-                        )
-                        if (!markdownResult.success) {
-                            sendQuoteReply(markdownResult.message)
-                            return
-                        }
-                        val file = File("${cacheFolder}markdown.png")
-                        val image = subject?.uploadFileToImage(file)
-                            ?: return sendQuoteReply("[错误] 图片文件异常：ExternalResource上传失败，请尝试重新执行")
-                        sendMessage(image)
-                    } else {
-                        var pageIndex = 0
-                        PastebinData.pastebin.entries.forEachIndexed { index, (key, value) ->
-                            val language = value["language"] ?: "[数据异常]"
-                            val author = value["author"] ?: "[数据异常]"
-                            val isShowAuthor = addPara in listOf("作者", "author", "全部", "all") || page > 0
-                            val censorNote = if (PastebinData.censorList.contains(key)) "（审核中）" else ""
-                            pastebinList[pageIndex] += buildString {
-                                append("$key     $language")
-                                if (isShowAuthor) append(" $author")
-                                append(censorNote)
-                                appendLine()
-                            }
-                            val isLastItem = index == PastebinData.pastebin.size - 1
-                            val isPageEnd = index % 20 == 19
-                            if (isPageEnd || isLastItem) {
-                                pastebinList[pageIndex] += "-----第 ${pageIndex + 1} 页 / 共 $pageLimit 页-----"
-                                if (!isLastItem) {
-                                    pastebinList.add("")
-                                    pageIndex++
+                                pastebinList[pageIndex] += buildString {
+                                    append("$key     $language")
+                                    if (isShowAuthor) append(" $author")
+                                    append(censorNote)
+                                    appendLine()
+                                }
+                                val isLastItem = index == PastebinData.pastebin.size - 1
+                                val isPageEnd = index % 20 == 19
+                                if (isPageEnd || isLastItem) {
+                                    pastebinList[pageIndex] += "-----第 ${pageIndex + 1} 页 / 共 $totalPage 页-----"
+                                    if (!isLastItem) {
+                                        pastebinList.add("")
+                                        pageIndex++
+                                    }
                                 }
                             }
-                        }
-                        if (addPara in arrayOf("0", "作者", "author", "转发") && PastebinConfig.enable_ForwardMessage) {
                             try {
                                 val forward: ForwardMessage = buildForwardMessage(subject!!) {
                                     displayStrategy = object : ForwardMessage.DisplayStrategy {
-                                        override fun generateTitle(forward: RawForwardMessage): String = "Pastebin完整列表"
-                                        override fun generateBrief(forward: RawForwardMessage): String = "[Pastebin列表]"
+                                        override fun generateTitle(forward: RawForwardMessage): String =
+                                            "Pastebin完整列表"
+
+                                        override fun generateBrief(forward: RawForwardMessage): String =
+                                            "[Pastebin列表]"
+
                                         override fun generatePreview(forward: RawForwardMessage): List<String> =
-                                            mutableListOf("项目总数：${PastebinData.pastebin.size}",
+                                            mutableListOf(
+                                                "项目总数：${PastebinData.pastebin.size}",
                                                 "缓存数量：${CodeCache.CodeCache.size}",
-                                                "存储数量：${PastebinStorage.storage.size}")
-                                        override fun generateSummary(forward: RawForwardMessage): String = "总计 ${PastebinData.pastebin.size} 条代码链接"
+                                                "存储数量：${PastebinStorage.storage.size}"
+                                            )
+
+                                        override fun generateSummary(forward: RawForwardMessage): String =
+                                            "总计 ${PastebinData.pastebin.size} 条代码链接"
                                     }
                                     for ((index, str) in pastebinList.withIndex()) {
                                         subject!!.bot named "第${index + 1}页" says str
@@ -331,8 +372,16 @@ object CommandPastebin : RawCommand(
                                 sendQuoteReply("[转发消息错误]\n处理列表或发送转发消息时发生错误，请联系管理员查看后台，简要错误信息：${e.message}")
                                 return
                             }
-                        } else {
-                            sendQuoteReply(" ·pastebin列表：\n${pastebinList[page - 1]}")
+                        }
+
+                        else-> {
+                            var reply = "📜 查看完整列表：\n" +
+                                    commandPbList.filter { it.type == 1 }.joinToString("") { "${commandPrefix}${it.usage}　${it.desc}\n" } +
+                                    "📊 列表统计与排序：\n" +
+                                    commandPbList.filter { it.type == 2 }.joinToString("") { "${commandPrefix}${it.usage}　${it.desc}\n" } +
+                                    "🔍 列表搜索与筛选：\n" +
+                                    commandPbList.filter { it.type == 3 }.joinToString("") { "${commandPrefix}${it.usage}　${it.desc}\n" }
+                            sendQuoteReply("[未知查询方法] $mode\n\n$reply")
                         }
                     }
                 }
@@ -483,7 +532,7 @@ object CommandPastebin : RawCommand(
                         "数据存储" to "storage",
                         "图片base64" to "base64",
                     )
-                    option = paraMap[option] ?: option
+                    option = paraMap.getOrDefault(option, option)
                     if (paraMap.values.contains(option).not()) {
                         sendQuoteReply(
                             "未知的配置项：$option\n" +
@@ -580,15 +629,18 @@ object CommandPastebin : RawCommand(
                                 sendQuoteReply("转移失败：输入的 userID 不是整数")
                                 return
                             }
-                            requestUserConfirmation(userID, args.content,
-                                " +++⚠️ 危险操作警告 ⚠️+++\n" +
-                                "您正在转移项目 $name 的所有权，转移前请确保您已知晓：\n" +
-                                "- 转移后您将*完全失去*项目管理权\n" +
-                                "- 此操作*不可撤销*\n" +
-                                "- 请务必确认目标用户ID准确且有效\n" +
-                                "\n" +
-                                "如您确认无误，请再次执行转移指令以完成操作"
-                            ) ?: return
+                            if (!isAdmin) {
+                                requestUserConfirmation(
+                                    userID, args.content,
+                                    " +++⚠️ 危险操作警告 ⚠️+++\n" +
+                                    "您正在转移项目 $name 的所有权，转移前请确保您已知晓：\n" +
+                                    "- 转移后您将*完全失去*项目管理权\n" +
+                                    "- 此操作*不可撤销*\n" +
+                                    "- 请务必确认目标用户ID准确且有效\n" +
+                                    "\n" +
+                                    "如您确认无误，请再次执行转移指令以完成操作"
+                                ) ?: return
+                            }
 
                             PastebinData.pastebin[name]?.set("userID", content)
                         }
