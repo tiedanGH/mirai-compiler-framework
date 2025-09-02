@@ -254,11 +254,12 @@
 - 此功能和MessageChain相似，需要程序输出`JsonMessage`对象，但仅使用`format`、`at`和`messageList`参数，**传入`JsonMessage`中的其他参数均不生效**
     + `format`中必须填写“MultipleMessage”，注意大小写
     + `at`(Boolean)——为**每条text文本消息开头**是否@指令执行者
-    + `messageList`为由数个`JsonSingleMessage`对象组成的列表，用于保存需要输出的所有消息，**bot会按照元素在列表中的顺序依次发送消息**。
-- `JsonSingleMessage`中包含下方几个参数：
-    + `format`(String)——为输出的格式，此处格式不能使用json、ForwardMessage、MessageChain和MultipleMessage *（默认为text）*
+    + `messageList`为由数个`SingleChainMessage`对象组成的列表，用于保存需要输出的所有消息，**bot会按照元素在列表中的顺序依次发送消息**。
+- `SingleChainMessage`中包含下方几个参数：
+    + `format`(String)——为输出的格式，此处格式不能使用json、ForwardMessage、Audio和MultipleMessage *（默认为text）*
     + `width`(Int)——图片的默认宽度，当以text输出时，此项参数不生效 *（默认为600）*
     + `content`(String)——输出的内容，用于发送文字或图片 *（默认为“空消息”）*
+    + `messageList`为由数个`JsonSingleMessage`对象组成的列表，用于保存消息链中包含的所有消息（仅用于MessageChain格式）。
 - 上方的全部参数均不是必填项，如没有填写则按照默认值生成
 ### 输出限制和markdown时限
 - **单次执行时最多输出 15 条消息，超过限制输出会被中断**

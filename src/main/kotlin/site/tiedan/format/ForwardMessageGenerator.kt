@@ -18,6 +18,7 @@ import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.uploadFileToImage
 import site.tiedan.MiraiCompilerFramework.trimToMaxLength
 import site.tiedan.format.JsonProcessor.json
+import site.tiedan.format.JsonProcessor.toJsonSingleMessages
 import site.tiedan.module.PastebinCodeExecutor.renderLatexOnline
 import site.tiedan.utils.DownloadHelper.downloadImage
 import java.io.File
@@ -189,7 +190,7 @@ object ForwardMessageGenerator {
                         }
                         // json分支功能MessageChain
                         "MessageChain"-> {
-                            val pair = JsonProcessor.generateMessageChain(name, m.messageList, false, sender, timeUsed)
+                            val pair = JsonProcessor.generateMessageChain(name, m.messageList.toJsonSingleMessages(), false, sender, timeUsed)
                             timeUsed = pair.second
                             subject.bot named result.name says pair.first
                         }

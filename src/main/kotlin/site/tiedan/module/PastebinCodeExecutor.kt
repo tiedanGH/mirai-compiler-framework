@@ -41,6 +41,8 @@ import site.tiedan.format.ForwardMessageGenerator
 import site.tiedan.format.ForwardMessageGenerator.lineCount
 import site.tiedan.format.ForwardMessageGenerator.removeFirstAt
 import site.tiedan.format.JsonProcessor
+import site.tiedan.format.JsonProcessor.toJsonSingleMessages
+import site.tiedan.format.JsonProcessor.toSingleChainMessages
 import site.tiedan.format.MarkdownImageGenerator
 import site.tiedan.utils.DownloadHelper.downloadImage
 import site.tiedan.utils.PastebinUrlHelper
@@ -120,7 +122,7 @@ object PastebinCodeExecutor {
             var output = ""
             var outputFormat = format
             var outputAt = true
-            var messageList: List<JsonProcessor.JsonSingleMessage> = listOf(JsonProcessor.JsonSingleMessage())
+            var messageList: List<JsonProcessor.SingleChainMessage> = listOf(JsonProcessor.SingleChainMessage())
             var activeMessage: List<JsonProcessor.ActiveMessage>? = null
             var outputGlobal: String? = null
             var outputStorage: String? = null
@@ -317,13 +319,10 @@ object PastebinCodeExecutor {
         outputFormat: String,
         outputAt: Boolean,
         width: String?,
-        messageList: List<JsonProcessor.JsonSingleMessage>,
+        messageList: List<JsonProcessor.SingleChainMessage>,
         title: String?,
         updateStorage: (String?, String?, List<JsonProcessor.BucketData>?) -> Unit
     ): Any? {
-        var outputGlobal: String? = null
-        var outputStorage: String? = null
-        var outputBucket: List<JsonProcessor.BucketData>? = null
         return when (outputFormat) {
             // text文本输出
             "text"-> {
@@ -394,7 +393,7 @@ object PastebinCodeExecutor {
             }
             // json分支功能MessageChain
             "MessageChain"-> {
-                JsonProcessor.generateMessageChain(name, messageList, outputAt, this).first.let { messageChain ->
+                JsonProcessor.generateMessageChain(name, messageList.toJsonSingleMessages(), outputAt, this).first.let { messageChain ->
                     if (messageChain.lineCount > 20 && PastebinConfig.enable_ForwardMessage)
                         ForwardMessageGenerator.anyMessageToForwardMessage(messageChain.removeFirstAt, subject, title)
                     else messageChain
@@ -407,19 +406,15 @@ object PastebinCodeExecutor {
             // 转发消息生成（JSON在内部进行解析）
             "ForwardMessage"-> {
                 val forwardMessageData = ForwardMessageGenerator.generateForwardMessage(name, output, this)
-                outputGlobal = forwardMessageData.global
-                outputStorage = forwardMessageData.storage
-                outputBucket = forwardMessageData.bucket
+                updateStorage(forwardMessageData.global, forwardMessageData.storage, forwardMessageData.bucket)
                 forwardMessageData.forwardMessage     // 返回ForwardMessage
             }
             // TTS音频消息生成（JSON在内部进行解析）
             "Audio"-> {
                 val audioData = AudioGenerator.generateAudio(output, subject)
-                outputGlobal = audioData.global
-                outputStorage = audioData.storage
-                outputBucket = audioData.bucket
+                updateStorage(audioData.global, audioData.storage, audioData.bucket)
                 if (audioData.success) {
-                    audioData.audio
+                    audioData.audio     // 返回Audio
                 } else {
                     sendQuoteReply(audioData.error)
                 }
@@ -428,7 +423,6 @@ object PastebinCodeExecutor {
                 sendQuoteReply("代码执行完成但无法输出：无效的输出格式：$outputFormat，请联系创建者修改格式")
             }
         }
-        updateStorage(outputGlobal, outputStorage, outputBucket)
     }
 
     /**
@@ -491,7 +485,7 @@ object PastebinCodeExecutor {
                 activeSingleMessage.format,
                 false,
                 activeSingleMessage.width.toString(),
-                activeSingleMessage.messageList,
+                activeSingleMessage.messageList.toSingleChainMessages(),
                 "$name[主动消息]"
             ) { _, _, _ -> /* ignore */ }
             val msgToSend: Message = when (message) {
@@ -517,7 +511,7 @@ object PastebinCodeExecutor {
                         val ret: String? = if (groupCommandSender != null) {
                             JsonProcessor.outputMultipleMessage(
                                 name,
-                                activeSingleMessage.messageList,
+                                activeSingleMessage.messageList.toSingleChainMessages(),
                                 false,
                                 groupCommandSender,
                                 PlainText("【$name[多条主动消息]】\n")
@@ -569,7 +563,7 @@ object PastebinCodeExecutor {
                 } else if (isMultipleMessage) {
                     val ret = JsonProcessor.outputMultipleMessage(
                         name,
-                        activeSingleMessage.messageList,
+                        activeSingleMessage.messageList.toSingleChainMessages(),
                         false,
                         f.asCommandSender(),
                         PlainText("【$name[多条主动消息]】\n$preMessage")

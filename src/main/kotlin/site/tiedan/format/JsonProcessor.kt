@@ -17,9 +17,12 @@ import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.MiraiCompilerFramework.uploadFileToImage
 import site.tiedan.command.CommandBucket.linkedBucketID
+import site.tiedan.config.PastebinConfig
 import site.tiedan.config.SystemConfig
 import site.tiedan.data.PastebinBucket
 import site.tiedan.data.PastebinStorage
+import site.tiedan.format.ForwardMessageGenerator.lineCount
+import site.tiedan.format.ForwardMessageGenerator.removeFirstAt
 import site.tiedan.module.PastebinCodeExecutor.renderLatexOnline
 import site.tiedan.utils.DownloadHelper.downloadImage
 import java.io.File
@@ -56,13 +59,35 @@ object JsonProcessor {
         val at: Boolean = true,
         val width: Int = 600,
         val content: String = "空消息",
-        val messageList: List<JsonSingleMessage> = listOf(JsonSingleMessage()),
+        val messageList: List<SingleChainMessage> = listOf(SingleChainMessage()),
         val active: List<ActiveMessage>? = null,
         val storage: String? = null,
         val global: String? = null,
         val bucket: List<BucketData>? = null,
         val error: String = "",
     )
+    /**
+     * ### SingleChainMessage
+     * @param format 输出格式
+     * @param width 图片的默认宽度，当以text输出时，此项参数不生效
+     * @param content 输出的内容，用于输出文字或生成图片
+     * @param messageList 消息链中包含的所有消息，和`content`参数之间仅有一个有效。单条消息结构：[JsonSingleMessage]
+     */
+    @Serializable
+    data class SingleChainMessage(
+        val format: String = "text",
+        val width: Int = 600,
+        val content: String = "空消息",
+        val messageList: List<JsonSingleMessage> = listOf(JsonSingleMessage()),
+    ) {
+        fun toJsonSingleMessage(): JsonSingleMessage {
+            return JsonSingleMessage(
+                format = format,
+                width = width,
+                content = content
+            )
+        }
+    }
     /**
      * ### JsonSingleMessage
      * @param format 输出格式
@@ -74,32 +99,33 @@ object JsonProcessor {
         val format: String = "text",
         val width: Int = 600,
         val content: String = "空消息",
-    )
+    ) {
+        fun toSingleChainMessage(): SingleChainMessage {
+            return SingleChainMessage(
+                format = format,
+                width = width,
+                content = content,
+                messageList = listOf()
+            )
+        }
+    }
+
+    fun List<JsonSingleMessage>.toSingleChainMessages(): List<SingleChainMessage> =
+        this.map { it.toSingleChainMessage() }
+    fun List<SingleChainMessage>.toJsonSingleMessages(): List<JsonSingleMessage> =
+        this.map { it.toJsonSingleMessage() }
+
     /**
      * ### ActiveMessage
      * @param groupID 发送消息的目标群号
      * @param userID 发送消息的目标用户
-     * @param message 发送的消息对象，支持多格式，消息结构：[ActiveSingleMessage]
+     * @param message 发送的消息对象，支持多格式，消息结构：[SingleChainMessage]
      */
     @Serializable
     data class ActiveMessage(
         val groupID: Long? = null,
         val userID: Long? = null,
-        val message: ActiveSingleMessage = ActiveSingleMessage(),
-    )
-    /**
-     * ### ActiveSingleMessage
-     * @param format 输出格式
-     * @param width 图片的默认宽度，当以text输出时，此项参数不生效
-     * @param content 输出的内容，用于输出文字或生成图片
-     * @param messageList 消息链中包含的所有消息，和`content`参数之间仅有一个有效。单条消息结构：[JsonSingleMessage]
-     */
-    @Serializable
-    data class ActiveSingleMessage(
-        val format: String = "text",
-        val width: Int = 600,
-        val content: String = "空消息",
-        val messageList: List<JsonSingleMessage> = listOf(JsonSingleMessage()),
+        val message: SingleChainMessage = SingleChainMessage(),
     )
 
     @Serializable
@@ -261,13 +287,13 @@ object JsonProcessor {
     /**
      * ###　输出多条消息 MultipleMessage
      * @param name 项目名称
-     * @param messageList 消息列表，单条消息：[JsonSingleMessage]
+     * @param messageList 消息列表，单条消息：[SingleChainMessage]
      * @param outputAt 文本消息前是否@指令执行者
      * @param sender 指令发送者
      */
     suspend fun outputMultipleMessage(
         name: String,
-        messageList: List<JsonSingleMessage>,
+        messageList: List<SingleChainMessage>,
         outputAt: Boolean,
         sender: CommandSender,
         extraText: PlainText = PlainText("")
@@ -341,7 +367,15 @@ object JsonProcessor {
                         }
                         sendLocalImage("${cacheFolder}latex.png", sender, extraText)
                     }
-                    "json", "ForwardMessage", "MessageChain", "MultipleMessage", "Audio"-> {
+                    "MessageChain"-> {
+                        val message = generateMessageChain(name, m.messageList, outputAt, sender).first.let { messageChain ->
+                            if (messageChain.lineCount > 20 && PastebinConfig.enable_ForwardMessage)
+                                ForwardMessageGenerator.anyMessageToForwardMessage(messageChain.removeFirstAt, sender.subject, null)
+                            else messageChain
+                        }
+                        sender.sendMessage(message)
+                    }
+                    "json", "ForwardMessage", "MultipleMessage", "Audio"-> {
                         sender.sendMessage(extraText + "[错误] 不支持在JsonSingleMessage内使用“${m.format}”输出格式")
                     }
                     else -> {

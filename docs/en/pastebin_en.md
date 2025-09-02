@@ -254,11 +254,12 @@ The user will see:
 - This feature is similar to `MessageChain`. The program must output a `JsonMessage` object, but only the `format`, `at`, and `messageList` parameters are used. **All other parameters in `JsonMessage` will be ignored**.
     + The `format` field must be set to `"MultipleMessage"` — case-sensitive.
     + `at` (Boolean) — Specifies **whether to @ the command issuer at the start of each text message**.
-    + `messageList` is a list of `JsonSingleMessage` objects, used to store all messages to be output. **The bot will send the messages one by one in the order they appear in the list.**
-- The `JsonSingleMessage` object includes the following parameters:
-    + `format` (String) — Output format. The format **cannot** be `json`, `ForwardMessage`, `MessageChain`, or `MultipleMessage`. *(Default: `text`)*
+    + `messageList` is a list of `SingleChainMessage` objects, used to store all messages to be output. **The bot will send the messages one by one in the order they appear in the list.**
+- The `SingleChainMessage` object includes the following parameters:
+    + `format` (String) — Output format. The format **cannot** be `json`, `ForwardMessage`, `Audio`, or `MultipleMessage`. *(Default: `text`)*
     + `width` (Int) — Default image width. Not effective when outputting text. *(Default: 600)*
     + `content` (String) — The content to output, used for sending text or images. *(Default: empty message)*
+    + `messageList`: a list of `JsonSingleMessage` objects in the order to be sent. (Only for `MessageChain` format)
 - All of the above parameters are optional. If omitted, the default values will be used.
 ### Output Limits and Markdown Time Limit
 - **A maximum of 15 messages can be output per execution. If this limit is exceeded, the output will be interrupted.**
