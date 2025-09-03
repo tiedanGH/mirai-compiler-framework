@@ -14,6 +14,7 @@ import net.mamoe.mirai.message.data.*
 import net.mamoe.mirai.message.data.Image.Key.queryUrl
 import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.Command
+import site.tiedan.MiraiCompilerFramework.THREADS
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.imageFolder
 import site.tiedan.MiraiCompilerFramework.logger
@@ -69,6 +70,7 @@ object CommandPastebin : RawCommand(
         Command("pb stats [名称]", "pb 统计 [名称]", "查看统计", 1),
         Command("pb list [查询模式]", "pb 列表 [查询模式]", "查看完整列表", 1),
         Command("pb info <名称>", "pb 信息 <名称>", "查看信息&运行示例", 1),
+        Command("pb thread", "pb 进程", "查询运行和等待中的进程", 1),
         Command("run <名称> [stdin]", "pb 运行 <名称> [输入]", "运行代码项目", 1),
 
         Command("pb add <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]", "pb 添加 <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]", "添加pastebin数据", 2),
@@ -446,6 +448,21 @@ object CommandPastebin : RawCommand(
                             sendMessage("#run ${alias ?: name} ${PastebinData.pastebin[name]?.get("stdin")}")
                         }
                     }
+                }
+
+                "thread", "进程"-> {   // 查询运行和等待中的进程
+                    if (THREADS.isEmpty()) {
+                        sendQuoteReply("当前没有正在运行或等待中的进程")
+                        return
+                    }
+                    val threads = THREADS.withIndex().joinToString("\n") { (index, thread) ->
+                        val elapsed = (System.currentTimeMillis() - thread.startTime) / 1000
+                        "【#${index + 1}】 ${thread.name}\n" +
+                        "${thread.sender}\n" +
+                        "${thread.from}\n" +
+                        "⏱️ 等待时间：${elapsed} 秒"
+                    }
+                    sendQuoteReply(" ⏳ 当前正在运行或等待的进程：\n$threads")
                 }
 
                 "add", "添加", "新增"-> {   // 添加pastebin数据

@@ -26,6 +26,7 @@ import site.tiedan.config.*
 import site.tiedan.data.*
 import site.tiedan.module.*
 import java.io.File
+import java.util.concurrent.ConcurrentLinkedQueue
 
 object MiraiCompilerFramework : KotlinPlugin(
     JvmPluginDescription(
@@ -61,7 +62,14 @@ object MiraiCompilerFramework : KotlinPlugin(
     @OptIn(ConsoleExperimentalApi::class)
     val imageFolder = "./data/$dataHolderName/images/"
 
-    var THREAD = 0
+    data class ThreadInfo(
+        val id: String,
+        val name: String,
+        val sender: String,
+        val from: String,
+        val startTime: Long = System.currentTimeMillis(),
+    )
+    val THREADS = ConcurrentLinkedQueue<ThreadInfo>()
 
     data class Command(val usage: String, val usageCN: String, val desc: String, val type: Int)
 

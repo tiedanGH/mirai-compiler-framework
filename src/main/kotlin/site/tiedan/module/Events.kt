@@ -1,9 +1,5 @@
 package site.tiedan.module
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.commandPrefix
 import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.console.command.CommandSender.Companion.toCommandSender
@@ -25,7 +21,8 @@ import net.mamoe.mirai.utils.warning
 import site.tiedan.MiraiCompilerFramework.CMD_PREFIX
 import site.tiedan.MiraiCompilerFramework.MSG_MAX_LENGTH
 import site.tiedan.MiraiCompilerFramework.MSG_TRANSFER_LENGTH
-import site.tiedan.MiraiCompilerFramework.THREAD
+import site.tiedan.MiraiCompilerFramework.THREADS
+import site.tiedan.MiraiCompilerFramework.ThreadInfo
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.trimToMaxLength
@@ -110,14 +107,16 @@ object Events : SimpleListenerHost() {
             )
             return
         }
-        if (THREAD >= PastebinConfig.thread_limit) {
-            sendQuoteReply("当前有 $THREAD 个进程正在执行或等待冷却，请等待几秒后再次尝试")
+        if (THREADS.size >= PastebinConfig.thread_limit) {
+            sendQuoteReply("当前已经有 ${THREADS.size} 个进程正在执行，请等待几秒后再次尝试")
             return
         }
 
-        try {
-            THREAD++
+        val jobId = "${System.currentTimeMillis()}-${language}-$name(${user?.id})"
+        val from = if (subject is Group) "${(subject as Group).name}(${(subject as Group).id})" else "private"
+        THREADS.add(ThreadInfo(jobId, "${language}进程", "$name(${user?.id})", from))
 
+        try {
             // 检查命令的引用
             val quote = message[QuoteReply]
             var input: String? = null
@@ -172,9 +171,7 @@ object Events : SimpleListenerHost() {
             logger.warning("执行失败：${e::class.simpleName}(${e.message})")
             sendQuoteReply("[执行失败]\n原因：${e.message}")
         } finally {
-            CoroutineScope(Dispatchers.IO).launch {
-                delay(6000); THREAD--
-            }
+            THREADS.removeIf { it.id == jobId }
         }
     }
 

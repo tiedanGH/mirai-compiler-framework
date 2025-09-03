@@ -18,7 +18,8 @@ import net.mamoe.mirai.message.data.ShortVideo
 import net.mamoe.mirai.message.data.buildForwardMessage
 import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.MSG_TRANSFER_LENGTH
-import site.tiedan.MiraiCompilerFramework.THREAD
+import site.tiedan.MiraiCompilerFramework.THREADS
+import site.tiedan.MiraiCompilerFramework.ThreadInfo
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.save
@@ -80,6 +81,7 @@ object PastebinCodeExecutor {
     suspend fun CommandSender.executeMainProcess(name: String, userInput: String, imageUrls: List<String>) {
 
         val userID = user?.id ?: 10000
+        val nickname = this.name
 
         if (ExtraData.BlackList.contains(userID)) {
             logger.info("${userID}已被拉黑，请求被拒绝")
@@ -92,8 +94,8 @@ object PastebinCodeExecutor {
             if (request.second) return
         }
 
-        if (THREAD >= PastebinConfig.thread_limit) {
-            sendQuoteReply("当前已经有 $THREAD 个进程正在执行，请等待几秒后再次尝试")
+        if (THREADS.size >= PastebinConfig.thread_limit) {
+            sendQuoteReply("当前已经有 ${THREADS.size} 个进程正在执行，请等待几秒后再次尝试")
             return
         }
         if (PastebinData.groupOnly.contains(name) && (subject is Group).not() &&
@@ -107,16 +109,17 @@ object PastebinCodeExecutor {
             return
         }
 
-        try {
-            THREAD++
+        val jobId = "${System.currentTimeMillis()}-${name}-$nickname($userID)"
+        val from = if (subject is Group) "${(subject as Group).name}(${(subject as Group).id})" else "private"
+        THREADS.add(ThreadInfo(jobId, name, "$nickname($userID)", from))
 
+        try {
             val language = PastebinData.pastebin[name]?.get("language").toString()
             val url = PastebinData.pastebin[name]?.get("url").toString()
             val format = PastebinData.pastebin[name]?.get("format") ?: "text"
             var width = PastebinData.pastebin[name]?.get("width")
             val util = PastebinData.pastebin[name]?.get("util")
             val storageMode = PastebinData.pastebin[name]?.get("storage")
-            val nickname = this.name
             var input = userInput
 
             var output = ""
@@ -174,7 +177,6 @@ object PastebinCodeExecutor {
                 val global = PastebinStorage.storage[name]?.get(0) ?: ""
                 val storage = PastebinStorage.storage[name]?.get(userID) ?: ""
                 val bucket = bucketIdsToBucketData(linkedBucketID(name))
-                val from = if (subject is Group) "${(subject as Group).name}(${(subject as Group).id})" else "private"
                 val encodeBase64 = PastebinData.pastebin[name]?.get("base64") == "true"
                 val imageData = Base64Processor.encodeImagesToBase64(imageUrls, encodeBase64)
 
@@ -297,7 +299,7 @@ object PastebinCodeExecutor {
                 "报错信息：${trimToMaxLength(e.message.toString(), 300).first}"
             )
         } finally {
-            THREAD--
+            THREADS.removeIf { it.id == jobId }
             if (OutputLock.isLocked) OutputLock.unlock()
             if (StorageLock.isLocked) StorageLock.unlock()
         }
