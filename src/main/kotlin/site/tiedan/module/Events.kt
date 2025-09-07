@@ -88,6 +88,10 @@ object Events : SimpleListenerHost() {
      * 直接run任意代码
      */
     private suspend fun CommandSender.codeRunOnEvent(message: MessageChain) {
+        if (PastebinConfig.enable_censor) {
+            sendQuoteReply("审核功能已开启，无法自定义执行代码！")
+            return
+        }
         if (ExtraData.BlackList.contains(user?.id)) {
             return logger.info("${user?.id}已被拉黑，请求被拒绝")
         }
