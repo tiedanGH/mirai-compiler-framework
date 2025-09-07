@@ -45,18 +45,18 @@ object CommandBucket : RawCommand(
     usage = "${commandPrefix}bk help"
 ) {
     private val commandList = arrayOf(
-        Command("bk list [文字/备份]", "存储库 列表 [文字/备份]", "查看存储库列表", 1),
-        Command("bk info <ID/名称>", "存储库 信息 <ID/名称>", "查看存储库信息", 1),
-        Command("bk storage <ID/名称> [密码] [备份编号]", "存储库 存储 <ID/名称> [密码] [备份编号]", "查询存储库数据", 1),
-        Command("bk create <名称> <密码>", "存储库 创建 <名称> <密码>", "创建新存储库", 1),
-        Command("bk set <ID/名称> <参数名> <内容>", "存储库 修改 <ID/名称> <参数名> <内容>", "修改存储库属性", 1),
+        Command("bk list [文字/备份]", "bk 列表 [文字/备份]", "查看存储库列表", 1),
+        Command("bk info <ID/名称>", "bk 信息 <ID/名称>", "查看存储库信息", 1),
+        Command("bk storage <ID/名称> [密码] [备份编号]", "bk 存储 <ID/名称> [密码] [备份编号]", "查询存储库数据", 1),
+        Command("bk create <名称> <密码>", "bk 创建 <名称> <密码>", "创建新存储库", 1),
+        Command("bk set <ID/名称> <参数名> <内容>", "bk 修改 <ID/名称> <参数名> <内容>", "修改存储库属性", 1),
 
-        Command("bk add <项目名称> <ID/名称> [密码]", "存储库 添加 <项目名称> <ID/名称> [密码]", "将存储库添加至项目", 2),
-        Command("bk remove <项目名称> <ID/名称>", "存储库 移除 <项目名称> <ID/名称>", "将存储库从项目移除", 2),
+        Command("bk add <项目名称> <ID/名称> [密码]", "bk 添加 <项目名称> <ID/名称> [密码]", "将存储库添加至项目", 2),
+        Command("bk remove <项目名称> <ID/名称>", "bk 移除 <项目名称> <ID/名称>", "将存储库从项目移除", 2),
 
-        Command("bk backup <ID/名称> <编号> [密码]", "存储库 备份 <ID/名称> <编号> [密码]", "备份存储库数据", 3),
-        Command("bk rollback <ID/名称> <编号> [密码]", "存储库 回滚 <ID/名称> <编号> [密码]", "从备份回滚数据", 3),
-        Command("bk delete <ID/名称>", "存储库 删除 <ID/名称>", "永久删除存储库", 3),
+        Command("bk backup <ID/名称> <编号> [密码]", "bk 备份 <ID/名称> <编号> [密码]", "备份存储库数据", 3),
+        Command("bk rollback <ID/名称> <编号> [密码]", "bk 回滚 <ID/名称> <编号> [密码]", "从备份回滚数据", 3),
+        Command("bk delete <ID/名称>", "bk 删除 <ID/名称>", "永久删除存储库", 3),
     )
 
     override suspend fun CommandSender.onCommand(args: MessageChain) {
@@ -405,6 +405,8 @@ object CommandBucket : RawCommand(
                         sendQuoteReply(
                             "在槽位 $num 创建新备份成功！\n" +
                             "存储库ID：$id\n" +
+                            "存储库名称：${bucketIDToName(id)}\n" +
+                            "\n" +
                             "备份名称：${newBackup.name}\n" +
                             "备份时间：${formatTime(newBackup.time)}\n" +
                             "备份大小：${newBackup.content.length}\n" +
@@ -419,8 +421,9 @@ object CommandBucket : RawCommand(
                             "您尝试备份存储库 ${bucketInfo(id)}，但槽位 $num 已存在其他备份数据，此操作执行后：\n" +
                             "- 旧备份数据将被新备份覆盖\n" +
                             "- 覆盖后旧数据*不可恢复*\n" +
+                            "\n" +
                             "【旧备份信息】\n" +
-                            "+ ID：$num\n" +
+                            "+ 备份ID：$num\n" +
                             "+ 备注名：${backup.name}\n" +
                             "+ 备份时间：${formatTime(backup.time)}\n" +
                             "+ 备份大小：${backup.content.length}\n" +
@@ -433,6 +436,8 @@ object CommandBucket : RawCommand(
                         sendQuoteReply(
                             "成功更新槽位 $num 的备份！\n" +
                             "存储库ID：$id\n" +
+                            "存储库名称：${bucketIDToName(id)}\n" +
+                            "\n" +
                             "备份名称：${backup.name}\n" +
                             "备份时间：${formatTime(backup.time)}\n" +
                             "备份大小：${backup.content.length}" +
@@ -461,8 +466,9 @@ object CommandBucket : RawCommand(
                         "- 存储库的*主存储数据*将被指定备份覆盖\n" +
                         "- 覆盖后旧数据*不可恢复*\n" +
                         "- 建议先备份此版本后再执行回滚\n" +
+                        "\n" +
                         "【待回滚备份信息】\n" +
-                        "+ ID：$num\n" +
+                        "+ 备份ID：$num\n" +
                         "+ 备注名：${backup.name}\n" +
                         "+ 备份时间：${formatTime(backup.time)}\n" +
                         "+ 备份大小：${backup.content.length}\n" +
@@ -473,7 +479,7 @@ object CommandBucket : RawCommand(
                     PastebinBucket.bucket[id]?.set("content", backup.content)
                     PastebinBucket.save()
                     sendQuoteReply(
-                        "成功将存储库 ${bucketInfo(id)} 回滚至槽位 $num 的备份（${formatTime(backup.time)}）！" +
+                        "成功将存储库 ${bucketInfo(id)} 回滚至槽位 $num 的备份：${backup.name}（${formatTime(backup.time)}）！" +
                         (if (subject is Group && password != null) "\n\n⚠️ 您正在群聊进行操作，密码存在极高泄露风险，建议尽快修改密码！" else "")
                     )
                 }
