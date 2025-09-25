@@ -65,7 +65,7 @@ object MarkdownImageGenerator {
 
             val startTime = Instant.now()   // 记录开始时间
             try {
-                logger.info("请求调用系统命令执行Markdown转图片")
+                logger.debug("请求调用系统命令执行Markdown转图片")
 
                 val tempFile = File("${cacheFolder}tmp.md")
                 tempFile.writeText(content)
@@ -124,8 +124,8 @@ object MarkdownImageGenerator {
 
                 val endTime = Instant.now()     // 记录结束时间
                 duration = (Duration.between(startTime, endTime).toMillis() / 1000.0).roundTo2()
-                logger.info("操作成功完成，用时${duration}秒")
-                return@run MarkdownResult(true, "执行markdown转图片成功", ceil(duration).toLong())
+                logger.info("Markdown执行成功，用时${duration}秒")
+                return@run MarkdownResult(true, "执行Markdown转图片成功", ceil(duration).toLong())
             } catch (e: Exception) {
                 logger.warning(e)
                 saveErrorRecord("$e\n\n$content", "${e::class.simpleName}")

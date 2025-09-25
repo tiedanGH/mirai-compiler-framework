@@ -68,7 +68,7 @@ object DownloadHelper {
             var connection: HttpURLConnection? = null
 
             try {
-                logger.info("执行下载文件：$fileUrl")
+                logger.debug("执行下载文件：$fileUrl")
                 connection = URL(fileUrl).openConnection() as HttpURLConnection
                 connection.apply {
                     connectTimeout = CONNECT_TIMEOUT
@@ -110,7 +110,8 @@ object DownloadHelper {
         val duration = (Duration.between(startTime, endTime).toMillis() / 1000.0).roundTo2()
         val success = resultMsg.startsWith("[错误]").not()
         name?.let { Statistics.countDownload(it, duration) }
-        logger.info("下载成功，用时${duration}秒")
+        if (success) logger.info("文件下载成功，用时${duration}秒")
+        else logger.warning("下载时发生错误，用时${duration}秒，链接：$fileUrl")
         return DownloadResult(success, resultMsg, ceil(duration).toLong())
     }
 
