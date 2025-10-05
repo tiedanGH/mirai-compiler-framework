@@ -95,7 +95,7 @@ object PastebinCodeExecutor {
         }
 
         if (THREADS.size >= PastebinConfig.thread_limit) {
-            sendQuoteReply("当前已经有 ${THREADS.size} 个进程正在执行，请等待几秒后再次尝试")
+            sendQuoteReply("执行失败：当前已经有 ${THREADS.size} 个进程正在执行，请等待几秒后再次尝试")
             return
         }
         if (PastebinData.groupOnly.contains(name) && (subject is Group).not() &&
@@ -105,7 +105,7 @@ object PastebinCodeExecutor {
             return
         }
         if (PastebinData.censorList.contains(name)) {
-            sendQuoteReply("此条链接仍在审核中，暂时无法执行。管理员会定期对链接进行审核，您也可以主动联系进行催审")
+            sendQuoteReply("执行失败：此条链接仍在审核中，暂时无法执行。管理员会定期对链接进行审核，您也可以主动联系进行催审")
             return
         }
 
@@ -172,7 +172,10 @@ object PastebinCodeExecutor {
 
             // 输入存储的数据
             if (storageMode == "true") {
-                if (StorageLock.isLocked) logger.debug("(${userID})执行$name [存储]进程执行请求等待中...")
+                if (StorageLock.isLocked) {
+                    logger.debug("(${userID})执行$name [存储]进程执行请求等待中...")
+                    if (THREADS.size >= 3) sendQuoteReply("当前进程较多（${THREADS.size} 个正在执行），等待时间可能较长")
+                }
                 StorageLock.lock()
                 val global = PastebinStorage.storage[name]?.get(0) ?: ""
                 val storage = PastebinStorage.storage[name]?.get(userID) ?: ""
