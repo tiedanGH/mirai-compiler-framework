@@ -17,7 +17,7 @@ repositories {
 dependencies {
     implementation("org.jsoup:jsoup:1.21.2")
     implementation("com.squareup.okhttp3:okhttp:5.0.0-alpha.16")
-    api("jakarta.mail:jakarta.mail-api:2.1.4")
+    api("jakarta.mail:jakarta.mail-api:2.1.5")
     implementation("org.eclipse.angus:angus-mail:2.0.5")
     implementation("org.apache.tika:tika-core:3.2.3")
     implementation("xyz.cssxsh.baidu:baidu-aip:3.3.2")
