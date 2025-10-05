@@ -274,12 +274,11 @@ object ForwardMessageGenerator {
             return lines
         }
     val MessageChain.removeFirstAt: MessageChain
-        get() {
-            if (this.isEmpty()) return this
-            return if (this.first().content.startsWith("@")) {
-                this.drop(2).toMessageChain()
-            } else {
-                this
-            }
+        get() = when {
+            isEmpty() || !first().content.startsWith("@") -> this
+            else -> drop(1).toMutableList().apply {
+                if (firstOrNull() is PlainText)
+                    this[0] = PlainText((first() as PlainText).content.removePrefix("\n"))
+            }.toMessageChain()
         }
 }
