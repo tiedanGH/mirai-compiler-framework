@@ -174,7 +174,7 @@ object PastebinCodeExecutor {
             if (storageMode == "true") {
                 if (StorageLock.isLocked) {
                     logger.debug("(${userID})执行$name [存储]进程执行请求等待中...")
-                    if (THREADS.size >= 3) sendQuoteReply("当前进程较多（${THREADS.size} 个正在执行），等待时间可能较长")
+                    if (THREADS.size > 3) sendQuoteReply("当前进程较多（${THREADS.size - 1} 个正在等待），等待时间可能较长")
                 }
                 StorageLock.lock()
                 val global = PastebinStorage.storage[name]?.get(0) ?: ""
