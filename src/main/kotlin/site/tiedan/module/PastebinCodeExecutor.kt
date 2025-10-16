@@ -315,7 +315,7 @@ object PastebinCodeExecutor {
      * @param outputFormat 输出格式
      * @param width 图片宽度
      * @param messageList 消息列表参数
-     * @param title 转发消息的标题
+     * @param forwardTitle 转发消息的标题
      * @param updateStorage 更新存储数据函数
      */
     suspend fun CommandSender.handleOutputFormats(
@@ -325,14 +325,14 @@ object PastebinCodeExecutor {
         outputAt: Boolean,
         width: String?,
         messageList: List<JsonProcessor.SingleChainMessage>,
-        title: String?,
+        forwardTitle: String?,
         updateStorage: (String?, String?, List<JsonProcessor.BucketData>?) -> Unit
     ): Any? {
         return when (outputFormat) {
             // text文本输出
             "text"-> {
                 if ((output.length > MSG_TRANSFER_LENGTH || output.lines().size > 30) && PastebinConfig.enable_ForwardMessage) {
-                    ForwardMessageGenerator.stringToForwardMessage(StringBuilder(output), subject, title)
+                    ForwardMessageGenerator.stringToForwardMessage(StringBuilder(output), subject, forwardTitle)
                 } else {
                     val messageBuilder = MessageChainBuilder()
                     if (subject is Group && outputAt) {
@@ -400,7 +400,7 @@ object PastebinCodeExecutor {
             "MessageChain"-> {
                 JsonProcessor.generateMessageChain(name, messageList.toJsonSingleMessages(), outputAt, this).first.let { messageChain ->
                     if (messageChain.lineCount > 20 && PastebinConfig.enable_ForwardMessage)
-                        ForwardMessageGenerator.anyMessageToForwardMessage(messageChain.removeFirstAt, subject, title)
+                        ForwardMessageGenerator.anyMessageToForwardMessage(messageChain.removeFirstAt, subject, forwardTitle)
                     else messageChain
                 }
             }
@@ -517,9 +517,10 @@ object PastebinCodeExecutor {
                             JsonProcessor.outputMultipleMessage(
                                 name,
                                 activeSingleMessage.messageList.toSingleChainMessages(),
-                                false,
+                                outputAt = false,
                                 groupCommandSender,
-                                PlainText("【$name[多条主动消息]】\n")
+                                extraText = PlainText("【$name[多条主动消息]】\n"),
+                                forwardTitle = "$name[多条主动消息]"
                             )
                         } else {
                             result += "\n[(${index + 1})群聊] 输出多条消息出错：从目标群获取用户(${user?.id})失败"
@@ -569,9 +570,10 @@ object PastebinCodeExecutor {
                     val ret = JsonProcessor.outputMultipleMessage(
                         name,
                         activeSingleMessage.messageList.toSingleChainMessages(),
-                        false,
+                        outputAt = false,
                         f.asCommandSender(),
-                        PlainText("【$name[多条主动消息]】\n$preMessage")
+                        extraText = PlainText("【$name[多条主动消息]】\n$preMessage"),
+                        forwardTitle = "$name[多条主动消息]"
                     )
                     if (ret != null) {
                         result += "\n[(${index + 1})私信] 输出多条消息出错：$ret"

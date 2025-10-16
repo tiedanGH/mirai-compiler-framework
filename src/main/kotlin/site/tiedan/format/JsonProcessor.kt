@@ -11,6 +11,7 @@ import net.mamoe.mirai.message.data.At
 import net.mamoe.mirai.message.data.MessageChain
 import net.mamoe.mirai.message.data.MessageChainBuilder
 import net.mamoe.mirai.message.data.PlainText
+import site.tiedan.MiraiCompilerFramework.MSG_TRANSFER_LENGTH
 import site.tiedan.MiraiCompilerFramework.TIMEOUT
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.logger
@@ -296,7 +297,8 @@ object JsonProcessor {
         messageList: List<SingleChainMessage>,
         outputAt: Boolean,
         sender: CommandSender,
-        extraText: PlainText = PlainText("")
+        extraText: PlainText = PlainText(""),
+        forwardTitle: String? = "$name[多条消息]"
     ): String? {
         try {
             var timeUsed: Long = 0
@@ -307,16 +309,21 @@ object JsonProcessor {
                 val content = m.content
                 when (m.format) {
                     "text"-> {
-                        val builder = MessageChainBuilder()
-                        if (sender.subject is Group && outputAt) {
-                            builder.add(At(sender.user!!))
-                            builder.add("\n")
+                        if ((content.length > MSG_TRANSFER_LENGTH || content.lines().size > 30) && PastebinConfig.enable_ForwardMessage) {
+                            val forward = ForwardMessageGenerator.stringToForwardMessage(StringBuilder(extraText.content + content), sender.subject, forwardTitle)
+                            sender.sendMessage(forward)
+                        } else {
+                            val builder = MessageChainBuilder()
+                            if (sender.subject is Group && outputAt) {
+                                builder.add(At(sender.user!!))
+                                builder.add("\n")
+                            }
+                            builder.add(
+                                if (content.isBlank()) "　"
+                                else blockProhibitedContent(content, outputAt, sender.subject is Group).first
+                            )
+                            sender.sendMessage(extraText + builder.build())
                         }
-                        builder.add(
-                            if (content.isBlank()) "　"
-                            else blockProhibitedContent(content, outputAt, sender.subject is Group).first
-                        )
-                        sender.sendMessage(extraText + builder.build())
                     }
                     "markdown"-> {
                         val markdownResult = MarkdownImageGenerator.processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
@@ -373,7 +380,7 @@ object JsonProcessor {
                                 ForwardMessageGenerator.anyMessageToForwardMessage(messageChain.removeFirstAt, sender.subject, null)
                             else messageChain
                         }
-                        sender.sendMessage(message)
+                        sender.sendMessage(extraText + message)
                     }
                     "json", "ForwardMessage", "MultipleMessage", "Audio"-> {
                         sender.sendMessage(extraText + "[错误] 不支持在JsonSingleMessage内使用“${m.format}”输出格式")
