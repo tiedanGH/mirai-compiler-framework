@@ -252,13 +252,19 @@ object CommandPastebin : RawCommand(
                         Command("pb list run [作者名]", "pb 列表 次数 [作者名]", "根据总执行次数排序", 2),
                         Command("pb list heat [作者名]", "pb 列表 热度 [作者名]", "根据热度排序", 2),
 
-                        Command("pb list search <项目名> [作者名]", "pb 列表 搜索 <项目名> [作者名]", "根据关键词搜索项目", 3),
+                        Command("pb list search [项目名] [作者名] [语言] [输出格式]", "pb 列表 搜索 [项目名] [作者名] [语言] [输出格式]", "根据指定条件搜索项目（输入 null 来跳过某一项）", 3),
                         Command("pb list author <作者名>", "pb 列表 作者 <作者名>", "根据作者关键词筛选", 3),
+                        Command("pb list lang <语言>", "pb 列表 语言 <语言>", "根据编程语言筛选", 3),
+                        Command("pb list format <输出格式>", "pb 列表 格式 <输出格式>", "根据输出格式筛选", 3),
                         Command("pb list page <页数>", "pb 列表 页码 <页数>", "根据页码查询", 3),
                     )
+                    fun String?.nullIfLiteral(): String? =
+                        if (this == "null") null else this
+
                     val mode = args.getOrElse(1) { PlainText("all") }.content
-                    val para1 = args.getOrNull(2)?.content
-                    val para2 = args.getOrNull(3)?.content
+                    val params: Array<String?> = args.drop(2)
+                        .map { it.content.nullIfLiteral() }
+                        .toTypedArray()
                     val totalPage = ceil(PastebinData.pastebin.size.toDouble() / 20).toInt()
                     when (mode) {
                         "help"-> {
@@ -284,6 +290,8 @@ object CommandPastebin : RawCommand(
                         "all", "全部",
                         "run", "次数",
                         "heat", "热度",
+                        "lang", "language", "语言",
+                        "format", "格式",
                         "author", "作者",
                         "search", "搜索",
                         "page", "页码"-> {
@@ -294,18 +302,27 @@ object CommandPastebin : RawCommand(
                             }
                             val filter = when (mode) {
                                 in arrayOf("all", "全部", "run", "次数", "heat", "热度", "author", "作者") ->
-                                    MarkdownImageGenerator.Filter(author = para1)
+                                    MarkdownImageGenerator.Filter(author = params.getOrNull(0))
                                 in arrayOf("search", "搜索") ->
-                                    MarkdownImageGenerator.Filter(project = para1, author = para2)
+                                    MarkdownImageGenerator.Filter(
+                                        project = params.getOrNull(0),
+                                        author = params.getOrNull(1),
+                                        language = params.getOrNull(2),
+                                        format = params.getOrNull(3)
+                                    )
+                                in arrayOf("lang", "language", "语言") ->
+                                    MarkdownImageGenerator.Filter(language = params.getOrNull(0))
+                                in arrayOf("format", "格式") ->
+                                    MarkdownImageGenerator.Filter(format = params.getOrNull(0))
                                 in arrayOf("page", "页码") ->
-                                    MarkdownImageGenerator.Filter(page = para1?.toIntOrNull())
+                                    MarkdownImageGenerator.Filter(page = params.getOrNull(0)?.toIntOrNull())
                                 else ->
                                     MarkdownImageGenerator.Filter()
                             }
                             val markdownResult = MarkdownImageGenerator.processMarkdown(
                                 name = null,
                                 MarkdownImageGenerator.generatePastebinListHtml(sortMode, filter),
-                                width = if (para1 == null) "2000" else "600"
+                                width = if (filter.isFilterEnabled) "600" else "2000"
                             )
                             if (!markdownResult.success) {
                                 sendQuoteReply(markdownResult.message)
@@ -327,7 +344,7 @@ object CommandPastebin : RawCommand(
                             PastebinData.pastebin.entries.forEachIndexed { index, (key, value) ->
                                 val language = value["language"] ?: "[数据异常]"
                                 val author = value["author"] ?: "[数据异常]"
-                                val isShowAuthor = para1 in listOf("author", "作者") || mode in listOf("page", "页码")
+                                val isShowAuthor = params.getOrNull(0) in listOf("author", "作者") || mode in listOf("page", "页码")
                                 val censorNote = if (PastebinData.censorList.contains(key)) "（审核中）" else ""
                                 pastebinList[pageIndex] += buildString {
                                     append("$key     $language")

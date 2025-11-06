@@ -152,24 +152,34 @@ object MarkdownImageGenerator {
     data class Filter(
         val project: String? = null,
         val author: String? = null,
+        val language: String? = null,
+        val format: String? = null,
         val page: Int? = null,
-    )
+    ) {
+        val isFilterEnabled: Boolean
+            get() = listOf(project, author, language, format, page).any { it != null }
+
+        val filterText: String
+            get() = listOfNotNull(
+                project?.let { "[项目筛选：$it]" },
+                author?.let { "[作者筛选：$it]" },
+                language?.let { "[语言筛选：$it]" },
+                format?.let { "[输出格式：$it]" },
+                page?.let { "[页码查询：$it]" }
+            ).takeIf { it.isNotEmpty() }
+                ?.joinToString("<br>", prefix = "<br>")
+                ?: ""
+    }
     fun generatePastebinListHtml(sortMode: String, f: Filter): String {
-        val isFilterEnabled = f.author != null || f.project != null || f.page != null
-        val columnsPerRow = if (isFilterEnabled) 1 else 5
+        val columnsPerRow = if (f.isFilterEnabled) 1 else 5
         val projectsPerPage = 20
 
-        val titleText = if (isFilterEnabled) "Pastebin列表" else "Pastebin完整列表"
+        val titleText = if (f.isFilterEnabled) "Pastebin列表" else "Pastebin完整列表"
         val sortText = when (sortMode) {
             "run"-> "（总执行次数排序）"
             "score"-> "（热度排序）"
             else-> ""
         }
-        val filterText = listOfNotNull(
-            f.project?.let { "项目筛选：$it" },
-            f.author?.let { "作者筛选：$it" },
-            f.page?.let { "页码查询：$it" }
-        ).takeIf { it.isNotEmpty() }?.joinToString("；", prefix = "<br>[", postfix = "]") ?: ""
 
         val baseEntries = PastebinData.pastebin.entries
             .asSequence()
@@ -182,7 +192,13 @@ object MarkdownImageGenerator {
                     entry.value["author"]?.contains(keyword, ignoreCase = true) == true ||
                             entry.value["userID"]?.contains(keyword) == true
                 } != false
-                projectMatch && authorMatch
+                val languageMatch = f.language?.let { keyword ->
+                    entry.value["language"]?.contains(keyword, ignoreCase = true) == true
+                } != false
+                val formatMatch = f.format?.let { keyword ->
+                    entry.value.getOrDefault("format", "text").contains(keyword, ignoreCase = true) == true
+                } != false
+                projectMatch && authorMatch && languageMatch && formatMatch
             }
         val filteredEntries = f.page?.let { page ->
             val pageIndex = (page - 1).coerceAtLeast(0)
@@ -251,7 +267,7 @@ object MarkdownImageGenerator {
                 .inner-table th.author-col, .inner-table td.author-col { width: 35%; }
             </style>
             """.trimIndent())
-            appendLine("<h1>$titleText$sortText</h1><h3>$filterText</h3>")
+            appendLine("<h1>$titleText$sortText</h1><h3>${f.filterText}</h3>")
             appendLine("<table class='main-table'><tbody>")
             for (row in 0 until rowCount) {
                 appendLine("<tr>")
