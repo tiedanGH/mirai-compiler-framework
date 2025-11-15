@@ -88,6 +88,7 @@ object PastebinCodeExecutor {
             return
         }
 
+        // 请求频率限制
         val request = RequestLimiter.newRequest(userID)
         if (request.first.isNotEmpty()) {
             sendQuoteReply(request.first)

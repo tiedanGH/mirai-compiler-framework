@@ -1,6 +1,7 @@
 package site.tiedan.module
 
 import site.tiedan.MiraiCompilerFramework.save
+import site.tiedan.config.PastebinConfig
 import site.tiedan.data.ExtraData
 import java.util.concurrent.ConcurrentHashMap
 
@@ -20,7 +21,7 @@ object RequestLimiter {
     private const val SHORT_WINDOW: Long = 60_000L
     private const val LONG_WINDOW: Long = 600_000L
     private val SHORT_THRESHOLDS = listOf(15, 20, 25)
-    private val LONG_THRESHOLDS = listOf(100, 110, 120)
+    private val LONG_THRESHOLDS = listOf(130, 145, 150)
 
     private val userRequestTimes = ConcurrentHashMap<Long, MutableList<Long>>()
     private val userWarningLevels = ConcurrentHashMap<Long, WarningLevel>()
@@ -29,6 +30,8 @@ object RequestLimiter {
      * 记录新执行请求
      */
     fun newRequest(userID: Long): Pair<String, Boolean> {
+        val isAdmin = PastebinConfig.admins.contains(userID)
+
         val currentTime = System.currentTimeMillis()
         val requestTimes = userRequestTimes.computeIfAbsent(userID) { mutableListOf() }
 
@@ -45,7 +48,7 @@ object RequestLimiter {
         // --- 黑名单判定 ---
         val shortBlack = shortCount >= SHORT_THRESHOLDS[2]
         val longBlack = longCount >= LONG_THRESHOLDS[2]
-        if ((shortBlack || longBlack) && currentLevel == WarningLevel.SECOND) {
+        if ((shortBlack || longBlack) && currentLevel == WarningLevel.SECOND && !isAdmin) {
             ExtraData.BlackList.add(userID)
             ExtraData.save()
             userWarningLevels[userID] = WarningLevel.SECOND
@@ -56,12 +59,12 @@ object RequestLimiter {
         // --- 二次警告判定 ---
         val shortSecond = shortCount >= SHORT_THRESHOLDS[1]
         val longSecond = longCount >= LONG_THRESHOLDS[1]
-        if ((shortSecond || longSecond) && currentLevel == WarningLevel.FIRST) {
+        if ((shortSecond || longSecond) && currentLevel == WarningLevel.FIRST && !isAdmin) {
             userWarningLevels[userID] = WarningLevel.SECOND
             val msg = if (shortSecond) {
-                "[高频二次警告]\n近 60秒 内请求次数极高。请暂停所有代码执行请求，并等待大约 30秒 的时间，以避免被bot拉黑的风险"
+                "[高频二次警告]\n近 60秒 内请求次数极高。**请暂停所有代码执行请求**，并等待大约 30秒 的时间，以避免被bot拉黑的风险"
             } else {
-                "[累计二次警告]\n近 10分钟 内累计请求量过高。请暂停所有代码执行请求，并休息大约 5分钟 的时间，以避免被bot拉黑的风险"
+                "[累计二次警告]\n近 10分钟 内累计请求量过高。**请暂停所有代码执行请求**，并休息大约 5分钟 的时间，以避免被bot拉黑的风险"
             }
             return Pair(msg, false)
         }
