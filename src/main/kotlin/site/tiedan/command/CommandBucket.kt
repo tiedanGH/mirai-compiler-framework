@@ -226,6 +226,10 @@ object CommandBucket : RawCommand(
                 }
 
                 "create", "创建"-> {   // 创建新存储库
+                    if (PastebinData.pastebin.none { it.value["userID"] == userID.toString() }) {
+                        sendQuoteReply("创建失败：请先创建一个项目，然后再创建存储库")
+                        return
+                    }
                     val name = args[1].content
                     val password = args[2].content
                     if (name.all { it.isDigit() }) {
