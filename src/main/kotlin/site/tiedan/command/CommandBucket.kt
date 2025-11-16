@@ -27,6 +27,7 @@ import site.tiedan.data.PastebinBucket
 import site.tiedan.data.PastebinData
 import site.tiedan.format.JsonProcessor
 import site.tiedan.format.MarkdownImageGenerator
+import site.tiedan.utils.Security
 import java.io.File
 import java.time.Instant
 import java.time.ZoneId
@@ -243,7 +244,7 @@ object CommandBucket : RawCommand(
                     val id = generateSequence(1L) { it + 1 }.first { isBucketEmpty(it) }
                     PastebinBucket.bucket[id] = mutableMapOf(
                         "name" to name,
-                        "password" to password,
+                        "password" to Security.hashPassword(password),
                         "owner" to userName,
                         "userID" to userID.toString(),
                         "projects" to "",
@@ -301,14 +302,18 @@ object CommandBucket : RawCommand(
                     when (option) {
                         "password"-> {
                             if (subject is Group) {
-                               additionalOutput = "⚠️ 您正在群聊进行操作，新密码存在极高泄露风险，建议重新修改密码！\n\n"
+                               additionalOutput = "⚠️ 您正在群聊进行操作，新密码存在极高泄露风险，建议私信重新修改密码！\n\n"
                             }
+                            val newPassword = content
+                            content = "***"
+                            PastebinBucket.bucket[id]?.set("password", Security.hashPassword(newPassword))
                         }
                         "userID"-> {
                             if (content.toLongOrNull() == null) {
                                 sendQuoteReply("转移失败：输入的 userID 不是整数")
                                 return
                             }
+
                             requestUserConfirmation(userID, args.content,
                                 " +++⚠️ 危险操作警告 ⚠️+++\n" +
                                 "您正在转移存储库 ${bucketInfo(id)} 的所有权，转移前请确保您已知晓：\n" +
@@ -483,7 +488,7 @@ object CommandBucket : RawCommand(
                     PastebinBucket.bucket[id]?.set("content", backup.content)
                     PastebinBucket.save()
                     sendQuoteReply(
-                        "成功将存储库 ${bucketInfo(id)} 回滚至槽位 $num 的备份：${backup.name}（${formatTime(backup.time)}）！" +
+                        "[ROLLBACK] 成功将存储库 ${bucketInfo(id)} 回滚至槽位 $num 的备份：${backup.name}（${formatTime(backup.time)}）！" +
                         (if (subject is Group && password != null) "\n\n⚠️ 您正在群聊进行操作，密码存在极高泄露风险，建议尽快修改密码！" else "")
                     )
                 }
@@ -497,6 +502,7 @@ object CommandBucket : RawCommand(
                         return
                     }
                     val projects = PastebinBucket.bucket[id]?.get("projects") ?: ""
+
                     requestUserConfirmation(userID, args.content,
                         " +++🛑 高危操作警告 🛑+++\n" +
                         "您正在删除存储库 ${bucketInfo(id)}，删除前请确保您已知晓：\n" +
@@ -539,9 +545,13 @@ object CommandBucket : RawCommand(
     }
 
     suspend fun CommandSender.checkPassword(id: Long, password: String?, userID: Long, isAdmin: Boolean): Boolean? {
-        val isOwner = userID.toString() == PastebinBucket.bucket[id]?.get("userID")
-        val passwordCorrect = password == PastebinBucket.bucket[id]?.get("password")
-        if (!isOwner && !isAdmin && !passwordCorrect) {
+        val data = PastebinBucket.bucket[id] ?: return null
+        val storedHashed = data["password"] ?: return null
+
+        val isOwner = userID.toString() == data["userID"]
+        val passwordCorrect = password != null && Security.verifyPassword(password, storedHashed)
+
+            if (!isOwner && !isAdmin && !passwordCorrect) {
             sendQuoteReply("拒绝访问：存储库密码错误")
             return null
         }

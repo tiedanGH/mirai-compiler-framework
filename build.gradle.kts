@@ -21,8 +21,15 @@ dependencies {
     implementation("org.eclipse.angus:angus-mail:2.0.5")
     implementation("org.apache.tika:tika-core:3.2.3")
     implementation("xyz.cssxsh.baidu:baidu-aip:3.3.2")
+    implementation("at.favre.lib:bcrypt:0.10.2")
+
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
 }
 
 mirai {
     jvmTarget = JavaVersion.VERSION_17
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
