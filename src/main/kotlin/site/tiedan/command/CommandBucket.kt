@@ -53,9 +53,10 @@ object CommandBucket : RawCommand(
         Command("bk set <ID/名称> <参数名> <内容>", "bk 修改 <ID/名称> <参数名> <内容>", "修改存储库属性", 1),
 
         Command("bk add <项目名称> <ID/名称> [密码]", "bk 添加 <项目名称> <ID/名称> [密码]", "将存储库添加至项目", 2),
-        Command("bk remove <项目名称> <ID/名称>", "bk 移除 <项目名称> <ID/名称>", "将存储库从项目移除", 2),
+        Command("bk rm <项目名称> <ID/名称>", "bk 移除 <项目名称> <ID/名称>", "将存储库从项目移除", 2),
 
         Command("bk backup <ID/名称> <编号> [密码]", "bk 备份 <ID/名称> <编号> [密码]", "备份存储库数据", 3),
+        Command("bk backup <ID/名称> del <编号> [密码]", "bk 备份 <ID/名称> 删除 <编号> [密码]", "删除指定存储库的某个备份", 3),
         Command("bk rollback <ID/名称> <编号> [密码]", "bk 回滚 <ID/名称> <编号> [密码]", "从备份回滚数据", 3),
         Command("bk delete <ID/名称>", "bk 删除 <ID/名称>", "永久删除存储库", 3),
     )
@@ -252,6 +253,7 @@ object CommandBucket : RawCommand(
                         "content" to "",
                     )
                     PastebinBucket.backups[id] = mutableListOf(null, null, null)
+                    PastebinBucket.save()
                     sendQuoteReply(
                         "创建新存储库成功！\n" +
                         "存储库ID：$id\n" +
@@ -260,7 +262,6 @@ object CommandBucket : RawCommand(
                         "所有者：$userName($userID)" +
                         (if (subject is Group) "\n\n⚠️ 您正在群聊进行操作，密码存在极高泄露风险，建议尽快修改密码！" else "")
                     )
-                    PastebinBucket.save()
                 }
 
                 "set", "修改"-> {   // 修改存储库属性
@@ -370,11 +371,11 @@ object CommandBucket : RawCommand(
 
                     ctx.projectsList.add(ctx.projectName)
                     PastebinBucket.bucket[ctx.id]!!["projects"] = ctx.projectsList.joinToString(" ")
+                    PastebinBucket.save()
                     sendQuoteReply(
                         "成功将存储库 ${bucketInfo(ctx.id)} 关联到项目 ${ctx.projectName}" +
                         (if (subject is Group && password != null) "\n\n⚠️ 您正在群聊进行操作，密码存在极高泄露风险，建议尽快修改密码！" else "")
                     )
-                    PastebinBucket.save()
                 }
 
                 "remove", "rm", "移除"-> {   // 将存储库从项目移除
@@ -383,14 +384,50 @@ object CommandBucket : RawCommand(
                         sendQuoteReply("移除失败：存储库 ${ctx.id} 未关联此项目 ${ctx.projectName}")
                         return
                     }
-                    sendQuoteReply("成功将存储库 ${bucketInfo(ctx.id)} 与项目 ${ctx.projectName} 解除关联")
                     PastebinBucket.bucket[ctx.id]!!["projects"] = ctx.projectsList.joinToString(" ")
                     PastebinBucket.save()
+                    sendQuoteReply("成功将存储库 ${bucketInfo(ctx.id)} 与项目 ${ctx.projectName} 解除关联")
                 }
 
                 "backup", "备份"-> {   // 备份存储库数据
                     val id = checkBucketNameOrID(args[1].content, "备份") ?: return
 
+                    // 删除备份指令
+                    if (args.getOrNull(2)?.content == "del") {
+                        val num = args.getOrNull(3)?.content?.toIntOrNull()
+                            ?.takeIf { it in 1..3 }
+                            ?: return sendQuoteReply("编号无效：备份编号仅支持 1-3")
+
+                        val password = args.getOrNull(4)?.content
+                        checkPassword(id, password, userID, isAdmin) ?: return  // 验证密码
+
+                        val backup = PastebinBucket.backups[id]?.get(num - 1)
+                        if (backup == null) {
+                            return sendQuoteReply("删除失败：槽位 $num 中没有备份")
+                        }
+
+                        requestUserConfirmation(userID, args.content,
+                            " +++⚠️ 危险操作警告 ⚠️+++\n" +
+                            "您正在删除存储库 ${bucketInfo(id)} 的备份槽位 $num，此操作执行后：\n" +
+                            "- 此备份数据将*永久丢失*\n" +
+                            "- 删除后数据*不可恢复*\n" +
+                            "\n" +
+                            "【当前备份信息】\n" +
+                            "+ 备份ID：$num\n" +
+                            "+ 备注名：${backup.name}\n" +
+                            "+ 备份时间：${formatTime(backup.time)}\n" +
+                            "+ 备份大小：${backup.content.length}\n" +
+                            "\n" +
+                            "如您确认备份不再需要，请再次执行删除指令以完成操作"
+                        ) ?: return
+
+                        PastebinBucket.backups[id]?.set(num - 1, null)
+                        PastebinBucket.save()
+
+                        return sendQuoteReply("成功删除存储库 ${bucketInfo(id)} 的备份槽位 $num！")
+                    }
+
+                    // 常规备份指令
                     val password = args.getOrNull(3)?.content
                     checkPassword(id, password, userID, isAdmin) ?: return  // 验证密码
 
