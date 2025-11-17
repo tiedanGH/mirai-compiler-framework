@@ -57,7 +57,7 @@ object CommandBucket : RawCommand(
         Command("bk rm <项目名称> <ID/名称>", "bk 移除 <项目名称> <ID/名称>", "将存储库从项目移除", 2),
 
         Command("bk backup <ID/名称> <编号> [密码]", "bk 备份 <ID/名称> <编号> [密码]", "备份存储库数据", 3),
-        Command("bk backup <ID/名称> del <编号> [密码]", "bk 备份 <ID/名称> 删除 <编号> [密码]", "删除指定存储库的某个备份", 3),
+        Command("bk backup <ID/名称> del <编号> [密码]", "bk 备份 <ID/名称> 删除 <编号> [密码]", "删除指定备份", 3),
         Command("bk rollback <ID/名称> <编号> [密码]", "bk 回滚 <ID/名称> <编号> [密码]", "从备份回滚数据", 3),
         Command("bk delete <ID/名称>", "bk 删除 <ID/名称>", "永久删除存储库", 3),
     )
