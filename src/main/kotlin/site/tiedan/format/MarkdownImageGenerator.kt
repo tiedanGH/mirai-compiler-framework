@@ -415,7 +415,9 @@ object MarkdownImageGenerator {
                 .sortedBy { it.key }
                 .forEach { (id, data) ->
                     val empty = isBucketEmpty(id)
-                    val imgPath = if (empty) "${Image_Path}bucket_e.png" else "${Image_Path}bucket.png"
+                    val imgPath = if (empty) "${Image_Path}bucket_e.png"
+                    else if (data["encrypt"] == "true") "${Image_Path}bucket_l.png"
+                    else "${Image_Path}bucket.png"
                     appendLine("""
                     <div class="card">
                       <table class="bucket-table${if (empty) " empty" else ""}" role="presentation">

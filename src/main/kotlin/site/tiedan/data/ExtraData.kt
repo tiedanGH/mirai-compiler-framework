@@ -10,6 +10,9 @@ internal object ExtraData : AutoSavePluginData("ExtraData") {
     @ValueDescription("黑名单用户")
     var BlackList: MutableList<Long> by value()
 
+    @ValueDescription("钥匙")
+    var key: String by value()
+
     @ValueDescription("接收主动私信时间段")
     var private_allowTime: MutableMap<Long, Pair<Int, Int>> by value()
 

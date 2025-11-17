@@ -20,12 +20,14 @@ import site.tiedan.MiraiCompilerFramework.uploadFileToImage
 import site.tiedan.command.CommandBucket.linkedBucketID
 import site.tiedan.config.PastebinConfig
 import site.tiedan.config.SystemConfig
+import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinBucket
 import site.tiedan.data.PastebinStorage
 import site.tiedan.format.ForwardMessageGenerator.lineCount
 import site.tiedan.format.ForwardMessageGenerator.removeFirstAt
 import site.tiedan.module.PastebinCodeExecutor.renderLatexOnline
 import site.tiedan.utils.DownloadHelper.downloadImage
+import site.tiedan.utils.Security
 import java.io.File
 import java.net.URI
 
@@ -453,9 +455,12 @@ object JsonProcessor {
                 !in linkedBucketID(name) -> ret.append("\n[(${index + 1})拒绝访问] 当前项目未关联存储库 ${data.id}")
                 in seenBucketIDs -> ret.append("\n[(${index + 1})重复写入] 检测到对存储库 ${data.id} 的重复保存，单次输出仅支持写入同一存储库一次")
                 else -> if (data.content != null) {
-                        PastebinBucket.bucket[data.id]?.set("content", data.content)
-                        seenBucketIDs.add(data.id)
-                    }
+                    val content = if (PastebinBucket.bucket[data.id]?.get("encrypt") == "true") {
+                        Security.encrypt(data.content, ExtraData.key)
+                    } else data.content
+                    PastebinBucket.bucket[data.id]?.set("content", content)
+                    seenBucketIDs.add(data.id)
+                }
             }
         }
         PastebinBucket.save()

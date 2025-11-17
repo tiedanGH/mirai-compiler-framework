@@ -23,6 +23,7 @@ import site.tiedan.MiraiCompilerFramework.uploadFileToImage
 import site.tiedan.command.CommandPastebin.sendStorageMail
 import site.tiedan.config.MailConfig
 import site.tiedan.config.PastebinConfig
+import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinBucket
 import site.tiedan.data.PastebinData
 import site.tiedan.format.JsonProcessor
@@ -128,7 +129,8 @@ object CommandBucket : RawCommand(
                         appendLine("名称：${data["name"]}")
                         appendLine("所有者：${data["owner"]}(${data["userID"]})")
                         appendLine("关联项目(${projectsCount(id)})：${data["projects"]}")
-                        appendLine("存储大小：${data["content"]?.length}")
+                        val lock = if (data["encrypt"] == "true") " 🔐" else ""
+                        appendLine("存储大小：${data["content"]?.length}$lock")
                         val backups = PastebinBucket.backups[id].orEmpty()
                         appendLine("备份信息：")
                         backups.forEach { backup ->
@@ -150,6 +152,11 @@ object CommandBucket : RawCommand(
                     checkPassword(id, password, userID, isAdmin) ?: return  // 验证密码
 
                     val bucket = PastebinBucket.bucket[id].orEmpty()
+                    if (bucket["encrypt"] == "true") {
+                        sendQuoteReply("🔐 此存储库启用了数据加密，为保证数据安全，查询功能被禁用")
+                        return
+                    }
+
                     val mail = args.getOrNull(2)?.content == "邮件" || args.getOrNull(2)?.content == "mail"
                     if (MailConfig.enable && mail && bucket.isNotEmpty()) {
                         val allBackupData = PastebinBucket.backups[id]
@@ -282,6 +289,7 @@ object CommandBucket : RawCommand(
                         "所有者" to "owner",
                         "所有者ID" to "userID",
                         "备份名" to "backup",
+                        "加密" to "encrypt",
                     )
                     option = paraMap[option] ?: option
                     if (paraMap.values.contains(option).not()) {
@@ -292,7 +300,8 @@ object CommandBucket : RawCommand(
                             "desc（简介）\n" +
                             "owner（所有者）\n" +
                             "userID（所有者ID）\n" +
-                            "backup（备份名）"
+                            "backup（备份名）\n" +
+                            "encrypt（加密）"
                         )
                         return
                     }
@@ -341,6 +350,36 @@ object CommandBucket : RawCommand(
 
                             content = "$newName（备份ID ${num + 1}）"
                             backup.apply { name = newName }
+                        }
+                        "encrypt"-> {
+                            if (PastebinBucket.bucket[id]?.get("encrypt") == "true") {
+                                return sendQuoteReply("修改失败：加密功能开启后不支持关闭")
+                            }
+                            if (content !in arrayListOf("enable","on","true","开启")) {
+                                return sendQuoteReply("修改失败：加密功能仅支持开启")
+                            }
+
+                            requestUserConfirmation(userID, args.content,
+                                " +++⚠️ 不可逆操作警告 ⚠️+++\n" +
+                                "您正在为存储库 ${bucketInfo(id)} 启用*数据加密*，请再次确认以下内容：\n" +
+                                "- 数据将在本地文件加密保存，仅在程序调用时才能获得真实值\n" +
+                                "- 查询功能将被永久禁用，任何人都无法查询数据\n" +
+                                "- 此操作*不可撤销*，启用后无法恢复\n" +
+                                "\n" +
+                                "如您确认无误，请再次执行修改指令以完成操作"
+                            ) ?: return
+
+                            PastebinBucket.bucket[id]?.set("encrypt", "true")
+                            val currentStorage = PastebinBucket.bucket[id]?.get("content") ?: ""
+                            val encryptedStorage = Security.encrypt(currentStorage, ExtraData.key)
+                            PastebinBucket.bucket[id]?.set("content", encryptedStorage)
+
+                            PastebinBucket.backups[id]?.forEachIndexed { index, data->
+                                if (data != null) {
+                                    val currentStorage = data.content
+                                    data.content = Security.encrypt(currentStorage, ExtraData.key)
+                                }
+                            }
                         }
                         else -> {
                             PastebinBucket.bucket[id]?.set(option, content)
@@ -588,7 +627,7 @@ object CommandBucket : RawCommand(
         val isOwner = userID.toString() == data["userID"]
         val passwordCorrect = password != null && Security.verifyPassword(password, storedHashed)
 
-            if (!isOwner && !isAdmin && !passwordCorrect) {
+            if (!isOwner && !passwordCorrect) {
             sendQuoteReply("拒绝访问：存储库密码错误")
             return null
         }
@@ -634,10 +673,13 @@ object CommandBucket : RawCommand(
     fun bucketIdsToBucketData(ids: List<Long>): List<JsonProcessor.BucketData> {
         return ids.map { id ->
             val bk = PastebinBucket.bucket[id]
+            val storage = bk?.get("content") ?: ""
             JsonProcessor.BucketData(
                 id = id,
                 name = bk?.get("name"),
-                content = bk?.get("content")
+                content = if (bk?.get("encrypt") == "true") {
+                    Security.decrypt(storage, ExtraData.key)
+                } else storage
             )
         }
     }
