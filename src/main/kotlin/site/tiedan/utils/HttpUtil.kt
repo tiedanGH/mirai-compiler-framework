@@ -16,7 +16,7 @@ object HttpUtil {
     private val JSON: MediaType? = "application/json; charset=utf-8".toMediaTypeOrNull()
     private val okHttpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
-            .readTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(22, TimeUnit.SECONDS)
             .build()
     }
 
