@@ -165,6 +165,11 @@ Detailed usage is provided below.
     + `messageList` (List[`JsonSingleMessage`]): used only in `MessageChain` or `MultipleMessage`; cannot coexist with `content`.
     + `error` (String): used to throw exceptions; if non-empty, the bot sends the `error` message and stops parsing other fields or saving data.
 - All fields are optional and will use defaults if omitted.
+### Special Output Format
+- json format also supports sending `ForwardMessage` and `Audio` formats, but special handling is required:
+    + `format` should be the desired output format, such as `ForwardMessage` or `Audio`
+    + `content` must be the **JSON-escaped string** of the `ForwardMessage` or `Audio`
+- Since `content` only supports strings, **the JSON of the special output format must be escaped into a string** to be correctly parsed
 #### JSON Output Examples
 - Text format (omit `format` and `width`):
 ```json
@@ -261,6 +266,11 @@ The user will see:
     + `content` (String) — The content to output, used for sending text or images. *(Default: empty message)*
     + `messageList`: a list of `JsonSingleMessage` objects in the order to be sent. (Only for `MessageChain` format)
 - All of the above parameters are optional. If omitted, the default values will be used.
+### Special Output Format
+- MultipleMessage format also supports sending `ForwardMessage` and `Audio` formats within a single message, but special handling is required:
+    + `format` should be the desired output format, such as `ForwardMessage` or `Audio`
+    + `content` must be the **JSON-escaped string format** of the `ForwardMessage` or `Audio`
+- Because `content` only supports strings, **the JSON of the special output format must be escaped into a string** to be correctly parsed
 ### Output Limits and Markdown Time Limit
 - **A maximum of 15 messages can be output per execution. If this limit is exceeded, the output will be interrupted.**
 - During each execution, the total time for converting markdown to images is **limited to 60 seconds**.

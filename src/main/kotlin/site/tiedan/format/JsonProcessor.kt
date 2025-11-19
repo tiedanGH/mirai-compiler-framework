@@ -16,6 +16,7 @@ import site.tiedan.MiraiCompilerFramework.TIMEOUT
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.save
+import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.uploadFileToImage
 import site.tiedan.command.CommandBucket.linkedBucketID
 import site.tiedan.config.PastebinConfig
@@ -49,7 +50,7 @@ object JsonProcessor {
      * @param at 文本消息前是否@指令执行者，**仅在`format`为text和MessageChain时生效**
      * @param width 图片的默认宽度，当以text输出时，此项参数不生效
      * @param content 输出的内容，用于输出文字或生成图片
-     * @param messageList 消息链中包含的所有消息，和`content`参数之间仅有一个有效。单条消息结构：[JsonSingleMessage]
+     * @param messageList 消息链中包含的所有消息，和`content`参数之间仅有一个有效。单条消息结构：[SingleChainMessage]
      * @param active 发送主动消息，消息结构：[ActiveMessage]
      * @param storage 用户存储数据
      * @param global 全局存储数据
@@ -384,8 +385,21 @@ object JsonProcessor {
                         }
                         sender.sendMessage(extraText + message)
                     }
-                    "json", "ForwardMessage", "MultipleMessage", "Audio"-> {
-                        sender.sendMessage(extraText + "[错误] 不支持在JsonSingleMessage内使用“${m.format}”输出格式")
+                    // content在函数内部再次解析JSON
+                    "ForwardMessage"-> {
+                        val forwardMessageData = ForwardMessageGenerator.generateForwardMessage(name, content, sender)
+                        sender.sendMessage(forwardMessageData.forwardMessage)
+                    }
+                    "Audio"-> {
+                        val audioData = AudioGenerator.generateAudio(content, sender.subject)
+                        if (audioData.success) {
+                            sender.sendMessage(audioData.audio ?: PlainText("[未知错误] 语音转换成功但返回值为null，理论不可能发生"))
+                        } else {
+                            sender.sendQuoteReply(audioData.error)
+                        }
+                    }
+                    "json", "MultipleMessage"-> {
+                        sender.sendMessage(extraText + "[错误] 不支持在SingleChainMessage内使用“${m.format}”输出格式")
                     }
                     else -> {
                         sender.sendMessage(extraText + "[错误] 无效的输出格式：${m.format}，请检查此条消息的format参数")

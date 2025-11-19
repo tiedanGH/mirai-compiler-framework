@@ -25,6 +25,9 @@ _Mirai Console online compiler framework based on Glot API_
     + Convert Markdown/HTML to images, support custom Base64 formats (images, audio, video), text-to-speech, download images from links, and convert LaTeX to images. Also supports outputting message chains, multiple messages, or forwarded messages — meeting the needs for generating various effects.
 - **Intelligent Data Storage and Retrieval**
     + Customize data persistence so that subsequent runs can directly read stored data, allowing program logic to continue seamlessly. Also, able to retrieve information such as nickname, QQ number, and group chat details.
+- **Cross-Project Bucket Storage**
+    + Supports creating independent Buckets, which can be flexibly mounted to different projects via commands, enabling data sharing and reuse across multiple projects
+    + Built-in backup and rollback features ensure the security and traceability of cross-project data
 - **Proactive Group and Private Messages**
     + The program can proactively send messages to specified group chats or individuals, enabling real-time alerts and instant interaction.
 - **Local Code High-speed Caching**
@@ -32,9 +35,9 @@ _Mirai Console online compiler framework based on Glot API_
 
 ## Installation Instructions
 1. This plugin runs on [Mirai Console](https://github.com/mamoe/mirai). You can learn how to install and start the bot by reading the [Mirai User Manual](https://docs.mirai.mamoe.net/UserManual.html).
-2. After `MiraiConsole` has started successfully, place the `.jar` file from this project’s [releases](https://github.com/tiedanGH/mirai-compiler-framework/releases) into the `.\plugins\` directory to load the plugin.
-3. Once the plugin has loaded successfully, copy all files from the [data](data) into `data\site.tiedan.mirai-compiler-framework\`, then restart `MiraiConsole`.
-4. In `config\site.tiedan.mirai-compiler-framework\`, fill in the Glot [API Token](https://glot.io/account/token). In `mail.properties`, enter the SMTP email information (if needed, used to send stored data via email for review).
+2. After `MiraiConsole` has started successfully, place the `.jar` file from this project’s [releases](https://github.com/tiedanGH/mirai-compiler-framework/releases) into the `./plugins/` directory to load the plugin.
+3. Once the plugin has loaded successfully, copy all files from the [data](data) into `data/site.tiedan.mirai-compiler-framework/`, then restart `MiraiConsole`.
+4. In `config/site.tiedan.mirai-compiler-framework/`, fill in the Glot [API Token](https://glot.io/account/token). In `mail.properties`, enter the SMTP email information (if needed, used to send stored data via email for review).
 5. This framework provides over 200 pre-implemented projects located in [data\PastebinData.yml](data/PastebinData.yml). Place this file into the data folder to load existing projects.
 
 ## Documentation
@@ -43,11 +46,11 @@ _Mirai Console online compiler framework based on Glot API_
     + [Glot Commands](docs/en/commands_en.md#glot-commands)
     + [Pastebin Commands](docs/en/commands_en.md#pastebin-commands)
     + [Run Commands & Quick Prefix](docs/en/commands_en.md#run-commands--quick-prefix)
+- [Supported Code Upload Websites](docs/en/commands_en.md#supported-code-upload-sites)
 - [Pastebin Commands and Advanced Features Documentation](docs/en/pastebin_en.md)
     + [1. Basic Command Functionality and Usage](docs/en/pastebin_en.md#1-basic-functions-and-usage)
     + [2. Output Formats: Output Images or Simultaneously Output Multiple Texts and Images](docs/en/pastebin_en.md#2-output-formats)
     + [3. Using Storage Functionality to Link Multiple Program Runs](docs/en/pastebin_en.md#3-using-the-storage-feature-to-link-multiple-program-runs)
-- [Supported Code Upload Websites](docs/en/commands_en.md#supported-code-upload-sites)
 - [Deploy Glot locally using docker-run](docs/en/docker-run_en.md)
     + [Install and Start docker-run](docs/en/docker-run_en.md#install-and-start-docker-run)
     + [Fill in the DockerConfig](docs/en/docker-run_en.md#fill-in-the-dockerconfig)

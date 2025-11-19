@@ -25,6 +25,9 @@ _基于 Glot 接口的 Mirai Console 在线编译器框架_
     + Markdown/HTML转图片、base64自定义格式（图片、语音、视频）、文本转语音、链接下载图片、LaTeX转图片，还能输出消息链、多条消息或转发消息。满足生成各种效果的需求
 - **智能数据存储与调用**
     + 自定义数据持久化保存，后续运行可直接读取，轻松延续程序逻辑。同时可获取昵称、QQ号、群聊等信息
+- **跨项目存储库**
+    + 支持创建独立存储库，通过指令灵活挂载到不同项目中，实现数据在多个项目之间的共享与复用
+    + 内置备份、回滚等功能，保证跨项目数据的安全与可追溯性
 - **群聊和私信主动消息**
     + 程序可主动向指定群聊或个人发送消息，实现实时提醒与即时互动
 - **本地代码高速缓存**
@@ -32,9 +35,9 @@ _基于 Glot 接口的 Mirai Console 在线编译器框架_
 
 ## 安装方法
 1. 本插件基于 [Mirai Console](https://github.com/mamoe/mirai) 运行，您可以通过阅读 [Mirai用户手册](https://docs.mirai.mamoe.net/UserManual.html) 来了解如何安装、启动机器人。
-2. `MiraiConsole` 成功启动后，将本项目 [releases](https://github.com/tiedanGH/mirai-compiler-framework/releases) 中的`.jar`文件放入`.\plugins\`目录下即可加载插件。
-3. 插件加载成功后，将 [data文件夹](data) 下的所有文件放入 `data\site.tiedan.mirai-compiler-framework\` 中，然后重新启动 `MiraiConsole`
-4. `config\site.tiedan.mirai-compiler-framework\` 中填写 Glot 的 [Api Token](https://glot.io/account/token)，`mail.properties` 中填写SMTP邮箱信息（如果需要，用于将存储数据发送邮件查看）
+2. `MiraiConsole` 成功启动后，将本项目 [releases](https://github.com/tiedanGH/mirai-compiler-framework/releases) 中的`.jar`文件放入`./plugins/`目录下即可加载插件。
+3. 插件加载成功后，将 [data文件夹](data) 下的所有文件放入 `data/site.tiedan.mirai-compiler-framework/` 中，然后重新启动 `MiraiConsole`
+4. `config/site.tiedan.mirai-compiler-framework/` 中填写 Glot 的 [Api Token](https://glot.io/account/token)，`mail.properties` 中填写SMTP邮箱信息（如果需要，用于将存储数据发送邮件查看）
 5. 本框架提供了超过200个已经实现好的项目，位于 [data\PastebinData.yml](data/PastebinData.yml)，放入数据文件夹来加载已有项目
 
 ## 帮助文档
@@ -43,11 +46,11 @@ _基于 Glot 接口的 Mirai Console 在线编译器框架_
     + [Glot指令](docs/commands.md#Glot指令)
     + [Pastebin指令](docs/commands.md#Pastebin指令)
     + [Run指令及快捷前缀](docs/commands.md#run指令及快捷前缀)
+- [支持上传代码的网站](docs/commands.md#支持上传代码的网站)
 - [pb指令和高级功能帮助文档](docs/pastebin.md)
     + [1. 指令基本功能和使用帮助](docs/pastebin.md#一指令基本功能和使用帮助)
     + [2. 输出格式：输出图片或同时输出多条文字和图片](docs/pastebin.md#二输出格式)
     + [3. 使用存储功能关联程序多次运行](docs/pastebin.md#三数据存储功能)
-- [支持上传代码的网站](docs/commands.md#支持上传代码的网站)
 - [使用 docker-run 在本地部署 Glot](docs/docker-run.md)
     + [安装并启动 docker-run](docs/docker-run.md#安装并启动-docker-run)
     + [填写 DockerConfig 配置](docs/docker-run.md#填写-dockerconfig-配置)

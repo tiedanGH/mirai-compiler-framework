@@ -1,5 +1,11 @@
 # 历史更新记录
 
+### 【2025/11/19 更新】
+1) MultipleMessage支持在每条单独的消息中使用ForwardMessage和Audio输出格式
+### 【2025/11/17 更新】
+1) 密码在本地加密存储，增强安全性
+2) 存储库新增数据加密功能
+3) 存储库新增删除备份指令
 ### 【2025/9/3 更新】
 1) MultipleMessage支持在每条单独的消息中使用MessageChain输出格式（但主动消息中MultipleMessage仍不支持使用MessageChain）
 ### 【2025/8/15 更新】
@@ -9,7 +15,7 @@
 ### 【2025/8/1 更新】
 1) 新增图片输入，支持获取输入图片的链接和base64字符串（需开启存储功能）
 ### 【2025/7/22 更新】
-1) python、cpp、c语言改用本地 docker 容器运行，已支持访问网络，python 提供 requests 和 aiohttp 库的支持
+1) python<del>、cpp、c</del>语言改用本地 docker 容器运行，已支持访问网络，python 提供 requests 和 aiohttp 库的支持
 2) 新增 Glot Snippets 获取支持，使用 `#pb support` 查看完整列表
 ### 【2025/6/22 更新】
 1) base64输出重构：现在可根据文件类型自动选择输出格式（支持文本、图片、语音、视频）

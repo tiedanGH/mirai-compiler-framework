@@ -165,6 +165,11 @@
     + `messageList`(List[`JsonSingleMessage`])——消息链中包含的所有消息，和`content`参数之间仅有一个有效。**MessageChain和`JsonSingleMessage`的使用帮助请在下一张图片中查看**
     + `error`(String)——用于抛出中断异常。当为非空时，bot会直接发送`error`中的消息，**并停止解析输出中的其他任何参数，存储数据也不会保存**
 - 上方的全部参数均不是必填项，如没有填写则按照默认值生成
+### 特殊输出格式
+- json同时支持发送`ForwardMessage`和`Audio`格式，但需要特殊处理：
+    + `format`为需要的输出格式，如`ForwardMessage`或`Audio`
+    + `content`需要`ForwardMessage`或`Audio`的**JSON转义后的字符串格式**
+- 因为`content`仅支持字符串，**需将特殊输出格式的JSON先转义为字符串**才能正确解析
 ### 使用json输出的几个示例
 - text格式输出（`format`和`width`均可省略）
 ```json
@@ -261,6 +266,11 @@
     + `content`(String)——输出的内容，用于发送文字或图片 *（默认为“空消息”）*
     + `messageList`为由数个`JsonSingleMessage`对象组成的列表，用于保存消息链中包含的所有消息（仅用于MessageChain格式）。
 - 上方的全部参数均不是必填项，如没有填写则按照默认值生成
+### 特殊输出格式
+- MultipleMessage同时支持在单条消息中发送`ForwardMessage`和`Audio`格式，但需要特殊处理：
+    + `format`为需要的输出格式，如`ForwardMessage`或`Audio`
+    + `content`需要`ForwardMessage`或`Audio`的**JSON转义后的字符串格式**
+- 因为`content`仅支持字符串，**需将特殊输出格式的JSON先转义为字符串**才能正确解析
 ### 输出限制和markdown时限
 - **单次执行时最多输出 15 条消息，超过限制输出会被中断**
 - 单次执行中，markdown转图片进程总时间为60秒。
