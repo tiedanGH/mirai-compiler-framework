@@ -46,9 +46,11 @@ import site.tiedan.format.JsonProcessor.toJsonSingleMessages
 import site.tiedan.format.JsonProcessor.toSingleChainMessages
 import site.tiedan.format.MarkdownImageGenerator
 import site.tiedan.utils.DownloadHelper.downloadImage
+import site.tiedan.utils.HttpUtil
 import site.tiedan.utils.PastebinUrlHelper
 import java.io.File
 import java.io.FileOutputStream
+import java.net.ConnectException
 import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URL
@@ -695,7 +697,15 @@ object PastebinCodeExecutor {
             return Pair(builder.toString().replace("image://", Image_Path).replace("lgtbot://", SystemConfig.TEST_PATH),
                 result.error.isNotEmpty() || result.stderr.isNotEmpty())
         } catch (e: Exception) {
-            return Pair("[执行失败]\n原因：${e.message}", true)
+            return when (e) {
+                is ConnectException,
+                is HttpUtil.HttpException ->
+                    Pair("[API服务异常]\n原因：${e.message}", true)
+
+                else -> {
+                    Pair("[执行失败]\n原因：${e.message}", true)
+                }
+            }
         }
     }
 }

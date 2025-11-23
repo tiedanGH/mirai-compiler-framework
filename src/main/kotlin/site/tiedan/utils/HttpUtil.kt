@@ -9,6 +9,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.select.Elements
 import java.io.File
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 
@@ -19,6 +20,13 @@ object HttpUtil {
             .readTimeout(22, TimeUnit.SECONDS)
             .build()
     }
+
+    class HttpException(
+        code: Int,
+        message: String?,
+        url: String,
+        body: String
+    ) : IOException("HTTP $code $message\nURL: $url\nBody: $body")
 
     /**
      * ### 下载图片
@@ -44,21 +52,21 @@ object HttpUtil {
     /**
      * ### 发送带Json参数的POST请求
      */
-    fun post(url: String, json: String): String {
+    fun post(url: String, json: String): okhttp3.Response {
         val requestBody = json.toRequestBody(JSON)
         val request = Request.Builder().url(url).post(requestBody).build()
-        return okHttpClient.newCall(request).execute().body.string()
+        return okHttpClient.newCall(request).execute()
     }
     /**
      * ### 发送带Header与Json参数的POST请求
      */
-    fun post(url: String, json: String, params: Map<String, String>): String {
+    fun post(url: String, json: String, params: Map<String, String>): okhttp3.Response {
         val requestBody = json.toRequestBody(JSON)
         val requestBuilder = Request.Builder().url(url)
         for (param in params)
             requestBuilder.addHeader(param.key, param.value)
         val request = requestBuilder.post(requestBody).build()
-        return okHttpClient.newCall(request).execute().body.string()
+        return okHttpClient.newCall(request).execute()
     }
 
     /**

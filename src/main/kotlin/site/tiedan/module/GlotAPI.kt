@@ -9,6 +9,7 @@ import net.mamoe.mirai.console.util.ConsoleExperimentalApi
 import site.tiedan.MiraiCompilerFramework
 import site.tiedan.config.DockerConfig
 import site.tiedan.utils.HttpUtil
+import site.tiedan.utils.HttpUtil.HttpException
 import java.io.File
 
 /**
@@ -208,7 +209,20 @@ object GlotAPI {
                     mapOf("Authorization" to PastebinConfig.API_TOKEN)
                 )
             }
-        return Json.decodeFromString(response) ?: throw Exception("未获取到任何数据")
+
+        var bodyString = ""
+        response.use { res ->
+            bodyString = res.body.string()
+            if (!res.isSuccessful) {
+                throw HttpException(
+                    code = res.code,
+                    message = res.message,
+                    url = res.request.url.toString(),
+                    body = if (!bodyString.isEmpty()) bodyString.take(200).replace("\n", "") else "无返回内容"
+                )
+            }
+        }
+        return Json.decodeFromString(bodyString) ?: throw Exception("未获取到任何数据")
     }
 
     /**
