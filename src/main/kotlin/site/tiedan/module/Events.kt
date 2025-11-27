@@ -93,7 +93,7 @@ object Events : SimpleListenerHost() {
             return
         }
         if (ExtraData.BlackList.contains(user?.id)) {
-            return logger.info("${user?.id}已被拉黑，请求被拒绝")
+            return logger.warning("${user?.id}已被拉黑，请求被拒绝")
         }
 
         val msg = message.content.removePrefix(CMD_PREFIX).trim()
@@ -158,9 +158,9 @@ object Events : SimpleListenerHost() {
                     sendQuoteReply("未获取到有效代码")
                     return
                 }
-                logger.info("请求执行代码\n$code")
+                logger.info("请求执行 URL 中的代码\n$code")
             } else {
-                logger.info("请求执行代码")
+                logger.info("请求执行自定义代码")
             }
 
             when (val message = runCode(this, language, code, input)) {

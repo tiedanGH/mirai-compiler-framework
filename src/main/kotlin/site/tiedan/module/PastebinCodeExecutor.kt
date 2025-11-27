@@ -86,7 +86,7 @@ object PastebinCodeExecutor {
         val nickname = this.name
 
         if (ExtraData.BlackList.contains(userID)) {
-            logger.info("${userID}已被拉黑，请求被拒绝")
+            logger.warning("${userID}已被拉黑，请求被拒绝")
             return
         }
 
@@ -190,9 +190,9 @@ object PastebinCodeExecutor {
                 input = "$jsonInput\n$userInput"
                 logger.info(
                     "输入存储数据: global{${global.length}} storage{${storage.length}} " +
-                    "bucket{${bucket.joinToString(" ") { "[${it.id}](${it.content?.length})" }}} " +
-                    "$nickname($userID) $from"
+                    "bucket{${bucket.joinToString(" ") { "[${it.id}](${it.content?.length})" }}}"
                 )
+                logger.debug("请求用户环境：$nickname($userID) $from")
             }
 
             logger.debug("[DEBUG] input:\n$input")
@@ -629,7 +629,7 @@ object PastebinCodeExecutor {
                         input.copyTo(output)
                     }
                 }
-                logger.info("获取结果图片成功")
+                logger.info("获取LaTeX结果图片成功")
                 return "请求执行LaTeX转图片成功"
             } else {
                 return "QuickLaTeX：HTTP Status ${connection.responseCode}: ${connection.responseMessage}"
@@ -653,7 +653,7 @@ object PastebinCodeExecutor {
         userInput: String
     ): Pair<String, Boolean> {
         try {
-            logger.info("请求执行 PastebinData: $name 中的代码，input: $userInput")
+            logger.debug("请求执行 PastebinData: $name 中的代码，input: $userInput")
             val result = if (language == "text")
                 GlotAPI.RunResult(stdout = code)
             else
