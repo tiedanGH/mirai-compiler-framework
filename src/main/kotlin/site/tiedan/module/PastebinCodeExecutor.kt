@@ -17,6 +17,8 @@ import net.mamoe.mirai.message.data.RawForwardMessage
 import net.mamoe.mirai.message.data.ShortVideo
 import net.mamoe.mirai.message.data.buildForwardMessage
 import site.tiedan.MiraiCompilerFramework
+import site.tiedan.MiraiCompilerFramework.ERROR_MSG_MAX_LENGTH
+import site.tiedan.MiraiCompilerFramework.ERROR_FORWARD_MAX_LENGTH
 import site.tiedan.MiraiCompilerFramework.MSG_TRANSFER_LENGTH
 import site.tiedan.MiraiCompilerFramework.THREADS
 import site.tiedan.MiraiCompilerFramework.ThreadInfo
@@ -161,7 +163,7 @@ object PastebinCodeExecutor {
                 sendQuoteReply(
                     "[获取代码失败] 请重新尝试\n" +
                     "报错类别：${e::class.simpleName}\n" +
-                    "报错信息：${trimToMaxLength(e.message.toString(), 300).first}"
+                    "报错信息：${trimToMaxLength(e.message.toString(), ERROR_MSG_MAX_LENGTH).first}"
                 )
                 return
             }
@@ -219,7 +221,7 @@ object PastebinCodeExecutor {
                                 override fun generatePreview(forward: RawForwardMessage): List<String> = listOf("执行失败：JSON解析错误")
                             }
                             subject!!.bot named "Error" says "[错误] ${jsonMessage.error}"
-                            val (resultString, tooLong) = trimToMaxLength(output, 10000)
+                            val (resultString, tooLong) = trimToMaxLength(output, ERROR_FORWARD_MAX_LENGTH)
                             if (tooLong) {
                                 subject!!.bot named "Error" says "原始输出过大，仅截取前10000个字符"
                             }
@@ -277,7 +279,7 @@ object PastebinCodeExecutor {
                 is Unit -> { /* ignore */ }
                 null -> sendQuoteReply("[处理消息失败] 意料之外的消息结果 null，请联系管理员")
                 else -> sendQuoteReply("[处理消息失败] 不识别的输出消息类型或内容，请联系管理员：\n" +
-                        trimToMaxLength(message.toString(), 300).first
+                        trimToMaxLength(message.toString(), ERROR_MSG_MAX_LENGTH).first
                 )
             }
             // 主动消息相关
@@ -302,7 +304,7 @@ object PastebinCodeExecutor {
             sendQuoteReply(
                 "[指令运行错误](非代码问题)\n" +
                 "报错类别：${e::class.simpleName}\n" +
-                "报错信息：${trimToMaxLength(e.message.toString(), 300).first}"
+                "报错信息：${trimToMaxLength(e.message.toString(), ERROR_MSG_MAX_LENGTH).first}"
             )
         } finally {
             THREADS.removeIf { it.id == jobId }
@@ -504,7 +506,7 @@ object PastebinCodeExecutor {
                 }
                 null -> PlainText("[处理消息失败] 意料之外的消息结果 null，请联系管理员")
                 else -> PlainText("[处理消息失败] 主动消息不支持的输出消息类型或内容，请联系管理员：\n" +
-                        trimToMaxLength(message.toString(), 300).first
+                        trimToMaxLength(message.toString(), ERROR_MSG_MAX_LENGTH).first
                 )
             }
 
@@ -664,7 +666,7 @@ object PastebinCodeExecutor {
                 if (language.lowercase() in DockerConfig.supportedLanguages) {
                     builder.append("[执行失败]\n来自docker容器的错误信息：\n")
                     builder.append("- error: ${result.error}\n")
-                    builder.append("- message: ${trimToMaxLength(result.message, 300).first}")
+                    builder.append("- message: ${trimToMaxLength(result.message, ERROR_MSG_MAX_LENGTH).first}")
                 } else {
                     builder.append("[执行失败]\n收到来自glot接口的消息：${result.message}")
                 }

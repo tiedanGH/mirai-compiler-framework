@@ -42,6 +42,8 @@ object MiraiCompilerFramework : KotlinPlugin(
     const val CMD_PREFIX = "run"
     const val MSG_TRANSFER_LENGTH = 550
     const val MSG_MAX_LENGTH = 800
+    const val ERROR_MSG_MAX_LENGTH = 300
+    const val ERROR_FORWARD_MAX_LENGTH = 10000
     const val TIMEOUT = 60L
     val supportedFormats = listOf(
         "text",

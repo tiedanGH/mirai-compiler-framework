@@ -19,6 +19,7 @@ import net.mamoe.mirai.message.data.content
 import net.mamoe.mirai.message.data.findIsInstance
 import net.mamoe.mirai.utils.warning
 import site.tiedan.MiraiCompilerFramework.CMD_PREFIX
+import site.tiedan.MiraiCompilerFramework.ERROR_MSG_MAX_LENGTH
 import site.tiedan.MiraiCompilerFramework.MSG_MAX_LENGTH
 import site.tiedan.MiraiCompilerFramework.MSG_TRANSFER_LENGTH
 import site.tiedan.MiraiCompilerFramework.THREADS
@@ -168,7 +169,7 @@ object Events : SimpleListenerHost() {
                 is ForwardMessage -> sendMessage(message)
                 is PlainText -> sendQuoteReply(message.content)
                 else -> sendQuoteReply("[处理消息失败] 不识别的输出消息类型或内容，请联系管理员：\n" +
-                        trimToMaxLength(message.toString(), 300).first
+                        trimToMaxLength(message.toString(), ERROR_MSG_MAX_LENGTH).first
                 )
             }
         } catch (e: Exception) {
@@ -191,7 +192,7 @@ object Events : SimpleListenerHost() {
                 PlainText(
                     "[执行失败]\n来自docker容器的错误信息：\n" +
                     "- error: ${result.error}\n" +
-                    "- message: ${trimToMaxLength(result.message, 300).first}"
+                    "- message: ${trimToMaxLength(result.message, ERROR_MSG_MAX_LENGTH).first}"
                 )
             } else {
                 PlainText("[执行失败]\n收到来自glot接口的消息：${result.message}")

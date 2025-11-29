@@ -12,6 +12,7 @@ import net.mamoe.mirai.message.data.RawForwardMessage
 import net.mamoe.mirai.message.data.buildForwardMessage
 import net.mamoe.mirai.message.data.content
 import net.mamoe.mirai.message.data.toMessageChain
+import site.tiedan.MiraiCompilerFramework.ERROR_FORWARD_MAX_LENGTH
 import site.tiedan.MiraiCompilerFramework.TIMEOUT
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.logger
@@ -80,7 +81,7 @@ object ForwardMessageGenerator {
                     override fun generatePreview(forward: RawForwardMessage): List<String> = listOf("执行失败：JSON解析错误")
                 }
                 subject.bot named "Error" says "[错误] JSON解析错误：\n${e.message}"
-                val (resultString, tooLong) = trimToMaxLength(forwardMessageOutput, 10000)
+                val (resultString, tooLong) = trimToMaxLength(forwardMessageOutput, ERROR_FORWARD_MAX_LENGTH)
                 if (tooLong) {
                     subject.bot named "Error" says "原始输出过大，仅截取前10000个字符"
                 }

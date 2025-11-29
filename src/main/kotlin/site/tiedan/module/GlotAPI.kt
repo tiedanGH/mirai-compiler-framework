@@ -7,6 +7,8 @@ import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 import net.mamoe.mirai.console.util.ConsoleExperimentalApi
 import site.tiedan.MiraiCompilerFramework
+import site.tiedan.MiraiCompilerFramework.ERROR_MSG_MAX_LENGTH
+import site.tiedan.MiraiCompilerFramework.trimToMaxLength
 import site.tiedan.config.DockerConfig
 import site.tiedan.utils.HttpUtil
 import site.tiedan.utils.HttpUtil.HttpException
@@ -213,12 +215,13 @@ object GlotAPI {
         var bodyString = ""
         response.use { res ->
             bodyString = res.body.string()
-            if (!res.isSuccessful) {
+            if (!res.isSuccessful && res.code != 400) {
+                // 400 会在返回内容中给出具体错误信息，交给上层处理
                 throw HttpException(
                     code = res.code,
                     message = res.message,
                     url = res.request.url.toString(),
-                    body = if (!bodyString.isEmpty()) bodyString.take(200).replace("\n", "") else "无返回内容"
+                    body = trimToMaxLength(bodyString, ERROR_MSG_MAX_LENGTH).first.replace("\n", "").ifEmpty { "无返回内容" }
                 )
             }
         }
