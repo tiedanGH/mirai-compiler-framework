@@ -705,6 +705,7 @@ object PastebinCodeExecutor {
                     Pair("[API服务异常]\n原因：${e.message}", true)
 
                 else -> {
+                    logger.warning("执行失败：${e::class.simpleName}(${e.message})")
                     Pair("[执行失败]\n原因：${e.message}", true)
                 }
             }

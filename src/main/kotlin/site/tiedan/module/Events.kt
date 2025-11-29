@@ -35,7 +35,9 @@ import site.tiedan.data.PastebinData
 import site.tiedan.format.ForwardMessageGenerator
 import site.tiedan.format.JsonProcessor
 import site.tiedan.module.PastebinCodeExecutor.executeMainProcess
+import site.tiedan.utils.HttpUtil
 import site.tiedan.utils.PastebinUrlHelper
+import java.net.ConnectException
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -119,7 +121,7 @@ object Events : SimpleListenerHost() {
 
         val jobId = "${System.currentTimeMillis()}-${language}-$name(${user?.id})"
         val from = if (subject is Group) "${(subject as Group).name}(${(subject as Group).id})" else "private"
-        THREADS.add(ThreadInfo(jobId, "${language}进程", "$name(${user?.id})", from))
+        THREADS.add(ThreadInfo(jobId, "自定义${language}代码", "$name(${user?.id})", from))
 
         try {
             // 检查命令的引用
@@ -173,8 +175,16 @@ object Events : SimpleListenerHost() {
                 )
             }
         } catch (e: Exception) {
-            logger.warning("执行失败：${e::class.simpleName}(${e.message})")
-            sendQuoteReply("[执行失败]\n原因：${e.message}")
+            when (e) {
+                is ConnectException,
+                is HttpUtil.HttpException ->
+                    sendQuoteReply("[API服务异常]\n原因：${e.message}")
+
+                else -> {
+                    logger.warning("执行失败：${e::class.simpleName}(${e.message})")
+                    sendQuoteReply("[执行失败]\n原因：${e.message}")
+                }
+            }
         } finally {
             THREADS.removeIf { it.id == jobId }
         }
