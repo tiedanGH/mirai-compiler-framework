@@ -7,7 +7,7 @@ import net.mamoe.mirai.message.data.PlainText
 import net.mamoe.mirai.utils.ExternalResource.Companion.toExternalResource
 import org.apache.tika.Tika
 import site.tiedan.MiraiCompilerFramework.MSG_TRANSFER_LENGTH
-import site.tiedan.MiraiCompilerFramework.TIMEOUT
+import site.tiedan.MiraiCompilerFramework.MARKDOWN_MAX_TIME
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.uploadFileToImage
@@ -178,7 +178,7 @@ object Base64Processor {
                 imageData.add(ImageData(url, null))
                 continue
             }
-            val downloadResult = downloadFile(null, url, cacheFolder, "base64_download", TIMEOUT - timeUsed, force = true)
+            val downloadResult = downloadFile(null, url, cacheFolder, "base64_download", MARKDOWN_MAX_TIME - timeUsed, force = true)
             if (!downloadResult.success) {
                 imageData.add(ImageData(url, null, downloadResult.message))
                 continue

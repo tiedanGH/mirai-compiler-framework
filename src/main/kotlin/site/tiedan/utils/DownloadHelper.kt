@@ -1,6 +1,6 @@
 package site.tiedan.utils
 
-import site.tiedan.MiraiCompilerFramework.TIMEOUT
+import site.tiedan.MiraiCompilerFramework.MARKDOWN_MAX_TIME
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.module.Statistics
 import site.tiedan.module.Statistics.roundTo2
@@ -50,7 +50,7 @@ object DownloadHelper {
         force: Boolean = false
     ): DownloadResult {
         if (timeout <= 0L) {
-            return DownloadResult(false, "[错误] 执行时间已达总上限${TIMEOUT}秒", 0)
+            return DownloadResult(false, "[错误] 执行时间已达总上限${MARKDOWN_MAX_TIME}秒", 0)
         }
         if (fileName.contains("/")) {
             return DownloadResult(false, "[错误] 文件名称中不能包含符号“/”", 0)

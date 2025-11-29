@@ -13,7 +13,7 @@ import net.mamoe.mirai.message.data.buildForwardMessage
 import net.mamoe.mirai.message.data.content
 import net.mamoe.mirai.message.data.toMessageChain
 import site.tiedan.MiraiCompilerFramework.ERROR_FORWARD_MAX_LENGTH
-import site.tiedan.MiraiCompilerFramework.TIMEOUT
+import site.tiedan.MiraiCompilerFramework.MARKDOWN_MAX_TIME
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.uploadFileToImage
@@ -105,7 +105,7 @@ object ForwardMessageGenerator {
                             subject.bot named result.name says content
                         }
                         "markdown"-> {
-                            val markdownResult = MarkdownImageGenerator.processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
+                            val markdownResult = MarkdownImageGenerator.processMarkdown(name, content, m.width.toString(), MARKDOWN_MAX_TIME - timeUsed)
                             timeUsed += markdownResult.duration
                             if (!markdownResult.success) {
                                 subject.bot named "Error" says "[markdown2image错误] ${markdownResult.message}"
@@ -141,7 +141,7 @@ object ForwardMessageGenerator {
                             val file = if (content.startsWith("file:///")) {
                                 File(URI(content))
                             } else {
-                                val downloadResult = downloadImage(name, content, cacheFolder, "image", TIMEOUT - timeUsed, force = true)
+                                val downloadResult = downloadImage(name, content, cacheFolder, "image", MARKDOWN_MAX_TIME - timeUsed, force = true)
                                 timeUsed += downloadResult.duration
                                 if (!downloadResult.success) {
                                     subject.bot named "Error" says downloadResult.message

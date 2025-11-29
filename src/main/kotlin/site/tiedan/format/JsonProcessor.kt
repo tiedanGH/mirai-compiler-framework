@@ -12,7 +12,7 @@ import net.mamoe.mirai.message.data.MessageChain
 import net.mamoe.mirai.message.data.MessageChainBuilder
 import net.mamoe.mirai.message.data.PlainText
 import site.tiedan.MiraiCompilerFramework.MSG_TRANSFER_LENGTH
-import site.tiedan.MiraiCompilerFramework.TIMEOUT
+import site.tiedan.MiraiCompilerFramework.MARKDOWN_MAX_TIME
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.save
@@ -211,7 +211,7 @@ object JsonProcessor {
                     )
                 }
                 "markdown"-> {
-                    val markdownResult = MarkdownImageGenerator.processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
+                    val markdownResult = MarkdownImageGenerator.processMarkdown(name, content, m.width.toString(), MARKDOWN_MAX_TIME - timeUsed)
                     timeUsed += markdownResult.duration
                     if (!markdownResult.success) {
                         builder.add("[markdown2image错误] ${markdownResult.message}")
@@ -242,7 +242,7 @@ object JsonProcessor {
                         }
                         builder.addImageFromFile(content, sender)
                     } else {
-                        val downloadResult = downloadImage(name, content, cacheFolder, "image", TIMEOUT - timeUsed, force = true)
+                        val downloadResult = downloadImage(name, content, cacheFolder, "image", MARKDOWN_MAX_TIME - timeUsed, force = true)
                         timeUsed += downloadResult.duration
                         if (!downloadResult.success) {
                             builder.add(downloadResult.message)
@@ -329,7 +329,7 @@ object JsonProcessor {
                         }
                     }
                     "markdown"-> {
-                        val markdownResult = MarkdownImageGenerator.processMarkdown(name, content, m.width.toString(), TIMEOUT - timeUsed)
+                        val markdownResult = MarkdownImageGenerator.processMarkdown(name, content, m.width.toString(), MARKDOWN_MAX_TIME - timeUsed)
                         timeUsed += markdownResult.duration
                         if (!markdownResult.success) {
                             sender.sendMessage(extraText + "[markdown2image错误] ${markdownResult.message}")
@@ -360,7 +360,7 @@ object JsonProcessor {
                             }
                             sendLocalImage(content, sender, extraText)
                         } else {
-                            val downloadResult = downloadImage(name, content, cacheFolder, "image", TIMEOUT - timeUsed, force = true)
+                            val downloadResult = downloadImage(name, content, cacheFolder, "image", MARKDOWN_MAX_TIME - timeUsed, force = true)
                             timeUsed += downloadResult.duration
                             if (!downloadResult.success) {
                                 sender.sendMessage(extraText + downloadResult.message)

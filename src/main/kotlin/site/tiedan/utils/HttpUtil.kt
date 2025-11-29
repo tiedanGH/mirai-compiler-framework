@@ -8,6 +8,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.select.Elements
+import site.tiedan.MiraiCompilerFramework.MAX_EXECUTION_TIME
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -17,7 +18,7 @@ object HttpUtil {
     private val JSON: MediaType? = "application/json; charset=utf-8".toMediaTypeOrNull()
     private val okHttpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
-            .readTimeout(22, TimeUnit.SECONDS)
+            .readTimeout(MAX_EXECUTION_TIME, TimeUnit.SECONDS)
             .build()
     }
 

@@ -9,7 +9,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import net.mamoe.mirai.console.util.ConsoleExperimentalApi
 import site.tiedan.MiraiCompilerFramework
-import site.tiedan.MiraiCompilerFramework.TIMEOUT
+import site.tiedan.MiraiCompilerFramework.MARKDOWN_MAX_TIME
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.command.CommandBucket.formatTime
@@ -54,13 +54,13 @@ object MarkdownImageGenerator {
         name: String?,
         originalContent: String,
         width: String = "600",
-        timeout: Long = TIMEOUT
+        timeout: Long = MARKDOWN_MAX_TIME
     ): MarkdownResult = MarkdownLock.withLock {
         var duration = 0.0
         val result = run {
             val content = originalContent.ifBlank { "[警告] `content`内容为空或仅包含空白字符" }
             if (timeout <= 0L) {
-                return@run MarkdownResult(false, "操作失败：执行时间已达总上限${TIMEOUT}秒", 0L)
+                return@run MarkdownResult(false, "操作失败：执行时间已达总上限${MARKDOWN_MAX_TIME}秒", 0L)
             }
 
             val startTime = Instant.now()   // 记录开始时间
@@ -105,7 +105,7 @@ object MarkdownImageGenerator {
                 if (!process.waitFor(timeout, TimeUnit.SECONDS)) {
                     process.destroyForcibly()
                     duration = timeout.toDouble()
-                    if (timeout == TIMEOUT) {
+                    if (timeout == MARKDOWN_MAX_TIME) {
                         saveErrorRecord(content, "TimeoutError($timeout)")
                         return@run MarkdownResult(false, "执行超时：执行超出最大时间${timeout}秒限制，图片生成被中断。如需查看内容请联系管理员", timeout)
                     } else {
