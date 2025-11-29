@@ -39,8 +39,8 @@ import site.tiedan.data.PastebinStorage
 import site.tiedan.format.MarkdownImageGenerator
 import site.tiedan.module.GlotAPI
 import site.tiedan.module.Statistics
-import site.tiedan.module.buildMailContent
-import site.tiedan.module.buildMailSession
+import site.tiedan.utils.buildMailContent
+import site.tiedan.utils.buildMailSession
 import site.tiedan.utils.DownloadHelper.downloadFile
 import site.tiedan.utils.DownloadHelper.downloadImage
 import site.tiedan.utils.PastebinUrlHelper.checkUrl

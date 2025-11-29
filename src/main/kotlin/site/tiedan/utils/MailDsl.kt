@@ -7,7 +7,7 @@
  *
  * Original copyright and license terms are retained.
  */
-package site.tiedan.module
+package site.tiedan.utils
 
 import jakarta.activation.*
 import jakarta.mail.*

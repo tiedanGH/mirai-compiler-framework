@@ -12,6 +12,7 @@ import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.MARKDOWN_MAX_TIME
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.logger
+import site.tiedan.MiraiCompilerFramework.roundTo2
 import site.tiedan.command.CommandBucket.formatTime
 import site.tiedan.command.CommandBucket.isBucketEmpty
 import site.tiedan.command.CommandBucket.projectsCount
@@ -21,7 +22,6 @@ import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinBucket
 import site.tiedan.data.PastebinData
 import site.tiedan.module.Statistics
-import site.tiedan.module.Statistics.roundTo2
 import java.io.File
 import java.lang.management.ManagementFactory
 import java.time.Duration

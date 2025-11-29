@@ -2,8 +2,8 @@ package site.tiedan.utils
 
 import site.tiedan.MiraiCompilerFramework.MARKDOWN_MAX_TIME
 import site.tiedan.MiraiCompilerFramework.logger
+import site.tiedan.MiraiCompilerFramework.roundTo2
 import site.tiedan.module.Statistics
-import site.tiedan.module.Statistics.roundTo2
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection

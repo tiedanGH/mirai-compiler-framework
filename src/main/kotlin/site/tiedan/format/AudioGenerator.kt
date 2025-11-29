@@ -8,7 +8,7 @@ import net.mamoe.mirai.message.data.Audio
 import net.mamoe.mirai.utils.ExternalResource.Companion.toExternalResource
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.format.JsonProcessor.json
-import site.tiedan.module.FreeTextToSpeech
+import site.tiedan.utils.FreeTextToSpeech
 import xyz.cssxsh.baidu.aip.BaiduAipClient
 import java.io.IOException
 

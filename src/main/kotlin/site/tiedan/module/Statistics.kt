@@ -1,16 +1,13 @@
 package site.tiedan.module
 
-import site.tiedan.MiraiCompilerFramework.logger
+import site.tiedan.MiraiCompilerFramework.roundTo2
 import site.tiedan.MiraiCompilerFramework.save
+import site.tiedan.command.CommandBucket.projectsCount
 import site.tiedan.data.CodeCache
 import site.tiedan.data.ExtraData
+import site.tiedan.data.PastebinBucket
 import site.tiedan.data.PastebinData
 import site.tiedan.data.PastebinStorage
-import net.mamoe.mirai.utils.info
-import site.tiedan.command.CommandBucket.projectsCount
-import site.tiedan.data.PastebinBucket
-import java.math.BigDecimal
-import java.math.RoundingMode
 
 /**
  * # 数据统计
@@ -230,19 +227,6 @@ object Statistics {
                 top10Project
     }
 
-    /**
-     * 每日热度指数衰减
-     */
-    fun dailyDecayScore() {
-        for (entry in ExtraData.statistics.values) {
-            val rawScore = entry["score"] ?: 0.0
-            val decayedScore = rawScore * 0.9
-            entry["score"] = decayedScore.roundTo2()
-        }
-        ExtraData.save()
-        logger.info { "热度指数衰减执行完成" }
-    }
-
     private fun formatTime(time: Double): String {
         val hours = (time / 3600).toLong()
         val minutes = ((time % 3600) / 60).toLong()
@@ -269,7 +253,4 @@ object Statistics {
             ExtraData.statistics[name] = mutableMapOf()
         }
     }
-
-    fun Double.roundTo2(): Double = BigDecimal(this).setScale(2, RoundingMode.HALF_UP).toDouble()
-
 }

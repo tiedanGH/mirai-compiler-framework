@@ -27,6 +27,8 @@ import site.tiedan.data.*
 import site.tiedan.module.*
 import site.tiedan.utils.Security
 import java.io.File
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.util.concurrent.ConcurrentLinkedQueue
 
 object MiraiCompilerFramework : KotlinPlugin(
@@ -131,11 +133,10 @@ object MiraiCompilerFramework : KotlinPlugin(
     private fun startTimer() {
         launch {
             while (true) {
-                val delayTime = calculateNextClearDelay()
-                logger.info { "已重新加载协程，下次定时剩余时间 ${delayTime / 1000} 秒" }
+                val delayTime = Timer.calculateNextDelay()
+                logger.info { "已重新加载协程，距离下次定时任务剩余 ${delayTime / 1000} 秒" }
                 delay(delayTime)
-                executeClearBlackList()
-                Statistics.dailyDecayScore()
+                Timer.executeScheduledTasks()
             }
         }
     }
@@ -195,6 +196,11 @@ object MiraiCompilerFramework : KotlinPlugin(
                 else -> 4
             }
         }
+
+    /**
+     * 保留两位小数
+     */
+    fun Double.roundTo2(): Double = BigDecimal(this).setScale(2, RoundingMode.HALF_UP).toDouble()
 
     /**
      * 获取用户昵称
