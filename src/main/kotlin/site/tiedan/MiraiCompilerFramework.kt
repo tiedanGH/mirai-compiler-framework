@@ -15,6 +15,7 @@ import net.mamoe.mirai.contact.getMember
 import net.mamoe.mirai.contact.nameCardOrNick
 import net.mamoe.mirai.event.GlobalEventChannel
 import net.mamoe.mirai.message.data.Image
+import net.mamoe.mirai.message.data.Message
 import net.mamoe.mirai.message.data.PlainText
 import net.mamoe.mirai.message.data.QuoteReply
 import net.mamoe.mirai.message.data.buildMessageChain
@@ -83,6 +84,7 @@ object MiraiCompilerFramework : KotlinPlugin(
         CommandGlot.register()
         CommandPastebin.register()
         CommandBucket.register()
+        CommandImage.register()
         CommandRun.register()
 
         PastebinConfig.reload()
@@ -94,6 +96,7 @@ object MiraiCompilerFramework : KotlinPlugin(
         ExtraData.reload()
         PastebinStorage.reload()
         PastebinBucket.reload()
+        ImageData.reload()
         CodeCache.reload()
 
         startTimer()
@@ -116,6 +119,7 @@ object MiraiCompilerFramework : KotlinPlugin(
         CommandGlot.unregister()
         CommandPastebin.unregister()
         CommandBucket.unregister()
+        CommandImage.unregister()
         CommandRun.unregister()
     }
 
@@ -145,13 +149,19 @@ object MiraiCompilerFramework : KotlinPlugin(
      * 发送引用消息
      */
     suspend fun CommandSender.sendQuoteReply(msgToSend: String) {
+        sendQuoteReplyInternal(PlainText(msgToSend))
+    }
+    suspend fun CommandSender.sendQuoteReply(msgToSend: Message) {
+        sendQuoteReplyInternal(msgToSend)
+    }
+    private suspend fun CommandSender.sendQuoteReplyInternal(message: Message) {
         if (this is CommandSenderOnMessage<*>) {
             sendMessage(buildMessageChain {
                 +QuoteReply(fromEvent.message)
-                +PlainText(msgToSend)
+                +message
             })
         } else {
-            sendMessage(msgToSend)
+            sendMessage(message)
         }
     }
 
@@ -164,6 +174,16 @@ object MiraiCompilerFramework : KotlinPlugin(
                 return null
             }
             this.uploadImage(resource)
+        }
+    }
+
+    /**
+     * 模糊查找
+     */
+    fun fuzzyFind(map: MutableMap<String, MutableMap<String, String>>, query: String): List<String> {
+        if (query.isEmpty()) return emptyList()
+        return map.keys.filter { key ->
+            key.contains(query, ignoreCase = true) || query.contains(key, ignoreCase = true)
         }
     }
 
@@ -205,7 +225,7 @@ object MiraiCompilerFramework : KotlinPlugin(
     /**
      * 获取用户昵称
      */
-    fun getNickname(sender: CommandSender, qq: Long): String {
+    fun getNickname(sender: CommandSender, qq: Long): String? {
         val subject = sender.subject
         var nickname: String? = null
         if (subject is Group) {
@@ -214,6 +234,6 @@ object MiraiCompilerFramework : KotlinPlugin(
         if (nickname == null) {
             nickname = sender.bot?.getFriend(qq)?.nameCardOrNick
         }
-        return nickname ?: "[未知]"
+        return nickname
     }
 }

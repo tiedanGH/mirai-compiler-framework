@@ -19,6 +19,7 @@ import site.tiedan.command.CommandBucket.projectsCount
 import site.tiedan.command.CommandRun.Image_Path
 import site.tiedan.config.SystemConfig
 import site.tiedan.data.ExtraData
+import site.tiedan.data.ImageData
 import site.tiedan.data.PastebinBucket
 import site.tiedan.data.PastebinData
 import site.tiedan.module.Statistics
@@ -149,7 +150,7 @@ object MarkdownImageGenerator {
     /**
      * 生成pb列表html
      */
-    data class Filter(
+    data class PastebinListFilter(
         val project: String? = null,
         val author: String? = null,
         val language: String? = null,
@@ -170,7 +171,7 @@ object MarkdownImageGenerator {
                 ?.joinToString("<br>", prefix = "<br>")
                 ?: ""
     }
-    fun generatePastebinListHtml(sortMode: String, f: Filter): String {
+    fun generatePastebinListHtml(sortMode: String, f: PastebinListFilter): String {
         val columnsPerRow = if (f.isFilterEnabled) 1 else 5
         val projectsPerPage = 20
 
@@ -476,6 +477,76 @@ object MarkdownImageGenerator {
             appendLine("</div>")
         }
     }
+
+    /**
+     * 生成image列表html
+     */
+    data class ImageListFilter(
+        val name: String? = null,
+        val owner: String? = null,
+    ) {
+        val isFilterEnabled: Boolean
+            get() = listOf(name, owner).any { it != null }
+
+        val filterText: String
+            get() = listOfNotNull(
+                name?.let { "[名称筛选：$it]" },
+                owner?.let { "[所有者筛选：$it]" },
+            ).takeIf { it.isNotEmpty() }
+                ?.joinToString("<br>", prefix = "<br>")
+                ?: ""
+    }
+    fun generateImageListHtml(f: ImageListFilter): String {
+        val titleText = if (f.isFilterEnabled) "图片列表" else "完整图片列表"
+        val entriesList = ImageData.images.entries
+            .asSequence()
+            .filter { entry ->
+                val nameMatch = f.name?.let { keyword ->
+                    entry.key.contains(keyword, ignoreCase = true)
+                } != false
+
+                val authorMatch = f.owner?.let { keyword ->
+                    (entry.value["owner"]?.contains(keyword, ignoreCase = true) == true) ||
+                            (entry.value["userID"]?.contains(keyword) == true)
+                } != false
+
+                nameMatch && authorMatch
+            }
+            .toList()
+
+        return buildString {
+            appendLine("""
+            <style>
+                h1{text-align: center; margin-bottom: 0;}
+                h3{text-align: center; margin-top: 0; margin-bottom: 16px;}
+                .image-grid{width:100%; border-collapse:collapse;}
+                .image-grid td{padding:12px; text-align:center; vertical-align:top;}
+                .thumb{width:150px; height:150px; display:flex; align-items:center; justify-content:center; overflow:hidden; margin:0 auto;}
+                .thumb img{max-width:100%; max-height:100%; display:block;}
+                .img-name{margin-top:6px; font-size:18px; word-break:break-all;}
+            </style>
+            """.trimIndent())
+            appendLine("<h1>$titleText</h1><h3>${f.filterText}</h3>")
+
+            appendLine("<table class='image-grid'>")
+            entriesList.forEachIndexed { idx, (key, value) ->
+                if (idx % 8 == 0) appendLine("<tr>")
+                val fileName = value["name"] ?: key
+                val imgSrc = "${Image_Path}$fileName"
+                appendLine("<td>")
+                appendLine("<div class='thumb'>")
+                appendLine("<img src='${esc(imgSrc)}' alt='${esc(fileName)}'/>")
+                appendLine("</div>")
+                appendLine("<div class='img-name'>${esc(value["name"] ?: key)}</div>")
+                appendLine("</td>")
+                if (idx % 8 == 7) appendLine("</tr>")
+            }
+            if (entriesList.isNotEmpty() && entriesList.size % 8 != 0) appendLine("</tr>")
+            appendLine("</table>")
+            appendLine("<p style='text-align:center; margin-top:16px;'>共 ${entriesList.size} 张图片</p>")
+        }
+    }
+
 
     private fun esc(s: String?) = s
         ?.replace("&", "&amp;")

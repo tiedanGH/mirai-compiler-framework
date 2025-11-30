@@ -323,6 +323,11 @@ object CommandBucket : RawCommand(
                                 sendQuoteReply("转移失败：输入的 userID 不是整数")
                                 return
                             }
+                            val targetName = getNickname(this, content.toLong())
+                            if (targetName == null) {
+                                sendQuoteReply("转移失败：无法找到目标用户 $content，转移对象必须为机器人好友或本群成员")
+                                return
+                            }
 
                             requestUserConfirmation(userID, args.content,
                                 " +++⚠️ 危险操作警告 ⚠️+++\n" +
@@ -335,7 +340,7 @@ object CommandBucket : RawCommand(
                                 "如您确认无误，请再次执行转移指令以完成操作"
                             ) ?: return
 
-                            PastebinBucket.bucket[id]?.set("owner", getNickname(this, content.toLong()))
+                            PastebinBucket.bucket[id]?.set("owner", targetName)
                             PastebinBucket.bucket[id]?.set("userID", content)
                         }
                         "backup"-> {

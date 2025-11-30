@@ -16,6 +16,7 @@ import site.tiedan.format.JsonProcessor.ImageData
 import site.tiedan.utils.DownloadHelper.downloadFile
 import java.io.File
 import java.util.*
+import kotlin.math.ceil
 
 /**
  * ## Base64 输出格式
@@ -183,7 +184,7 @@ object Base64Processor {
                 imageData.add(ImageData(url, null, downloadResult.message))
                 continue
             }
-            timeUsed += downloadResult.duration
+            timeUsed += ceil(downloadResult.duration).toLong()
             val result = fileToDataUri(File("${cacheFolder}base64_download"))
             if (result.first) {
                 imageData.add(ImageData(url, result.second))

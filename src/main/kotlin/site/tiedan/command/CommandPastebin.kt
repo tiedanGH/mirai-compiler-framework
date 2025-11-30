@@ -11,12 +11,12 @@ import net.mamoe.mirai.contact.MessageTooLargeException
 import net.mamoe.mirai.contact.PermissionDeniedException
 import net.mamoe.mirai.containsFriend
 import net.mamoe.mirai.message.data.*
-import net.mamoe.mirai.message.data.Image.Key.queryUrl
 import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.Command
 import site.tiedan.MiraiCompilerFramework.THREADS
 import site.tiedan.MiraiCompilerFramework.cacheFolder
-import site.tiedan.MiraiCompilerFramework.imageFolder
+import site.tiedan.MiraiCompilerFramework.fuzzyFind
+import site.tiedan.MiraiCompilerFramework.getNickname
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.pendingCommand
 import site.tiedan.MiraiCompilerFramework.reload
@@ -39,12 +39,10 @@ import site.tiedan.data.PastebinStorage
 import site.tiedan.format.MarkdownImageGenerator
 import site.tiedan.module.GlotAPI
 import site.tiedan.module.Statistics
-import site.tiedan.utils.buildMailContent
-import site.tiedan.utils.buildMailSession
-import site.tiedan.utils.DownloadHelper.downloadFile
-import site.tiedan.utils.DownloadHelper.downloadImage
 import site.tiedan.utils.PastebinUrlHelper.checkUrl
 import site.tiedan.utils.PastebinUrlHelper.supportedUrls
+import site.tiedan.utils.buildMailContent
+import site.tiedan.utils.buildMailSession
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -78,9 +76,9 @@ object CommandPastebin : RawCommand(
         Command("pb delete <名称>", "pb 删除 <名称>", "永久删除项目", 2),
 
         Command("pb set <名称> format <输出格式> [宽度/存储]", "pb 修改 <名称> 输出格式 <输出格式> [宽度/存储]", "修改程序输出格式", 3),
-        Command("pb upload <图片名称(需要包含拓展名)> <【图片/URL】>", "pb 上传 <图片名称(需要包含拓展名)> <【图片/URL】>", "上传图片至缓存", 3),
         Command("pb storage <名称> [查询ID]", "pb 存储 <名称> [查询ID]", "查询存储数据", 3),
         Command("bucket help", "存储库 帮助", "跨项目存储库操作指令", 3),
+        Command("image help", "图片 帮助", "本地图片操作指令", 3),
 
         Command("pb handle <名称> <同意/拒绝> [备注]", "pb 处理 <名称> <同意/拒绝> [备注]", "处理添加和修改申请", 4),
         Command("pb black [qq]", "pb 黑名单 [QQ号]", "黑名单处理", 4),
@@ -133,8 +131,9 @@ object CommandPastebin : RawCommand(
                 "support", "支持"-> {
                     sendQuoteReply(
                         "🌐 目前pb支持粘贴代码的网站：\n" +
-                            supportedUrls.joinToString(separator = "") { "${it.website}\n" } +
-                                "💡 如有更多好用的网站欢迎推荐")
+                        supportedUrls.joinToString(separator = "") { "${it.website}\n" } +
+                        "💡 如有更多好用的网站欢迎推荐"
+                    )
                 }
 
                 "profile", "简介"-> {   // 查看个人信息
@@ -154,6 +153,7 @@ object CommandPastebin : RawCommand(
                         } else {
                             appendLine("${time.first}:00 ~ ${time.second}:59")
                         }
+                        append(Statistics.imageStatistics(id))
                         append(Statistics.summarizeStatistics(id))
                     }
                     sendQuoteReply(reply)
@@ -231,7 +231,14 @@ object CommandPastebin : RawCommand(
                     val name = args.getOrNull(1)?.content?.let { PastebinData.alias[it] ?: it }
                     val statistics = if (name != null) {
                         if (PastebinData.pastebin.contains(name).not()) {
-                            sendQuoteReply("未知的名称：$name\n请使用「${commandPrefix}pb list」来查看完整列表")
+                            val fuzzy = fuzzyFind(PastebinData.pastebin, name)
+                            sendQuoteReply(
+                                "未知的名称：$name\n" +
+                                if (fuzzy.isNotEmpty()) {
+                                    "🔍 模糊匹配结果->\n" + fuzzy.take(20).joinToString(separator = " ") +
+                                    "\n或使用「${commandPrefix}pb list」来查看完整列表"
+                                } else "请使用「${commandPrefix}pb list」来查看完整列表"
+                            )
                             return
                         }
                         "　【📊数据统计 - ${name}】　\n" +
@@ -252,7 +259,7 @@ object CommandPastebin : RawCommand(
                         Command("pb list run [作者名]", "pb 列表 次数 [作者名]", "根据总执行次数排序", 2),
                         Command("pb list heat [作者名]", "pb 列表 热度 [作者名]", "根据热度排序", 2),
 
-                        Command("pb list search [项目名] [作者名] [语言] [输出格式]", "pb 列表 搜索 [项目名] [作者名] [语言] [输出格式]", "根据指定条件搜索项目（输入 null 来跳过某一项）", 3),
+                        Command("pb list search [项目名] [作者名] [语言] [输出格式]", "pb 列表 搜索 [项目名] [作者名] [语言] [输出格式]", "根据条件搜索项目（输入 null 来跳过某一项）", 3),
                         Command("pb list author <作者名>", "pb 列表 作者 <作者名>", "根据作者关键词筛选", 3),
                         Command("pb list lang <语言>", "pb 列表 语言 <语言>", "根据编程语言筛选", 3),
                         Command("pb list format <输出格式>", "pb 列表 格式 <输出格式>", "根据输出格式筛选", 3),
@@ -302,22 +309,22 @@ object CommandPastebin : RawCommand(
                             }
                             val filter = when (mode) {
                                 in arrayOf("all", "全部", "run", "次数", "heat", "热度", "author", "作者") ->
-                                    MarkdownImageGenerator.Filter(author = params.getOrNull(0))
+                                    MarkdownImageGenerator.PastebinListFilter(author = params.getOrNull(0))
                                 in arrayOf("search", "搜索") ->
-                                    MarkdownImageGenerator.Filter(
+                                    MarkdownImageGenerator.PastebinListFilter(
                                         project = params.getOrNull(0),
                                         author = params.getOrNull(1),
                                         language = params.getOrNull(2),
                                         format = params.getOrNull(3)
                                     )
                                 in arrayOf("lang", "language", "语言") ->
-                                    MarkdownImageGenerator.Filter(language = params.getOrNull(0))
+                                    MarkdownImageGenerator.PastebinListFilter(language = params.getOrNull(0))
                                 in arrayOf("format", "格式") ->
-                                    MarkdownImageGenerator.Filter(format = params.getOrNull(0))
+                                    MarkdownImageGenerator.PastebinListFilter(format = params.getOrNull(0))
                                 in arrayOf("page", "页码") ->
-                                    MarkdownImageGenerator.Filter(page = params.getOrNull(0)?.toIntOrNull())
+                                    MarkdownImageGenerator.PastebinListFilter(page = params.getOrNull(0)?.toIntOrNull())
                                 else ->
-                                    MarkdownImageGenerator.Filter()
+                                    MarkdownImageGenerator.PastebinListFilter()
                             }
                             val markdownResult = MarkdownImageGenerator.processMarkdown(
                                 name = null,
@@ -408,7 +415,14 @@ object CommandPastebin : RawCommand(
                 "info", "信息"-> {   // 查看数据具体参数
                     val name = PastebinData.alias[args[1].content] ?: args[1].content
                     if (PastebinData.pastebin.contains(name).not()) {
-                        sendQuoteReply("未知的名称：$name\n请使用「${commandPrefix}pb list」来查看完整列表")
+                        val fuzzy = fuzzyFind(PastebinData.pastebin, name)
+                        sendQuoteReply(
+                            "未知的名称：$name\n" +
+                            if (fuzzy.isNotEmpty()) {
+                                "🔍 模糊匹配结果->\n" + fuzzy.take(20).joinToString(separator = " ") +
+                                "\n或使用「${commandPrefix}pb list」来查看完整列表"
+                            } else "请使用「${commandPrefix}pb list」来查看完整列表"
+                        )
                         return
                     }
 
@@ -540,7 +554,14 @@ object CommandPastebin : RawCommand(
                     var content = args.drop(3).joinToString(separator = " ")
                     var additionalOutput = ""
                     if (PastebinData.pastebin.contains(name).not()) {
-                        sendQuoteReply("未知的名称：$name\n请使用「${commandPrefix}pb list」来查看完整列表")
+                        val fuzzy = fuzzyFind(PastebinData.pastebin, name)
+                        sendQuoteReply(
+                            "未知的名称：$name\n" +
+                            if (fuzzy.isNotEmpty()) {
+                                "🔍 模糊匹配结果->\n" + fuzzy.take(20).joinToString(separator = " ") +
+                                "\n或使用「${commandPrefix}pb list」来查看完整列表"
+                            } else "请使用「${commandPrefix}pb list」来查看完整列表"
+                        )
                         return
                     }
                     val ownerID = PastebinData.pastebin[name]?.get("userID")
@@ -661,6 +682,10 @@ object CommandPastebin : RawCommand(
                         "userID"-> {
                             if (content.toLongOrNull() == null) {
                                 sendQuoteReply("转移失败：输入的 userID 不是整数")
+                                return
+                            }
+                            if (getNickname(this, content.toLong()) == null) {
+                                sendQuoteReply("转移失败：无法找到目标用户 $content，转移对象必须为机器人好友或本群成员")
                                 return
                             }
                             if (!isAdmin) {
@@ -907,44 +932,21 @@ object CommandPastebin : RawCommand(
                     sendQuoteReply("删除项目 $name 成功！")
                 }
 
-                "upload", "上传"-> {   // 上传自定义图片
-                    val imageName = args[1].content
-                    var imageUrl: String
-                    var isImage = true
-                    try{
-                        imageUrl = (args[2] as Image).queryUrl()
-                    } catch (_: ClassCastException) {
-                        if (args[2] is UnsupportedMessage) {
-                            sendQuoteReply("[不支持的消息] 无法解析新版客户端发送的图片消息：请尝试使用*电脑怀旧版客户端*重新发送图片上传，或将图片替换为URL")
-                            return
-                        } else if (args[2].content.startsWith("https://")) {
-                            imageUrl = args[2].content
-                            isImage = false
-                        } else {
-                            sendQuoteReply("转换图片失败，您发送的消息可能无法转换为图片，请尝试更换图片或联系管理员寻求帮助。如果使用URL上传，请以\"https://\"开头")
-                            return
-                        }
-                    } catch (e: Exception) {
-                        logger.warning("${e::class.simpleName}: ${e.message}")
-                        sendQuoteReply(
-                                "获取图片参数失败，请检查指令格式是否正确\n" +
-                                "${commandPrefix}pb upload <图片名称(需要包含拓展名)> <【图片/URL】>\n" +
-                                "注意：图片名字后需要空格或换行分隔图片参数")
-                        return
-                    }
-                    val downloadResult = if (isImage) downloadFile(null, imageUrl, imageFolder, imageName)
-                        else downloadImage(null, imageUrl, imageFolder, imageName)
-                    if (!downloadResult.success) {
-                        sendQuoteReply(downloadResult.message)
-                        return
-                    }
-                    sendQuoteReply("上传图片成功！您已经可以通过目录“image://$imageName”调用此图片（用时：${downloadResult.duration}秒）")
+                "upload", "上传"-> {   // 已迁移至 CommandImage
+                    sendQuoteReply("[已废弃] 上传图片功能已迁移至独立指令，请使用「${commandPrefix}img upload <图片名称> <【图片/URL】>」来上传图片")
                 }
 
                 "storage", "存储"-> {   // 查询存储数据
                     val name = PastebinData.alias[args[1].content] ?: args[1].content
                     if (PastebinData.pastebin.contains(name).not()) {
-                        sendQuoteReply("未知的名称：$name\n请使用「${commandPrefix}pb list」来查看完整列表")
+                        val fuzzy = fuzzyFind(PastebinData.pastebin, name)
+                        sendQuoteReply(
+                            "未知的名称：$name\n" +
+                            if (fuzzy.isNotEmpty()) {
+                                "🔍 模糊匹配结果->\n" + fuzzy.take(20).joinToString(separator = " ") +
+                                "\n或使用「${commandPrefix}pb list」来查看完整列表"
+                            } else "请使用「${commandPrefix}pb list」来查看完整列表"
+                        )
                         return
                     }
                     val storage = PastebinStorage.storage[name]
@@ -1099,6 +1101,7 @@ object CommandPastebin : RawCommand(
                         ExtraData.reload()
                         PastebinStorage.reload()
                         PastebinBucket.reload()
+                        ImageData.reload()
                         CodeCache.reload()
                         sendQuoteReply("配置及数据重载成功")
                     } catch (e: Exception) {

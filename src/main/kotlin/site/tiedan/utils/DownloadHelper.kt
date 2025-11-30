@@ -12,7 +12,6 @@ import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import kotlin.math.ceil
 
 /**
  * # 文件下载帮助类
@@ -25,7 +24,7 @@ object DownloadHelper {
     private const val CONNECT_TIMEOUT = 6000   // 连接超时时间
     private const val READ_TIMEOUT = 6000      // 读取超时时间
 
-    data class DownloadResult(val success: Boolean, val message: String, val duration: Long)
+    data class DownloadResult(val success: Boolean, val message: String, val duration: Double)
 
     fun downloadImage(
         name: String?,
@@ -36,7 +35,7 @@ object DownloadHelper {
         force: Boolean = false
     ): DownloadResult {
         if (!isImageUrl(imageUrl)) {
-            return DownloadResult(false, "[错误] 连接失败或未能在链接资源中检测到图片", 0)
+            return DownloadResult(false, "[错误] 连接失败或未能在链接资源中检测到图片", 0.0)
         }
         return downloadFile(name, imageUrl, outputFilePath, fileName, timeout, force)
     }
@@ -50,14 +49,14 @@ object DownloadHelper {
         force: Boolean = false
     ): DownloadResult {
         if (timeout <= 0L) {
-            return DownloadResult(false, "[错误] 执行时间已达总上限${MARKDOWN_MAX_TIME}秒", 0)
+            return DownloadResult(false, "[错误] 执行时间已达总上限${MARKDOWN_MAX_TIME}秒", 0.0)
         }
         if (fileName.contains("/")) {
-            return DownloadResult(false, "[错误] 文件名称中不能包含符号“/”", 0)
+            return DownloadResult(false, "[错误] 文件名称中不能包含符号“/”", 0.0)
         }
         val outputFile = File(outputDir, fileName)
         if (outputFile.exists() && !force) {
-            return DownloadResult(false, "[错误] 此文件名已存在：$fileName", 0)
+            return DownloadResult(false, "[错误] 此文件名已存在：$fileName", 0.0)
         }
 
         var resultMsg = ""
@@ -99,7 +98,7 @@ object DownloadHelper {
 
         try {
             future.get(timeout, TimeUnit.SECONDS) // 限制下载时间
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             future.cancel(true) // 超时后取消任务
             resultMsg += "[错误] 下载超时：超出最大时间限制${timeout}秒"
         } finally {
@@ -112,7 +111,7 @@ object DownloadHelper {
         name?.let { Statistics.countDownload(it, duration) }
         if (success) logger.info("文件下载成功，用时${duration}秒")
         else logger.warning("下载时发生错误，用时${duration}秒，链接：$fileUrl")
-        return DownloadResult(success, resultMsg, ceil(duration).toLong())
+        return DownloadResult(success, resultMsg, duration)
     }
 
     private fun isImageUrl(url: String): Boolean {

@@ -1,13 +1,18 @@
 package site.tiedan.module
 
+import site.tiedan.MiraiCompilerFramework.imageFolder
 import site.tiedan.MiraiCompilerFramework.roundTo2
 import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.command.CommandBucket.projectsCount
 import site.tiedan.data.CodeCache
 import site.tiedan.data.ExtraData
+import site.tiedan.data.ImageData
 import site.tiedan.data.PastebinBucket
 import site.tiedan.data.PastebinData
 import site.tiedan.data.PastebinStorage
+import java.io.File
+import kotlin.math.log10
+import kotlin.math.pow
 
 /**
  * # 数据统计
@@ -90,6 +95,8 @@ object Statistics {
                 .flatten()
                 .filterNotNull()
                 .sumOf { it.content.length }
+        val imageCount = ImageData.images.size
+        val totalSize = getFolderSize(File(imageFolder))
         var totalCodeCache = 0L
         for ((_, value) in CodeCache.CodeCache) {
             totalCodeCache += value.length
@@ -117,6 +124,8 @@ object Statistics {
             appendLine("  - 关联项目数：$totalLinkedProjects")
             appendLine("  - 存储总大小：$totalBucketSize")
             appendLine("  - 备份总大小：$totalBackupSize")
+            appendLine("🖼️ 图片总数：$imageCount")
+            appendLine("  - 占用空间：${formatSize(totalSize)}")
             appendLine("📦 代码缓存总数：${CodeCache.CodeCache.size}")
             appendLine("  - 缓存总大小：$totalCodeCache")
         }
@@ -225,6 +234,28 @@ object Statistics {
                 "\n" +
                 "🔥 近期热门项目：\n" +
                 top10Project
+    }
+
+    fun imageStatistics(userID: Long): String {
+        val imageCount = ImageData.images.values.count { it["userID"] == userID.toString() }
+        return if (imageCount > 0) "🖼️ 上传图片：$imageCount\n" else ""
+    }
+
+    private fun getFolderSize(folder: File?): Long {
+        if (folder == null || !folder.exists()) return 0L
+        var size = 0L
+        val files = folder.listFiles() ?: return 0L
+        for (f in files) {
+            size += if (f.isFile) f.length() else getFolderSize(f)
+        }
+        return size
+    }
+
+    private fun formatSize(size: Long): String {
+        if (size <= 0) return "0 B"
+        val units = arrayOf("B", "KB", "MB", "GB", "TB")
+        val digitGroups = (log10(size.toDouble()) / log10(1024.0)).toInt()
+        return String.format("%.2f %s", size / 1024.0.pow(digitGroups.toDouble()), units[digitGroups])
     }
 
     private fun formatTime(time: Double): String {

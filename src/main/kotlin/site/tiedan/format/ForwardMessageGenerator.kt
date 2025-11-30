@@ -24,6 +24,7 @@ import site.tiedan.module.PastebinCodeExecutor.renderLatexOnline
 import site.tiedan.utils.DownloadHelper.downloadImage
 import java.io.File
 import java.net.URI
+import kotlin.math.ceil
 
 /**
  * ## ForwardMessage 输出格式
@@ -142,7 +143,7 @@ object ForwardMessageGenerator {
                                 File(URI(content))
                             } else {
                                 val downloadResult = downloadImage(name, content, cacheFolder, "image", MARKDOWN_MAX_TIME - timeUsed, force = true)
-                                timeUsed += downloadResult.duration
+                                timeUsed += ceil(downloadResult.duration).toLong()
                                 if (!downloadResult.success) {
                                     subject.bot named "Error" says downloadResult.message
                                     continue

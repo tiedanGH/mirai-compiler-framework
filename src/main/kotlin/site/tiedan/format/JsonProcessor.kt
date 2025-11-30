@@ -31,6 +31,7 @@ import site.tiedan.utils.DownloadHelper.downloadImage
 import site.tiedan.utils.Security
 import java.io.File
 import java.net.URI
+import kotlin.math.ceil
 
 /**
  * ## json 输出格式
@@ -243,7 +244,7 @@ object JsonProcessor {
                         builder.addImageFromFile(content, sender)
                     } else {
                         val downloadResult = downloadImage(name, content, cacheFolder, "image", MARKDOWN_MAX_TIME - timeUsed, force = true)
-                        timeUsed += downloadResult.duration
+                        timeUsed += ceil(downloadResult.duration).toLong()
                         if (!downloadResult.success) {
                             builder.add(downloadResult.message)
                             continue
@@ -361,7 +362,7 @@ object JsonProcessor {
                             sendLocalImage(content, sender, extraText)
                         } else {
                             val downloadResult = downloadImage(name, content, cacheFolder, "image", MARKDOWN_MAX_TIME - timeUsed, force = true)
-                            timeUsed += downloadResult.duration
+                            timeUsed += ceil(downloadResult.duration).toLong()
                             if (!downloadResult.success) {
                                 sender.sendMessage(extraText + downloadResult.message)
                                 continue
