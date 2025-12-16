@@ -91,7 +91,7 @@ object CommandImage : RawCommand(
                     val commandPbList = arrayOf(
                         Command("img list [all]", "pb 列表 [全部]", "图片输出完整列表", 1),
 
-                        Command("img list search <图片名> [拥有者]", "pb 列表 搜索 <图片名> [拥有者]", "根据条件搜索图片", 2),
+                        Command("img list search <图片名> [所有者]", "pb 列表 搜索 <图片名> [所有者]", "根据条件搜索图片", 2),
                         Command("img list owner <所有者>", "pb 列表 所有者 <所有者>", "根据所有者关键词筛选", 2),
                     )
                     val mode = args.getOrElse(1) { PlainText("all") }.content
