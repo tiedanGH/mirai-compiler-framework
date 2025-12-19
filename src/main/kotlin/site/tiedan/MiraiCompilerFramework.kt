@@ -90,17 +90,8 @@ object MiraiCompilerFramework : KotlinPlugin(
         CommandImage.register()
         CommandRun.register()
 
-        PastebinConfig.reload()
-        MailConfig.reload()
-        SystemConfig.reload()
-        DockerConfig.reload()
-        GlotCache.reload()
-        PastebinData.reload()
-        ExtraData.reload()
-        PastebinStorage.reload()
-        PastebinBucket.reload()
-        ImageData.reload()
-        CodeCache.reload()
+        reloadConfig()
+        reloadData()
 
         startTimer()
 
@@ -124,6 +115,23 @@ object MiraiCompilerFramework : KotlinPlugin(
         CommandBucket.unregister()
         CommandImage.unregister()
         CommandRun.unregister()
+    }
+
+    fun reloadConfig() {
+        PastebinConfig.reload()
+        MailConfig.reload()
+        SystemConfig.reload()
+        DockerConfig.reload()
+    }
+
+    fun reloadData() {
+        GlotCache.reload()
+        PastebinData.reload()
+        ExtraData.reload()
+        PastebinStorage.reload()
+        PastebinBucket.reload()
+        ImageData.reload()
+        CodeCache.reload()
     }
 
     val pendingCommand = mutableMapOf<Long, String>()

@@ -19,7 +19,6 @@ import site.tiedan.MiraiCompilerFramework.fuzzyFind
 import site.tiedan.MiraiCompilerFramework.getNickname
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.pendingCommand
-import site.tiedan.MiraiCompilerFramework.reload
 import site.tiedan.MiraiCompilerFramework.requestUserConfirmation
 import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
@@ -27,10 +26,8 @@ import site.tiedan.MiraiCompilerFramework.uploadFileToImage
 import site.tiedan.command.CommandBucket.bucketIDsToNames
 import site.tiedan.command.CommandBucket.linkedBucketID
 import site.tiedan.command.CommandBucket.removeProjectFromBucket
-import site.tiedan.config.DockerConfig
 import site.tiedan.config.MailConfig
 import site.tiedan.config.PastebinConfig
-import site.tiedan.config.SystemConfig
 import site.tiedan.data.*
 import site.tiedan.data.CodeCache
 import site.tiedan.data.ExtraData
@@ -1091,17 +1088,8 @@ object CommandPastebin : RawCommand(
                 "reload", "重载"-> {   // 重载配置和数据文件
                     if (!isAdmin) throw PermissionDeniedException()
                     try {
-                        PastebinConfig.reload()
-                        MailConfig.reload()
-                        SystemConfig.reload()
-                        DockerConfig.reload()
-                        GlotCache.reload()
-                        PastebinData.reload()
-                        ExtraData.reload()
-                        PastebinStorage.reload()
-                        PastebinBucket.reload()
-                        ImageData.reload()
-                        CodeCache.reload()
+                        MiraiCompilerFramework.reloadConfig()
+                        MiraiCompilerFramework.reloadData()
                         sendQuoteReply("配置及数据重载成功")
                     } catch (e: Exception) {
                         logger.warning(e)
