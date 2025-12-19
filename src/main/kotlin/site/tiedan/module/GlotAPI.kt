@@ -34,9 +34,6 @@ object GlotAPI {
     private const val URL_API = URL + "api/"
     private const val URL_LIST_LANGUAGES = URL_API + "run"
 
-    @OptIn(ConsoleExperimentalApi::class)
-    val utilsFolder = "./data/${MiraiCompilerFramework.dataHolderName}/utils"
-
     @Serializable
     data class Language(val name: String, val url: String)
     @Serializable
@@ -246,7 +243,7 @@ object GlotAPI {
         val mainFile = CodeFile(getTemplateFile(language).name, code)
         return if (file != null) {
             @OptIn(ConsoleExperimentalApi::class)
-            val utilFile = File("./data/${MiraiCompilerFramework.dataHolderName}/utils/$file").readText()
+            val utilFile = File("${MiraiCompilerFramework.utilsFolder}$file").readText()
             logger.info("Upload Extra File: $file")
             listOf(mainFile, CodeFile(file, utilFile))
         } else {

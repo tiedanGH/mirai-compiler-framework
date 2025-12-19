@@ -64,10 +64,13 @@ object MiraiCompilerFramework : KotlinPlugin(
         "ForwardMessage",
         "Audio",
     )
+
     @OptIn(ConsoleExperimentalApi::class)
-    val cacheFolder = "./data/$dataHolderName/cache/"
-    @OptIn(ConsoleExperimentalApi::class)
-    val imageFolder = "./data/$dataHolderName/images/"
+    val baseDataFolder = "./data/$dataHolderName"
+
+    val cacheFolder = "$baseDataFolder/cache/"
+    val imageFolder = "$baseDataFolder/images/"
+    val utilsFolder = "$baseDataFolder/utils/"
 
     data class ThreadInfo(
         val id: String,

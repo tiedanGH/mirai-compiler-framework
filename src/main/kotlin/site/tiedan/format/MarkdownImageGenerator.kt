@@ -7,7 +7,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import net.mamoe.mirai.console.util.ConsoleExperimentalApi
 import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.MARKDOWN_MAX_TIME
 import site.tiedan.MiraiCompilerFramework.cacheFolder
@@ -142,8 +141,7 @@ object MarkdownImageGenerator {
     private fun saveErrorRecord(content: String, prefix: String) {
         val formatter = DateTimeFormatter.ofPattern("yyyyMMdd-HH.mm.ss")
         val dateTime = LocalDateTime.now().format(formatter)
-        @OptIn(ConsoleExperimentalApi::class)
-        File("./data/${MiraiCompilerFramework.dataHolderName}/errors/${dateTime}_${prefix}.txt").writeText(content)
+        File("${MiraiCompilerFramework.baseDataFolder}/errors/${dateTime}_${prefix}.txt").writeText(content)
         logger.warning("${prefix}报错记录已保存为txt文件")
     }
 

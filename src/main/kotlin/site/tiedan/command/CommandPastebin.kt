@@ -37,7 +37,6 @@ import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
 import site.tiedan.data.PastebinStorage
 import site.tiedan.format.MarkdownImageGenerator
-import site.tiedan.module.GlotAPI
 import site.tiedan.module.Statistics
 import site.tiedan.utils.PastebinUrlHelper.checkUrl
 import site.tiedan.utils.PastebinUrlHelper.supportedUrls
@@ -736,7 +735,7 @@ object CommandPastebin : RawCommand(
                             }
                         }
                         "util"-> {
-                            val files = File(GlotAPI.utilsFolder).listFiles()?.filter { it.isFile }?.map { it.name } ?: emptyList()
+                            val files = File(MiraiCompilerFramework.utilsFolder).listFiles()?.filter { it.isFile }?.map { it.name } ?: emptyList()
                             if (content.isEmpty()) {
                                 PastebinData.pastebin[name]?.remove("util")
                             } else {

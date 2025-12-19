@@ -1,12 +1,11 @@
 package site.tiedan.module
 
-import net.mamoe.mirai.console.util.ConsoleExperimentalApi
-import site.tiedan.MiraiCompilerFramework.logger
-import site.tiedan.MiraiCompilerFramework.save
-import site.tiedan.MiraiCompilerFramework.roundTo2
-import site.tiedan.data.ExtraData
 import net.mamoe.mirai.utils.info
 import site.tiedan.MiraiCompilerFramework
+import site.tiedan.MiraiCompilerFramework.logger
+import site.tiedan.MiraiCompilerFramework.roundTo2
+import site.tiedan.MiraiCompilerFramework.save
+import site.tiedan.data.ExtraData
 import java.io.File
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -50,8 +49,7 @@ object Timer {
     }
 
     private fun backupYmlDataFiles() {
-        @OptIn(ConsoleExperimentalApi::class)
-        val baseDir = File("./data/${MiraiCompilerFramework.dataHolderName}/")
+        val baseDir = File(MiraiCompilerFramework.baseDataFolder)
         if (!baseDir.exists() || !baseDir.isDirectory) return
 
         val bakDir = File(baseDir, "backup")
