@@ -13,6 +13,7 @@ import net.mamoe.mirai.containsFriend
 import net.mamoe.mirai.message.data.*
 import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.Command
+import site.tiedan.MiraiCompilerFramework.ERROR_MSG_MAX_LENGTH
 import site.tiedan.MiraiCompilerFramework.THREADS
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.fuzzyFind
@@ -22,6 +23,7 @@ import site.tiedan.MiraiCompilerFramework.pendingCommand
 import site.tiedan.MiraiCompilerFramework.requestUserConfirmation
 import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
+import site.tiedan.MiraiCompilerFramework.trimToMaxLength
 import site.tiedan.MiraiCompilerFramework.uploadFileToImage
 import site.tiedan.command.CommandBucket.bucketIDsToNames
 import site.tiedan.command.CommandBucket.linkedBucketID
@@ -35,6 +37,8 @@ import site.tiedan.data.PastebinData
 import site.tiedan.data.PastebinStorage
 import site.tiedan.format.MarkdownImageGenerator
 import site.tiedan.module.Statistics
+import site.tiedan.utils.HttpUtil
+import site.tiedan.utils.PastebinUrlHelper
 import site.tiedan.utils.PastebinUrlHelper.checkUrl
 import site.tiedan.utils.PastebinUrlHelper.supportedUrls
 import site.tiedan.utils.buildMailContent
@@ -42,6 +46,7 @@ import site.tiedan.utils.buildMailSession
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.net.ConnectException
 import kotlin.io.path.inputStream
 import kotlin.math.ceil
 
@@ -73,6 +78,7 @@ object CommandPastebin : RawCommand(
 
         Command("pb set <名称> format <输出格式> [宽度/存储]", "pb 修改 <名称> 输出格式 <输出格式> [宽度/存储]", "修改程序输出格式", 3),
         Command("pb storage <名称> [查询ID]", "pb 存储 <名称> [查询ID]", "查询存储数据", 3),
+        Command("pb export <名称>", "pb 导出 <名称>", "将项目代码缓存导出为临时链接（过期时使用）", 3),
         Command("bucket help", "存储库 帮助", "跨项目存储库操作指令", 3),
         Command("image help", "图片 帮助", "本地图片操作指令", 3),
 
@@ -1024,6 +1030,56 @@ object CommandPastebin : RawCommand(
                         logger.warning(e)
                         sendQuoteReply("[转发消息错误]\n生成或发送转发消息时发生错误，请联系管理员查看后台，简要错误信息：${e.message}")
                     }
+                }
+
+                "export", "导出"-> {
+                    if (PastebinConfig.enable_censor) {
+                        sendQuoteReply("审核功能已开启，导出功能被禁用，如有需求请联系管理员")
+                        return
+                    }
+                    val name = PastebinData.alias[args[1].content] ?: args[1].content
+                    if (PastebinData.pastebin.contains(name).not()) {
+                        val fuzzy = fuzzyFind(PastebinData.pastebin, name)
+                        sendQuoteReply(
+                            "未知的名称：$name\n" +
+                            if (fuzzy.isNotEmpty()) {
+                                "🔍 模糊匹配结果->\n" + fuzzy.take(20).joinToString(separator = " ") +
+                                "\n或使用「${commandPrefix}pb list」来查看完整列表"
+                            } else "请使用「${commandPrefix}pb list」来查看完整列表"
+                        )
+                        return
+                    }
+                    if (PastebinData.hiddenUrl.contains(name)) {
+                        sendQuoteReply("导出失败：$name 的源代码链接被标记为隐藏，无法使用导出功能，请联系项目作者")
+                        return
+                    }
+
+                    val exportCode = CodeCache.CodeCache[name]
+                    if (exportCode == null) {
+                        sendQuoteReply("导出失败：$name 的代码缓存为空或项目链接类型不支持缓存功能")
+                        return
+                    }
+
+                    val url =  try {
+                        PastebinUrlHelper.pasteToHastebin(exportCode)
+                    } catch (e: Exception) {
+                        when (e) {
+                            is ConnectException,
+                            is HttpUtil.HttpException ->
+                                sendQuoteReply("[API服务异常]\n原因：${e.message}")
+
+                            else -> {
+                                logger.warning(e)
+                                sendQuoteReply(
+                                    "[导出代码失败]\n" +
+                                    "报错类别：${e::class.simpleName}\n" +
+                                    "报错信息：${trimToMaxLength(e.message.toString(), ERROR_MSG_MAX_LENGTH).first}"
+                                )
+                            }
+                        }
+                        return
+                    }
+                    sendQuoteReply("已成功将 $name 的源代码从缓存导出至 Hastebin，链接如下（有效期 30 天）：\n$url")
                 }
 
                 // admin指令

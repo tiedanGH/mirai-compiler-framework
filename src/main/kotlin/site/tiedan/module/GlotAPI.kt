@@ -11,7 +11,6 @@ import site.tiedan.MiraiCompilerFramework.ERROR_MSG_MAX_LENGTH
 import site.tiedan.MiraiCompilerFramework.trimToMaxLength
 import site.tiedan.config.DockerConfig
 import site.tiedan.utils.HttpUtil
-import site.tiedan.utils.HttpUtil.HttpException
 import java.io.File
 
 /**
@@ -214,7 +213,7 @@ object GlotAPI {
             bodyString = res.body.string()
             if (!res.isSuccessful && res.code != 400) {
                 // 400 会在返回内容中给出具体错误信息，交给上层处理
-                throw HttpException(
+                throw HttpUtil.HttpException(
                     code = res.code,
                     message = res.message,
                     url = res.request.url.toString(),

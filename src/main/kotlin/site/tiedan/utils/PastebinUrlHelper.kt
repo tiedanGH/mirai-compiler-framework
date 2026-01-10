@@ -1,9 +1,14 @@
 package site.tiedan.utils
 
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import site.tiedan.config.PastebinConfig
 import okhttp3.FormBody
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -104,6 +109,39 @@ object PastebinUrlHelper {
             return connection.inputStream.bufferedReader().use { reader -> reader.readText() }
         } finally {
             connection.disconnect()
+        }
+    }
+
+    /**
+     * 上传至 Hastebin
+     * @param content 上传内容
+     * @return 返回访问地址，如：https://hastebin.com/share/abcd1234/
+     */
+    fun pasteToHastebin(content: String): String {
+        val mediaType = "text/plain".toMediaType()
+        val requestBody = content.toRequestBody(mediaType)
+
+        val request = Request.Builder()
+            .url("https://hastebin.com/documents")
+            .addHeader("Authorization", "Bearer ${PastebinConfig.Hastebin_TOKEN}")
+            .addHeader("Content-Type", "text/plain")
+            .post(requestBody)
+            .build()
+
+        OkHttpClient().newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw HttpUtil.HttpException(
+                    response.code,
+                    response.message,
+                    "https://hastebin.com/documents",
+                    response.body.string()
+                )
+            }
+
+            val responseBody = response.body.string()
+            @Serializable data class Key(val key: String)
+            val key = Json.decodeFromString<Key>(responseBody)
+            return "https://hastebin.com/share/${key.key}"
         }
     }
 
