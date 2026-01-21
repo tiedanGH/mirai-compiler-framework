@@ -1201,7 +1201,7 @@ object CommandPastebin : RawCommand(
                 append("【查询名称】$name\n\n")
                 append("·查询的结果数据请查看附件")
             }
-            file("存储数据.txt") {
+            file("StorageData.txt") {
                 File("${cacheFolder}storage.txt")
             }
         }
