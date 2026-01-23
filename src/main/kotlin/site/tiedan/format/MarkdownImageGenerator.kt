@@ -141,7 +141,9 @@ object MarkdownImageGenerator {
     private fun saveErrorRecord(content: String, prefix: String) {
         val formatter = DateTimeFormatter.ofPattern("yyyyMMdd-HH.mm.ss")
         val dateTime = LocalDateTime.now().format(formatter)
-        File("${MiraiCompilerFramework.baseDataFolder}/errors/${dateTime}_${prefix}.txt").writeText(content)
+        val file = File("${MiraiCompilerFramework.baseDataFolder}/errors/${dateTime}_${prefix}.txt")
+        file.parentFile?.mkdirs()
+        file.writeText(content)
         logger.warning("${prefix}报错记录已保存为txt文件")
     }
 
