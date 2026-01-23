@@ -30,6 +30,7 @@ object CommandGlot : RawCommand(
         Command("glot template [语言]", "glot 模版 [语言]", "获取指定语言的模板", 1),
         Command("pb help", "代码 帮助", "pb代码项目操作指令", 1),
         Command("bucket help", "存储库 帮助", "跨项目存储库操作指令", 1),
+        Command("image help", "图片 帮助", "本地图片操作指令", 1),
         Command("run <名称> [输入]", "运行 <名称> [输入]", "运行代码项目", 1),
     )
 

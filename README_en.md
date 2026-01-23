@@ -5,10 +5,9 @@
 _Mirai Console online compiler framework based on Glot API_
 
 [![release](https://img.shields.io/github/v/release/tiedanGH/mirai-compiler-framework)](https://github.com/tiedanGH/mirai-compiler-framework/releases)
+[![stars](https://img.shields.io/github/stars/tiedanGH/mirai-compiler-framework?style=flat&color=orange)](https://github.com/tiedanGH/mirai-compiler-framework)
+[![downloads](https://shields.io/github/downloads/tiedanGH/mirai-compiler-framework/total)](https://github.com/tiedanGH/mirai-compiler-framework/releases/latest)
 [![Build Snapshot](https://github.com/tiedanGH/mirai-compiler-framework/actions/workflows/build.yml/badge.svg)](https://github.com/tiedanGH/mirai-compiler-framework/actions/workflows/build.yml)
-
-[//]: # ([![stars]&#40;https://img.shields.io/github/stars/tiedanGH/mirai-compiler-framework?style=flat&color=orange&#41;]&#40;https://github.com/tiedanGH/mirai-compiler-framework&#41;)
-[//]: # ([![downloads]&#40;https://shields.io/github/downloads/tiedanGH/mirai-compiler-framework/total&#41;]&#40;https://github.com/tiedanGH/mirai-compiler-framework/releases/latest&#41;)
 
 [简体中文](README.md) | [English](README_en.md)
 
@@ -46,6 +45,8 @@ _Mirai Console online compiler framework based on Glot API_
     + [Glot Commands](docs/en/commands_en.md#glot-commands)
     + [Pastebin Commands](docs/en/commands_en.md#pastebin-commands)
     + [Run Commands & Quick Prefix](docs/en/commands_en.md#run-commands--quick-prefix)
+    + [Cross-Project Bucket Commands](docs/en/commands_en.md#cross-project-bucket-commands)
+    + [Local Image Commands](docs/en/commands_en.md#local-image-commands)
 - [Supported Code Upload Websites](docs/en/commands_en.md#supported-code-upload-sites)
 - [Pastebin Commands and Advanced Features Documentation](docs/en/pastebin_en.md)
     + [1. Basic Command Functionality and Usage](docs/en/pastebin_en.md#1-basic-functions-and-usage)
@@ -58,7 +59,7 @@ _Mirai Console online compiler framework based on Glot API_
 ---
 
 ## Based on Third-Party Open Source Code
-Parts of this project are based on **mirai-console-jcc-plugin** (original repository: [https://github.com/jie65535/mirai-console-jcc-plugin](https://github.com/jie65535/mirai-console-jcc-plugin))  
+Parts of this project are based on **mirai-console-jcc-plugin** (link: [https://github.com/jie65535/mirai-console-jcc-plugin](https://github.com/jie65535/mirai-console-jcc-plugin))  
 This project is released under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
 
 In compliance with the AGPL-3.0 license, this project retains the original copyright notice and expresses gratitude for the contribution.  

@@ -5,6 +5,8 @@
 - [Glot Commands](#glot-commands)
 - [Pastebin Commands](#pastebin-commands)
 - [Run Commands & Quick Prefix](#run-commands--quick-prefix)
+- [Cross-Project Bucket Commands](#cross-project-bucket-commands)
+- [Local Image Commands](#local-image-commands)
 - [Supported Code Upload Sites](#supported-code-upload-sites)
 
 ---
@@ -47,53 +49,107 @@
 ## Glot Commands
 Check framework information and help.
 
-```text
-/glot help                 View framework info and help
-/glot list                 List all supported programming languages
-/glot template [language] Get the template for a specific language
-```
+| Command                     | Description                              |
+|-----------------------------|------------------------------------------|
+| `/glot help`                | View framework info and help             |
+| `/glot list`                | List all supported programming languages |
+| `/glot template [language]` | Get the template for a specific language |
 
 ---
 
 ## Pastebin Commands
 View and add pastebin code, profile info, statistics, and configure advanced features.
 
-```text
-📋 View Pastebin Help:
-/pb support                List websites currently supported by pb
-/pb profile [QQ]           View personal profile info
-/pb private                Enable proactive private messaging
-/pb stats [name]           View statistics
-/pb list [page/author]     View full list
-/pb info <name>            View info & run sample
+### 📋 View Pastebin Help
+| Command                | Description                             |
+|------------------------|-----------------------------------------|
+| `/pb support`          | List websites currently supported by PB |
+| `/pb profile [QQ]`     | View personal profile info              |
+| `/pb private`          | Enable proactive private messaging      |
+| `/pb stats [name]`     | View statistics                         |
+| `/pb list [QueryMode]` | View full list                          |
+| `/pb info <name>`      | View info & run sample                  |
+| `/pb thread`           | Query running and pending processes     | 
 
-✏️ Update Pastebin Data:
-/pb add <name> <author> <language> <source code URL> [stdin]     Add pastebin entry
-/pb set <name> <param> <value>                                   Modify program attributes
-/pb delete <name>                                                Delete an entry
+### ✏️ Update Pastebin Data
+| Command                                                        | Description                |
+|----------------------------------------------------------------|----------------------------|
+| `/pb add <name> <author> <language> <source code URL> [stdin]` | Add Pastebin project       |
+| `/pb set <name> <param> <value>`                               | Modify project attributes  |
+| `/pb delete <name>`                                            | Permanently delete project |
 
-⚙️ Advanced Features:
-/pb set <name> format <output format> [width/storage]            Modify output format
-/pb upload <image_name.(ext)> <image/URL>                        Upload image to cache
-/pb storage <name> [query ID]                                    Query stored data
-```
+### ⚙️ Pastebin Advanced Features
+| Command                                                 | Description                                          |
+|---------------------------------------------------------|------------------------------------------------------|
+| `/pb set <name> format <output format> [width/storage]` | Modify output format                                 |
+| `/pb storage <name> [query ID]`                         | Query stored data                                    |
+| `/pb export <name>`                                     | Export code cache to a temp link (when link expires) |
 
 > 👉 For help with image output, data storage, and other advanced features, please see [pb Commands & Advanced Features Help](pastebin_en.md)
 
 ---
 
 ## Run Commands & Quick Prefix
-Run code saved in pastebin
+Run code saved in Pastebin
 
-```text
-/run <name> [stdin]    Run pastebin code by name
-##<name> [stdin]    Run pastebin code using Quick Prefix
-```
+| Command               | Description                    |
+|-----------------------|--------------------------------|
+| `/run <name> [stdin]` | Run project by name            |
+| `##<name> [stdin]`    | Run project using Quick Prefix |
 
 *The Quick Prefix can be configured in [PastebinConfig](../../src/main/kotlin/site/tiedan/config/PastebinConfig.kt)
 
+---
+
+## Cross-Project Bucket Commands
+Manage and operate cross-project Buckets.
+
+### 🗄 Bucket Management Commands
+| Command                                       | Description              |
+|-----------------------------------------------|--------------------------|
+| `/bk list [text/backup]`                      | View Bucket list         |
+| `/bk info <ID/name>`                          | View Bucket info         |
+| `/bk storage <ID/name> [password] [backupID]` | Query Bucket stored data |
+| `/bk create <name> <password>`                | Create new Bucket        |
+| `/bk set <ID/name> <param> <value>`           | Modify Bucket attributes |
+
+### 🔗 Project-Bucket Linking Commands
+| Command                                  | Description                |
+|------------------------------------------|----------------------------|
+| `/bk add <project> <ID/name> [password]` | Add Bucket to project      |
+| `/bk rm <project> <ID/name>`             | Remove Bucket from project |
+
+### ⚠️ Danger Zone
+| Command                                          | Description                |
+|--------------------------------------------------|----------------------------|
+| `/bk backup <ID/name> <backupID> [password]`     | Backup Bucket storage data |
+| `/bk backup <ID/name> del <backupID> [password]` | Delete backup data         |
+| `/bk rollback <ID/name> <backupID> [password]`   | Rollback to backup data    |
+| `/bk delete <ID/name>`                           | Permanently delete Bucket  |
+
+---
+
+## Local Image Commands
+Manage and operate local images.
+
+### 🖼️ Image Management Commands
+| Command                            | Description            |
+|------------------------------------|------------------------|
+| `/img list [QueryMode]`            | View image list        |
+| `/img info <name>`                 | View image info        |
+| `/img upload <name> <【image/URL】>` | Upload image to server |
+
+### ✏️ Update Image Data
+| Command                           | Description             |
+|-----------------------------------|-------------------------|
+| `/img set <name> <param> <value>` | Modify image attributes |
+| `/img delete <name>`              | Delete image            |
+
+---
+
 # Supported Code Upload Sites
 - [https://pastebin.ubuntu.com/](https://pastebin.ubuntu.com/) (Login required, supports caching)
+- [https://glot.io/snippets/](https://glot.io/snippets/) （No link change on update, supports direct debugging)
 - [https://pastebin.com/](https://pastebin.com/) (Needs `raw`, no link change on update)
 - [https://gist.github.com/](https://gist.github.com/) (GitHub login required, supports editing and caching)
 - [https://www.toptal.com/developers/hastebin/](https://www.toptal.com/developers/hastebin/) (Supports caching)

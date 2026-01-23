@@ -5,10 +5,9 @@
 _基于 Glot 接口的 Mirai Console 在线编译器框架_
 
 [![release](https://img.shields.io/github/v/release/tiedanGH/mirai-compiler-framework)](https://github.com/tiedanGH/mirai-compiler-framework/releases)
+[![stars](https://img.shields.io/github/stars/tiedanGH/mirai-compiler-framework?style=flat&color=orange)](https://github.com/tiedanGH/mirai-compiler-framework)
+[![downloads](https://shields.io/github/downloads/tiedanGH/mirai-compiler-framework/total)](https://github.com/tiedanGH/mirai-compiler-framework/releases/latest)
 [![Build Snapshot](https://github.com/tiedanGH/mirai-compiler-framework/actions/workflows/build.yml/badge.svg)](https://github.com/tiedanGH/mirai-compiler-framework/actions/workflows/build.yml)
-
-[//]: # ([![stars]&#40;https://img.shields.io/github/stars/tiedanGH/mirai-compiler-framework?style=flat&color=orange&#41;]&#40;https://github.com/tiedanGH/mirai-compiler-framework&#41;)
-[//]: # ([![downloads]&#40;https://shields.io/github/downloads/tiedanGH/mirai-compiler-framework/total&#41;]&#40;https://github.com/tiedanGH/mirai-compiler-framework/releases/latest&#41;)
 
 [简体中文](README.md) | [English](README_en.md)
 
@@ -46,6 +45,8 @@ _基于 Glot 接口的 Mirai Console 在线编译器框架_
     + [Glot指令](docs/commands.md#Glot指令)
     + [Pastebin指令](docs/commands.md#Pastebin指令)
     + [Run指令及快捷前缀](docs/commands.md#run指令及快捷前缀)
+    + [Bucket跨项目存储库操作指令](docs/commands.md#Bucket跨项目存储库操作指令)
+    + [Image本地图片操作指令](docs/commands.md#Image本地图片操作指令)
 - [支持上传代码的网站](docs/commands.md#支持上传代码的网站)
 - [pb指令和高级功能帮助文档](docs/pastebin.md)
     + [1. 指令基本功能和使用帮助](docs/pastebin.md#一指令基本功能和使用帮助)
@@ -58,7 +59,7 @@ _基于 Glot 接口的 Mirai Console 在线编译器框架_
 ---
 
 ## 基于第三方开源代码
-本项目部分代码基于 **mirai-console-jcc-plugin**（原始地址：[https://github.com/jie65535/mirai-console-jcc-plugin](https://github.com/jie65535/mirai-console-jcc-plugin)）  
+本项目部分代码基于 **mirai-console-jcc-plugin**（仓库地址：[https://github.com/jie65535/mirai-console-jcc-plugin](https://github.com/jie65535/mirai-console-jcc-plugin)）  
 该项目遵循 **GNU Affero General Public License v3.0（AGPL-3.0）** 发布。
 
 根据 AGPL-3.0 协议要求，本项目保留原始项目的版权声明，并在此对其贡献表示感谢。  

@@ -36,7 +36,7 @@ object CommandRun : RawCommand(
         val name = try {
             PastebinData.alias[args[0].content] ?: args[0].content
         } catch (_: Exception) {
-            sendQuoteReply("[指令无效]\n${commandPrefix}run <名称> [输入]\n运行保存的pastebin代码")
+            sendQuoteReply("[指令无效]\n${commandPrefix}run <名称> [输入]\n运行保存的代码项目")
             return
         }
         if (PastebinData.pastebin.contains(name).not()) {

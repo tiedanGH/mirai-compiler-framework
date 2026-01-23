@@ -63,20 +63,20 @@ object CommandPastebin : RawCommand(
     usage = "${commandPrefix}pb help"
 ){
     private val commandList = arrayOf(
-        Command("pb support", "pb 支持", "目前pb支持的网站", 1),
+        Command("pb support", "pb 支持", "支持粘贴代码的网站", 1),
         Command("pb profile [QQ]", "pb 简介 [QQ]", "查看个人信息", 1),
         Command("pb private", "pb 私信时段", "允许私信主动消息", 1),
-        Command("pb stats [名称]", "pb 统计 [名称]", "查看统计", 1),
+        Command("pb stats [名称]", "pb 统计 [名称]", "查看统计信息", 1),
         Command("pb list [查询模式]", "pb 列表 [查询模式]", "查看项目列表", 1),
         Command("pb info <名称>", "pb 信息 <名称>", "查看信息&运行示例", 1),
         Command("pb thread", "pb 进程", "查询运行和等待中的进程", 1),
         Command("run <名称> [stdin]", "pb 运行 <名称> [输入]", "运行代码项目", 1),
 
-        Command("pb add <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]", "pb 添加 <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]", "添加pastebin项目", 2),
+        Command("pb add <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]", "pb 添加 <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]", "添加Pastebin项目", 2),
         Command("pb set <名称> <参数名> <内容>", "pb 修改 <名称> <参数名> <内容>", "修改项目属性", 2),
         Command("pb delete <名称>", "pb 删除 <名称>", "永久删除项目", 2),
 
-        Command("pb set <名称> format <输出格式> [宽度/存储]", "pb 修改 <名称> 输出格式 <输出格式> [宽度/存储]", "修改程序输出格式", 3),
+        Command("pb set <名称> format <输出格式> [宽度/存储]", "pb 修改 <名称> 输出格式 <输出格式> [宽度/存储]", "修改输出格式", 3),
         Command("pb storage <名称> [查询ID]", "pb 存储 <名称> [查询ID]", "查询存储数据", 3),
         Command("pb export <名称>", "pb 导出 <名称>", "将项目代码缓存导出为临时链接（过期时使用）", 3),
         Command("bucket help", "存储库 帮助", "跨项目存储库操作指令", 3),
@@ -130,7 +130,7 @@ object CommandPastebin : RawCommand(
                     sendQuoteReply(reply)
                 }
 
-                "support", "支持"-> {
+                "support", "支持"-> {   // 支持粘贴代码的网站
                     sendQuoteReply(
                         "🌐 目前pb支持粘贴代码的网站：\n" +
                         supportedUrls.joinToString(separator = "") { "${it.website}\n" } +
@@ -161,7 +161,7 @@ object CommandPastebin : RawCommand(
                     sendQuoteReply(reply)
                 }
 
-                "private", "私信时段"-> {
+                "private", "私信时段"-> {   // 允许私信主动消息
                     if (bot?.containsFriend(userID) != true && isNotConsole()) {
                         sendQuoteReply("请先添加bot为好友才能使用此功能")
                         return
@@ -229,7 +229,7 @@ object CommandPastebin : RawCommand(
                     }
                 }
 
-                "stats", "statistics", "统计"-> {
+                "stats", "statistics", "统计"-> {   // 查看统计信息
                     val name = args.getOrNull(1)?.content?.let { PastebinData.alias[it] ?: it }
                     val statistics = if (name != null) {
                         if (PastebinData.pastebin.contains(name).not()) {
@@ -498,7 +498,7 @@ object CommandPastebin : RawCommand(
                     sendQuoteReply(" ⏳ 当前正在运行或等待的进程：\n$threads")
                 }
 
-                "add", "添加", "新增"-> {   // 添加pastebin数据
+                "add", "添加", "新增"-> {   // 添加Pastebin项目
                     val name = args[1].content
                     if (PastebinData.pastebin.contains(name)) {
                         sendQuoteReply("添加失败：名称 $name 已存在")
@@ -550,7 +550,7 @@ object CommandPastebin : RawCommand(
                     PastebinData.save()
                 }
 
-                "set", "修改"-> {   // 修改数据中某一项的参数
+                "set", "修改"-> {   // 修改项目属性
                     val name = args[1].content
                     var option = args[2].content
                     var content = args.drop(3).joinToString(separator = " ")
@@ -891,7 +891,7 @@ object CommandPastebin : RawCommand(
                     ExtraData.save()
                 }
 
-                "delete", "remove", "删除", "移除"-> {   // 删除pastebin数据
+                "delete", "remove", "删除", "移除"-> {   // 永久删除项目
                     val name = args[1].content
                     if (PastebinData.pastebin.contains(name).not()) {
                         sendQuoteReply("删除失败：名称 $name 不存在")
@@ -1032,7 +1032,7 @@ object CommandPastebin : RawCommand(
                     }
                 }
 
-                "export", "导出"-> {
+                "export", "导出"-> {   // 将项目代码缓存导出为临时链接
                     if (PastebinConfig.enable_censor) {
                         sendQuoteReply("审核功能已开启，导出功能被禁用，如有需求请联系管理员")
                         return
