@@ -26,7 +26,7 @@ import site.tiedan.data.PastebinBucket
 import site.tiedan.data.PastebinStorage
 import site.tiedan.format.ForwardMessageGenerator.lineCount
 import site.tiedan.format.ForwardMessageGenerator.removeFirstAt
-import site.tiedan.module.PastebinCodeExecutor.renderLatexOnline
+import site.tiedan.core.PastebinCodeExecutor.renderLatexOnline
 import site.tiedan.utils.DownloadHelper.downloadImage
 import site.tiedan.utils.Security
 import java.io.File

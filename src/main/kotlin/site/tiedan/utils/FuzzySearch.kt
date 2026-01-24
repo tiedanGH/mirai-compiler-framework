@@ -1,4 +1,6 @@
-package site.tiedan.module
+package site.tiedan.utils
+
+import kotlin.math.abs
 
 object FuzzySearch {
 
@@ -23,7 +25,7 @@ object FuzzySearch {
         val lenB = b.length
 
         // 长度差超过 1，直接不可能
-        if (kotlin.math.abs(lenA - lenB) > 1) return false
+        if (abs(lenA - lenB) > 1) return false
 
         var i = 0
         var j = 0

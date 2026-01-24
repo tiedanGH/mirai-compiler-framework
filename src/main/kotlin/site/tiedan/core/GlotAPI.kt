@@ -1,4 +1,4 @@
-package site.tiedan.module
+package site.tiedan.core
 
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.config.PastebinConfig

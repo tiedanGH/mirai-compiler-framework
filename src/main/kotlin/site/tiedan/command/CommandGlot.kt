@@ -10,7 +10,7 @@ import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.console.command.RawCommand
 import net.mamoe.mirai.message.data.MessageChain
 import net.mamoe.mirai.message.data.content
-import site.tiedan.module.GlotAPI
+import site.tiedan.core.GlotAPI
 
 /**
  * # 查看框架信息和帮助

@@ -1,4 +1,4 @@
-package site.tiedan.module
+package site.tiedan.core
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
@@ -47,6 +47,8 @@ import site.tiedan.format.JsonProcessor
 import site.tiedan.format.JsonProcessor.toJsonSingleMessages
 import site.tiedan.format.JsonProcessor.toSingleChainMessages
 import site.tiedan.format.MarkdownImageGenerator
+import site.tiedan.module.RequestLimiter
+import site.tiedan.module.Statistics
 import site.tiedan.utils.DownloadHelper.downloadImage
 import site.tiedan.utils.HttpUtil
 import site.tiedan.utils.PastebinUrlHelper
@@ -56,6 +58,7 @@ import java.net.ConnectException
 import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URL
+import java.net.URLEncoder
 import java.time.LocalTime
 import kotlin.collections.List
 import kotlin.collections.set
@@ -607,7 +610,7 @@ object PastebinCodeExecutor {
     fun renderLatexOnline(latex: String): String {
         val apiUrl = "https://quicklatex.com/latex3.f"
         val outputFilePath = "${cacheFolder}latex.png"
-        val postData = "formula=${java.net.URLEncoder.encode(latex, "GBK").replace("+", "%20")}&fsize=15px&fcolor=000000&bcolor=FFFFFF&mode=0&out=1"
+        val postData = "formula=${URLEncoder.encode(latex, "GBK").replace("+", "%20")}&fsize=15px&fcolor=000000&bcolor=FFFFFF&mode=0&out=1"
 
         try {
             val url = URL(apiUrl)

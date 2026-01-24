@@ -1,4 +1,4 @@
-package site.tiedan.module
+package site.tiedan.core
 
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.commandPrefix
 import net.mamoe.mirai.console.command.CommandSender
@@ -30,11 +30,11 @@ import site.tiedan.MiraiCompilerFramework.trimToMaxLength
 import site.tiedan.command.CommandRun.queryImageUrls
 import site.tiedan.config.DockerConfig
 import site.tiedan.config.PastebinConfig
+import site.tiedan.core.PastebinCodeExecutor.executeMainProcess
 import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
 import site.tiedan.format.ForwardMessageGenerator
 import site.tiedan.format.JsonProcessor
-import site.tiedan.module.PastebinCodeExecutor.executeMainProcess
 import site.tiedan.utils.HttpUtil
 import site.tiedan.utils.PastebinUrlHelper
 import java.net.ConnectException

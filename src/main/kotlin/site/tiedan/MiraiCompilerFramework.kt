@@ -24,6 +24,7 @@ import net.mamoe.mirai.utils.ExternalResource.Companion.toExternalResource
 import net.mamoe.mirai.utils.info
 import site.tiedan.command.*
 import site.tiedan.config.*
+import site.tiedan.core.Events
 import site.tiedan.data.*
 import site.tiedan.module.*
 import site.tiedan.utils.Security

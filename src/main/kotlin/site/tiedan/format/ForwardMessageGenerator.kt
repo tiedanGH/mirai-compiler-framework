@@ -20,7 +20,7 @@ import site.tiedan.MiraiCompilerFramework.uploadFileToImage
 import site.tiedan.MiraiCompilerFramework.trimToMaxLength
 import site.tiedan.format.JsonProcessor.json
 import site.tiedan.format.JsonProcessor.toJsonSingleMessages
-import site.tiedan.module.PastebinCodeExecutor.renderLatexOnline
+import site.tiedan.core.PastebinCodeExecutor.renderLatexOnline
 import site.tiedan.utils.DownloadHelper.downloadImage
 import java.io.File
 import java.net.URI

@@ -28,7 +28,7 @@ import site.tiedan.config.PastebinConfig
 import site.tiedan.data.ImageData
 import site.tiedan.data.PastebinData
 import site.tiedan.format.MarkdownImageGenerator
-import site.tiedan.module.FuzzySearch
+import site.tiedan.utils.FuzzySearch
 import site.tiedan.utils.DownloadHelper
 import site.tiedan.utils.DownloadHelper.downloadFile
 import site.tiedan.utils.DownloadHelper.downloadImage

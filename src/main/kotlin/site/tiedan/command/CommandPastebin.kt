@@ -35,7 +35,7 @@ import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
 import site.tiedan.data.PastebinStorage
 import site.tiedan.format.MarkdownImageGenerator
-import site.tiedan.module.FuzzySearch
+import site.tiedan.utils.FuzzySearch
 import site.tiedan.module.Statistics
 import site.tiedan.utils.HttpUtil
 import site.tiedan.utils.PastebinUrlHelper

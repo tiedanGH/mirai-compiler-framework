@@ -28,7 +28,7 @@ import site.tiedan.data.PastebinBucket
 import site.tiedan.data.PastebinData
 import site.tiedan.format.JsonProcessor
 import site.tiedan.format.MarkdownImageGenerator
-import site.tiedan.module.FuzzySearch
+import site.tiedan.utils.FuzzySearch
 import site.tiedan.utils.Security
 import java.io.File
 import java.time.Instant

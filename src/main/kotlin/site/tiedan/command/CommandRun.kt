@@ -9,8 +9,8 @@ import net.mamoe.mirai.message.data.Image.Key.queryUrl
 import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.data.PastebinData
-import site.tiedan.module.FuzzySearch
-import site.tiedan.module.PastebinCodeExecutor.executeMainProcess
+import site.tiedan.utils.FuzzySearch
+import site.tiedan.core.PastebinCodeExecutor.executeMainProcess
 
 /**
  * # 运行代码项目
