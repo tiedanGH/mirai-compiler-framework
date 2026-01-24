@@ -8,14 +8,32 @@ object FuzzySearch {
         map: MutableMap<String, MutableMap<String, String>>,
         query: String
     ): List<String> {
-
-        val q = query.trim()
+        val q = query.trim().lowercase()
         if (q.isEmpty()) return emptyList()
 
         return map.keys.filter { key ->
-            editDistanceAtMostOne(q, key) || isOneTransposition(q, key)
+            val k = key.lowercase()
+            if (q.length == 1) {
+                lengthOneMatch(q, k)
+            } else {
+                editDistanceAtMostOne(q, k) || isOneTransposition(q, k)
+            }
         }
     }
+
+    /**
+     * 长度为1的模糊匹配
+     */
+    private fun lengthOneMatch(a: String, b: String): Boolean {
+        if (b.length == 1) {
+            return b[0] == a[0]
+        }
+        if (b.length == 2) {
+            return b[0] == a[0] || b[1] == a[0]
+        }
+        return false
+    }
+
 
     /**
      * 判断两个字符串的编辑距离是否 <= 1
