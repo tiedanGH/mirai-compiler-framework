@@ -28,6 +28,7 @@ import site.tiedan.data.PastebinBucket
 import site.tiedan.data.PastebinData
 import site.tiedan.format.JsonProcessor
 import site.tiedan.format.MarkdownImageGenerator
+import site.tiedan.module.FuzzySearch
 import site.tiedan.utils.Security
 import java.io.File
 import java.time.Instant
@@ -650,7 +651,14 @@ object CommandBucket : RawCommand(
     ): ProjectContext? {
         val projectName = args[1].content
         if (!PastebinData.pastebin.contains(projectName)) {
-            sendQuoteReply("未知的项目：$projectName\n请使用「${commandPrefix}pb list」来查看完整列表")
+            val fuzzy = FuzzySearch.fuzzyFind(PastebinData.pastebin, projectName)
+            sendQuoteReply(
+                "未知的名称：$projectName\n" +
+                if (fuzzy.isNotEmpty()) {
+                    "🔍 模糊匹配结果->\n" + fuzzy.take(20).joinToString(separator = " ") +
+                    "\n或使用「${commandPrefix}pb list」来查看完整列表"
+                } else "请使用「${commandPrefix}pb list」来查看完整列表"
+            )
             return null
         }
         val projectOwnerID = PastebinData.pastebin[projectName]?.get("userID")

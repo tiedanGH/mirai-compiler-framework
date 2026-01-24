@@ -15,7 +15,6 @@ import net.mamoe.mirai.message.data.content
 import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.Command
 import site.tiedan.MiraiCompilerFramework.cacheFolder
-import site.tiedan.MiraiCompilerFramework.fuzzyFind
 import site.tiedan.MiraiCompilerFramework.getNickname
 import site.tiedan.MiraiCompilerFramework.imageFolder
 import site.tiedan.MiraiCompilerFramework.logger
@@ -29,6 +28,7 @@ import site.tiedan.config.PastebinConfig
 import site.tiedan.data.ImageData
 import site.tiedan.data.PastebinData
 import site.tiedan.format.MarkdownImageGenerator
+import site.tiedan.module.FuzzySearch
 import site.tiedan.utils.DownloadHelper
 import site.tiedan.utils.DownloadHelper.downloadFile
 import site.tiedan.utils.DownloadHelper.downloadImage
@@ -155,7 +155,7 @@ object CommandImage : RawCommand(
                 "info", "信息"-> {   // 查看图片信息
                     val name = args[1].content
                     if (ImageData.images.contains(name).not()) {
-                        val fuzzy = fuzzyFind(ImageData.images, name)
+                        val fuzzy = FuzzySearch.fuzzyFind(ImageData.images, name)
                         sendQuoteReply(
                             "未知图片：$name\n" +
                             if (fuzzy.isNotEmpty()) {
@@ -213,7 +213,7 @@ object CommandImage : RawCommand(
                     var content = args.drop(3).joinToString(separator = " ")
                     var additionalOutput = ""
                     if (ImageData.images.contains(name).not()) {
-                        val fuzzy = fuzzyFind(ImageData.images, name)
+                        val fuzzy = FuzzySearch.fuzzyFind(ImageData.images, name)
                         sendQuoteReply(
                             "未知图片：$name\n" +
                             if (fuzzy.isNotEmpty()) {

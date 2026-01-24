@@ -189,16 +189,6 @@ object MiraiCompilerFramework : KotlinPlugin(
     }
 
     /**
-     * 模糊查找
-     */
-    fun fuzzyFind(map: MutableMap<String, MutableMap<String, String>>, query: String): List<String> {
-        if (query.isEmpty()) return emptyList()
-        return map.keys.filter { key ->
-            key.contains(query, ignoreCase = true) || query.contains(key, ignoreCase = true)
-        }
-    }
-
-    /**
      * 按最大长度截断字符串
      */
     fun trimToMaxLength(input: String, maxLength: Int = 30000): Pair<String, Boolean> {

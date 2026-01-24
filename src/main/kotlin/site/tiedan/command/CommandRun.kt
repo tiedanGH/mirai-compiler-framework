@@ -9,6 +9,7 @@ import net.mamoe.mirai.message.data.Image.Key.queryUrl
 import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.data.PastebinData
+import site.tiedan.module.FuzzySearch
 import site.tiedan.module.PastebinCodeExecutor.executeMainProcess
 
 /**
@@ -40,7 +41,14 @@ object CommandRun : RawCommand(
             return
         }
         if (PastebinData.pastebin.contains(name).not()) {
-            sendQuoteReply("未知的名称：$name\n请使用「${commandPrefix}pb list」来查看完整列表")
+            val fuzzy = FuzzySearch.fuzzyFind(PastebinData.pastebin, name)
+            sendQuoteReply(
+                "未知的名称：$name\n" +
+                if (fuzzy.isNotEmpty()) {
+                    "🔍 模糊匹配结果->\n" + fuzzy.take(20).joinToString(separator = " ") +
+                    "\n或使用「${commandPrefix}pb list」来查看完整列表"
+                } else "请使用「${commandPrefix}pb list」来查看完整列表"
+            )
             return
         }
 

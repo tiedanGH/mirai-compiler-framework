@@ -16,7 +16,6 @@ import site.tiedan.MiraiCompilerFramework.Command
 import site.tiedan.MiraiCompilerFramework.ERROR_MSG_MAX_LENGTH
 import site.tiedan.MiraiCompilerFramework.THREADS
 import site.tiedan.MiraiCompilerFramework.cacheFolder
-import site.tiedan.MiraiCompilerFramework.fuzzyFind
 import site.tiedan.MiraiCompilerFramework.getNickname
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.pendingCommand
@@ -36,6 +35,7 @@ import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
 import site.tiedan.data.PastebinStorage
 import site.tiedan.format.MarkdownImageGenerator
+import site.tiedan.module.FuzzySearch
 import site.tiedan.module.Statistics
 import site.tiedan.utils.HttpUtil
 import site.tiedan.utils.PastebinUrlHelper
@@ -233,7 +233,7 @@ object CommandPastebin : RawCommand(
                     val name = args.getOrNull(1)?.content?.let { PastebinData.alias[it] ?: it }
                     val statistics = if (name != null) {
                         if (PastebinData.pastebin.contains(name).not()) {
-                            val fuzzy = fuzzyFind(PastebinData.pastebin, name)
+                            val fuzzy = FuzzySearch.fuzzyFind(PastebinData.pastebin, name)
                             sendQuoteReply(
                                 "未知的名称：$name\n" +
                                 if (fuzzy.isNotEmpty()) {
@@ -417,7 +417,7 @@ object CommandPastebin : RawCommand(
                 "info", "信息"-> {   // 查看数据具体参数
                     val name = PastebinData.alias[args[1].content] ?: args[1].content
                     if (PastebinData.pastebin.contains(name).not()) {
-                        val fuzzy = fuzzyFind(PastebinData.pastebin, name)
+                        val fuzzy = FuzzySearch.fuzzyFind(PastebinData.pastebin, name)
                         sendQuoteReply(
                             "未知的名称：$name\n" +
                             if (fuzzy.isNotEmpty()) {
@@ -556,7 +556,7 @@ object CommandPastebin : RawCommand(
                     var content = args.drop(3).joinToString(separator = " ")
                     var additionalOutput = ""
                     if (PastebinData.pastebin.contains(name).not()) {
-                        val fuzzy = fuzzyFind(PastebinData.pastebin, name)
+                        val fuzzy = FuzzySearch.fuzzyFind(PastebinData.pastebin, name)
                         sendQuoteReply(
                             "未知的名称：$name\n" +
                             if (fuzzy.isNotEmpty()) {
@@ -941,7 +941,7 @@ object CommandPastebin : RawCommand(
                 "storage", "存储"-> {   // 查询存储数据
                     val name = PastebinData.alias[args[1].content] ?: args[1].content
                     if (PastebinData.pastebin.contains(name).not()) {
-                        val fuzzy = fuzzyFind(PastebinData.pastebin, name)
+                        val fuzzy = FuzzySearch.fuzzyFind(PastebinData.pastebin, name)
                         sendQuoteReply(
                             "未知的名称：$name\n" +
                             if (fuzzy.isNotEmpty()) {
@@ -1039,7 +1039,7 @@ object CommandPastebin : RawCommand(
                     }
                     val name = PastebinData.alias[args[1].content] ?: args[1].content
                     if (PastebinData.pastebin.contains(name).not()) {
-                        val fuzzy = fuzzyFind(PastebinData.pastebin, name)
+                        val fuzzy = FuzzySearch.fuzzyFind(PastebinData.pastebin, name)
                         sendQuoteReply(
                             "未知的名称：$name\n" +
                             if (fuzzy.isNotEmpty()) {
