@@ -13,32 +13,32 @@
 ## 🎮 玩家使用帮助
 **如果您是玩家，您无需任何编程经验就可以使用和游玩 PB 框架的所有项目：**
 
-- <span class="command">#pb list</span> 查看**全部项目总列表**
-    + <span class="command">#pb list help</span> 总列表**高级功能**：如搜索、根据[作者/语言]筛选等
-- <span class="command">#pb info 名称</span> ：查看项目作者用于反馈体验和建议
-- <span class="command">##名称 [输入]</span> ：**运行指定项目**
-  + **项目的玩法或帮助均由开发者内置在项目中**，常见的帮助指令为<span class="command">帮助/help/h</span> ，部分项目可能不同，请询问作者获得帮助
+- <span class="command">`#pb list`</span> 查看**全部项目总列表**
+    + <span class="command">`#pb list help`</span> 总列表**高级功能**：如搜索、根据[作者/语言]筛选等
+- <span class="command">`#pb info 名称`</span> ：查看项目**运行示例**，查看**作者**用于反馈体验和建议
+- <span class="command">`##名称 [输入]`</span> ：**运行指定项目**
+  + **项目的玩法或帮助均由开发者内置在项目中**，常见的帮助指令为<span class="command">`帮助/help/h`</span> ，部分项目可能不同，请询问作者获得帮助
   + <span class="tip">小贴士</span> 部分项目**需要短时间内频繁操作**，可使用以下方法**减少打字时间**：
-    * 复制一个<span class="command">##名称 </span> **(带着空格)**，然后反复粘贴来避免重复输入名称
+    * 复制一个<span class="command">`##名称 `</span> **(带着空格)**，然后反复粘贴来避免重复输入名称
     * 撤回前一条消息点“重新编辑”按钮来修改消息，也可以避免重复输入
-- <span class="command">#pb help</span> ：查看其他指令完整帮助（如果仅游玩无需查看其他指令）
+- <span class="command">`#pb help`</span> ：查看其他指令完整帮助（如果仅游玩无需查看其他指令）
 
 ## 🚀 简易调试帮助
 **框架支持简单的程序调试运行功能，您可以通过以下方式进行调试：**
 
-- <span class="command">run <语言> <源代码></span> ：直接运行一段代码，适合快速调试小段代码
-- <span class="command">run <语言> <源代码URL> [输入]</span> ：从指定URL运行代码，适合测试带输入的完整程序
-- <span class="command">引用消息: run <语言> [输入]</span> ：引用一条消息中的代码进行运行，快速调试带输入的代码
-- 使用指令<span class="command">#glot list</span> 查看支持的编程语言列表
+- <span class="command">`run <语言> <源代码>`</span> ：直接**运行**一段代码，适合快速调试小段代码
+- <span class="command">`run <语言> <源代码URL> [输入]`</span> ：从**指定URL**运行代码，适合测试**带输入**的完整程序
+- <span class="command">引用消息: `run <语言> [输入]`</span> ：**引用**一条消息中的代码进行运行，快速调试**带输入**的代码
+- 使用指令<span class="command">`#glot list`</span> 查看支持的**编程语言列表**
 
 ## 🛠️ 项目开发帮助
 **如果您是开发者，想要了解如何使用 PB 框架进行开发项目，请参考下方资源：**
 
-- 使用指令<span class="command">##帮助文档</span> 查看 PB 框架的**官方开发文档**，其中包含了详细的接口说明和使用示例
-- 另外，您还可以参考 **Ya 提供的 Plumbum 项目**（使用指令<span class="command">#pb info pb</span> 查看源代码）。项目内置了 PB 框架的大部分接口，可以帮助您快速开发新项目
+- 使用指令<span class="command">`##帮助文档`</span> 查看 PB 框架的**官方开发文档**，其中包含了详细的接口说明和使用示例
+- 另外，您还可以参考 **Ya 提供的 Plumbum 项目**（使用指令<span class="command">`#pb info pb`</span> 查看源代码）。项目内置了 PB 框架的大部分接口，可以帮助您快速开发新项目
 
 ## 🌱 感谢您的阅读
-如果有关于文档内容的**疑问**或在使用时遇到**任何困难**都可以找 **铁蛋(2295824927)** 咨询，有时候会看不到群消息，建议**私信**发送您遇到的问题。铁蛋现在正在国外留学ing，大部分时间可能无法及时回复消息，还望您的理解。
+如果有关于文档内容的疑问或在使用时遇到任何困难都可以找 **铁蛋(2295824927)** 咨询，有时候会看不到群消息，建议**私信**发送您遇到的问题。铁蛋现在正在国外留学ing，大部分时间可能无法及时回复消息，还望您的理解。
 
 <style>
 .tip{background-color: #87CEEB;padding: 3px 6px;border-radius: 3px;}
