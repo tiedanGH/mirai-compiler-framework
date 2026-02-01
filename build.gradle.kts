@@ -23,7 +23,7 @@ dependencies {
     implementation("xyz.cssxsh.baidu:baidu-aip:3.3.2")
     implementation("at.favre.lib:bcrypt:0.10.2")
 
-    testImplementation("org.junit.jupiter:junit-jupiter:6.0.1")
+    testImplementation("org.junit.jupiter:junit-jupiter:6.0.2")
 }
 
 mirai {
