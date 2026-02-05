@@ -1,7 +1,5 @@
 package site.tiedan.command
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.commandPrefix
 import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.console.command.RawCommand
@@ -35,19 +33,15 @@ import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
 import site.tiedan.data.PastebinStorage
 import site.tiedan.format.MarkdownImageGenerator
-import site.tiedan.utils.FuzzySearch
+import site.tiedan.module.MailService
 import site.tiedan.module.Statistics
+import site.tiedan.utils.FuzzySearch
 import site.tiedan.utils.HttpUtil
 import site.tiedan.utils.PastebinUrlHelper
 import site.tiedan.utils.PastebinUrlHelper.checkUrl
 import site.tiedan.utils.PastebinUrlHelper.supportedUrls
-import site.tiedan.utils.buildMailContent
-import site.tiedan.utils.buildMailSession
 import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
 import java.net.ConnectException
-import kotlin.io.path.inputStream
 import kotlin.math.ceil
 
 /**
@@ -77,7 +71,7 @@ object CommandPastebin : RawCommand(
         Command("pb delete <名称>", "pb 删除 <名称>", "永久删除项目", 2),
 
         Command("pb set <名称> format <输出格式> [宽度/存储]", "pb 修改 <名称> 输出格式 <输出格式> [宽度/存储]", "修改输出格式", 3),
-        Command("pb storage <名称> [查询ID]", "pb 存储 <名称> [查询ID]", "查询存储数据", 3),
+        Command("pb storage <名称> [查询ID/mail]", "pb 存储 <名称> [查询ID/邮件]", "查询存储数据", 3),
         Command("pb export <名称>", "pb 导出 <名称>", "将项目代码缓存导出为临时链接（过期时使用）", 3),
         Command("bucket help", "存储库 帮助", "跨项目存储库操作指令", 3),
         Command("image help", "图片 帮助", "本地图片操作指令", 3),
@@ -969,7 +963,7 @@ object CommandPastebin : RawCommand(
                             }
                         }
                         logger.info("请求使用邮件发送结果：$name")
-                        sendStorageMail(this, output, userID, name)
+                        MailService.sendStorageMail(this, output, userID, name)
                         return
                     }
 
@@ -1164,62 +1158,6 @@ object CommandPastebin : RawCommand(
         } catch (e: Exception) {
             logger.warning(e)
             sendQuoteReply("[指令执行未知错误]\n请联系管理员查看后台：${e::class.simpleName}(${e.message})")
-        }
-    }
-
-    suspend fun sendStorageMail(
-        sender: CommandSender,
-        output: String,
-        userID: Long,
-        name: String
-    ) {
-        try {
-            withContext(Dispatchers.IO) {
-                FileOutputStream("${cacheFolder}storage.txt").use { outputStream ->
-                    outputStream.write(output.toByteArray())
-                }
-            }
-        } catch (e: IOException) {
-            logger.warning(e)
-            sender.sendQuoteReply("[请求使用邮件发送]\n但在尝试导出存储数据文件时发生错误：${e.message}")
-            return
-        }
-        val session = buildMailSession {
-            MailConfig.properties.inputStream().use {
-                load(it)
-            }
-        }
-        val mail = buildMailContent(session) {
-            to = "${userID}@qq.com"
-            title = "存储数据查询"
-            text {
-                append("※※※使用此服务表示您知晓并遵守以下注意事项※※※\n")
-                append("1、不能在短时间内频繁使用此邮件发送服务\n")
-                append("2、不能在查询名称、查询ID、存储数据中添加任何违规内容\n")
-                append("3、此邮件为自动发送，请不要回复。如遇到问题请直接联系管理员\n")
-                append("\n\n")
-                append("【查询名称】$name\n\n")
-                append("·查询的结果数据请查看附件")
-            }
-            file("StorageData.txt") {
-                File("${cacheFolder}storage.txt")
-            }
-        }
-        val current = Thread.currentThread()
-        val oc = current.contextClassLoader
-        try {
-            current.contextClassLoader = MailConfig::class.java.classLoader
-            jakarta.mail.Transport.send(mail)
-            sender.sendQuoteReply("[请求使用邮件发送]\n存储数据导出成功（文件总长度：${output.length}），并通过邮件发送，请您登录邮箱查看")
-        } catch (cause: jakarta.mail.MessagingException) {
-            logger.warning(cause)
-            sender.sendQuoteReply("[请求使用邮件发送]\n存储数据导出成功（文件总长度：${output.length}），但邮件发送失败，原因: ${cause.message}")
-        } catch (e: Exception){
-            logger.warning(e)
-            sender.sendQuoteReply("[请求使用邮件发送]\n存储数据导出成功（文件总长度：${output.length}），但发生其他未知错误: ${e.message}")
-        } finally {
-            current.contextClassLoader = oc
-            File("${cacheFolder}storage.txt").delete()
         }
     }
 }

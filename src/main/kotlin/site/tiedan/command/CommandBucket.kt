@@ -20,7 +20,6 @@ import site.tiedan.MiraiCompilerFramework.requestUserConfirmation
 import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.uploadFileToImage
-import site.tiedan.command.CommandPastebin.sendStorageMail
 import site.tiedan.config.MailConfig
 import site.tiedan.config.PastebinConfig
 import site.tiedan.data.ExtraData
@@ -28,6 +27,7 @@ import site.tiedan.data.PastebinBucket
 import site.tiedan.data.PastebinData
 import site.tiedan.format.JsonProcessor
 import site.tiedan.format.MarkdownImageGenerator
+import site.tiedan.module.MailService
 import site.tiedan.utils.FuzzySearch
 import site.tiedan.utils.Security
 import java.io.File
@@ -50,7 +50,7 @@ object CommandBucket : RawCommand(
     private val commandList = arrayOf(
         Command("bk list [文字/备份]", "bk 列表 [文字/备份]", "查看存储库列表", 1),
         Command("bk info <ID/名称>", "bk 信息 <ID/名称>", "查看存储库信息", 1),
-        Command("bk storage <ID/名称> [密码] [备份编号]", "bk 存储 <ID/名称> [密码] [备份编号]", "查询存储库数据", 1),
+        Command("bk storage <ID/名称> [密码] [备份编号/mail]", "bk 存储 <ID/名称> [密码] [备份编号/邮件]", "查询存储库数据", 1),
         Command("bk create <名称> <密码>", "bk 创建 <名称> <密码>", "创建新存储库", 1),
         Command("bk set <ID/名称> <参数名> <内容>", "bk 修改 <ID/名称> <参数名> <内容>", "修改存储库属性", 1),
 
@@ -158,7 +158,7 @@ object CommandBucket : RawCommand(
                         return
                     }
 
-                    val mail = args.getOrNull(2)?.content == "邮件" || args.getOrNull(2)?.content == "mail"
+                    val mail = args.getOrNull(3)?.content == "邮件" || args.getOrNull(3)?.content == "mail"
                     if (MailConfig.enable && mail && bucket.isNotEmpty()) {
                         val allBackupData = PastebinBucket.backups[id]
                             ?.mapIndexed { index, backup ->
@@ -176,8 +176,8 @@ object CommandBucket : RawCommand(
                                 "【存储库内容】\n${bucket["content"]}\n" +
                                 "\n\n" +
                                 allBackupData
-                        logger.info("请求使用邮件发送结果：$id")
-                        sendStorageMail(this, output, userID, id.toString())
+                        logger.info("请求使用邮件发送结果：${bucketInfo(id)}")
+                        MailService.sendStorageMail(this, output, userID, bucketInfo(id))
                         return
                     }
 

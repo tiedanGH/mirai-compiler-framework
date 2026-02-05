@@ -14,6 +14,12 @@ internal object MailConfig : ReadOnlyPluginConfig("MailConfig") {
     @ValueDescription("启用邮件发送功能")
     val enable: Boolean by value(true)
 
+    @ValueDescription("邮件底部联系方式（留空不显示）")
+    val contactMail: String by value()
+
+    @ValueDescription("相关网站（无需http协议前缀，留空不显示）")
+    val relatedWebsite: String by value()
+
     var properties = Path("mail.properties")
         private set
 

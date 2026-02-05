@@ -62,10 +62,10 @@ fun buildMailContent(session: Session, block: MailContentBuilder.(MimeMessage) -
 
         message.setRecipients(MimeMessage.RecipientType.TO, builder.to)
 
-        if (builder.title.isEmpty()) throw throw IllegalArgumentException("title is empty")
+        if (builder.title.isEmpty()) throw IllegalArgumentException("title is empty")
         message.setSubject(builder.title, "UTF-8")
 
-        if (builder.content.count == 0) throw throw IllegalArgumentException("content is empty")
+        if (builder.content.count == 0) throw IllegalArgumentException("content is empty")
         message.setContent(builder.content)
 
     } finally {
@@ -91,6 +91,11 @@ class MailContentBuilder(session: Session) {
     @MailDsl
     var content: MimeMultipart = MimeMultipart()
 
+    /**
+     * 添加纯文本内容
+     * @param type 文本类型，默认为 "plain"，可设置为 "html" 用于HTML内容
+     * @param builderAction 文本内容构建器
+     */
     @MailDsl
     fun text(type: String = "plain", builderAction: StringBuilder.() -> Unit) {
         val part = MimeBodyPart()
@@ -99,6 +104,23 @@ class MailContentBuilder(session: Session) {
         content.addBodyPart(part)
     }
 
+    /**
+     * 添加 HTML 内容
+     * @param builderAction HTML 内容构建器
+     */
+    @MailDsl
+    fun html(builderAction: StringBuilder.() -> Unit) {
+        val part = MimeBodyPart()
+        val html = StringBuilder().apply(builderAction).toString()
+        part.setContent(html, "text/html; charset=UTF-8")
+        content.addBodyPart(part)
+    }
+
+    /**
+     * 添加附件
+     * @param filename 文件名，如果不指定则使用源文件名
+     * @param builderAction 文件源构建器，支持 File, Path, DataSource, DataHandler, String(文件路径)
+     */
     @MailDsl
     fun file(filename: String? = null, builderAction: () -> Any?) {
         val part = MimeBodyPart()
