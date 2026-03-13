@@ -527,7 +527,7 @@ object CommandPastebin : RawCommand(
                         sendQuoteReply("您已成功提交审核，此提交并不会发送提醒，管理员会定期查看并审核，您也可以主动联系进行催审")
                     } else {
                         sendQuoteReply(
-                            "添加pastebin成功！\n" +
+                            "📁 添加新项目成功！\n" +
                             "名称：$name\n" +
                             "作者：$author\n" +
                             "userID：$userID\n" +
@@ -586,7 +586,7 @@ object CommandPastebin : RawCommand(
                     option = paraMap.getOrDefault(option, option)
                     if (paraMap.values.contains(option).not()) {
                         sendQuoteReply(
-                            "未知的配置项：$option\n" +
+                            "❓ 未知的配置项：$option\n" +
                             "---基础信息修改---\n" +
                             "name（名称）\n" +
                             "alias（别名）\n" +
@@ -737,7 +737,7 @@ object CommandPastebin : RawCommand(
                                 PastebinData.pastebin[name]?.remove("util")
                             } else {
                                 if (files.contains(content).not()) {
-                                    sendQuoteReply("未找到文件，请检查文件名\n辅助文件列表：\n${files.joinToString("\n")}")
+                                    sendQuoteReply("未找到此文件：请检查文件名\n辅助文件列表：\n${files.joinToString("\n")}")
                                     return
                                 }
                                 PastebinData.pastebin[name]?.set("util", content)
@@ -756,7 +756,7 @@ object CommandPastebin : RawCommand(
                             content = format
                             if (MiraiCompilerFramework.supportedFormats.contains(format).not()) {
                                 sendQuoteReply(
-                                        "无效的输出格式：$format\n" +
+                                        "❌ 无效的输出格式：$format\n" +
                                         "仅支持输出：\n" +
                                         "·text（纯文本）\n" +
                                         "·markdown（md/html转图片）\n" +
@@ -857,7 +857,7 @@ object CommandPastebin : RawCommand(
                         }
                         else -> {
                             if (option == "url" && CodeCache.CodeCache.contains(name)) {
-                                additionalOutput = "源代码URL被修改，代码缓存已清除，下次执行时需重新获取代码\n"
+                                additionalOutput = "🔗 源代码URL被修改，代码缓存已清除，下次执行时需重新获取代码\n"
                                 CodeCache.CodeCache.remove(name)
                             }
                             PastebinData.pastebin[name]?.set(option, content)

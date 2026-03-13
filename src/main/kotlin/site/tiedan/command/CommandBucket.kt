@@ -263,7 +263,7 @@ object CommandBucket : RawCommand(
                     PastebinBucket.backups[id] = mutableListOf(null, null, null)
                     PastebinBucket.save()
                     sendQuoteReply(
-                        "创建新存储库成功！\n" +
+                        "🗄 创建新存储库成功！\n" +
                         "存储库ID：$id\n" +
                         "名称：$name\n" +
                         "密码：长度为 ${password.length}\n" +
@@ -295,7 +295,7 @@ object CommandBucket : RawCommand(
                     option = paraMap[option] ?: option
                     if (paraMap.values.contains(option).not()) {
                         sendQuoteReply(
-                            "未知的配置项：$option\n" +
+                            "❓ 未知的配置项：$option\n" +
                             "name（名称）\n" +
                             "password（密码）\n" +
                             "desc（简介）\n" +
@@ -494,7 +494,7 @@ object CommandBucket : RawCommand(
                         )
                         PastebinBucket.backups[id]?.set(num - 1, newBackup)
                         sendQuoteReply(
-                            "在槽位 $num 创建新备份成功！\n" +
+                            "✅ 在槽位 $num 创建新备份成功！\n" +
                             "存储库ID：$id\n" +
                             "存储库名称：${bucketIDToName(id)}\n" +
                             "\n" +
@@ -525,7 +525,7 @@ object CommandBucket : RawCommand(
                         backup.time = System.currentTimeMillis()
                         backup.content = bucketContent
                         sendQuoteReply(
-                            "成功更新槽位 $num 的备份！\n" +
+                            "✅ 成功更新槽位 $num 的备份！\n" +
                             "存储库ID：$id\n" +
                             "存储库名称：${bucketIDToName(id)}\n" +
                             "\n" +

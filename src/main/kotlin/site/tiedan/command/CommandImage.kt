@@ -201,7 +201,7 @@ object CommandImage : RawCommand(
                     ImageData.save()
 
                     sendQuoteReply(
-                        "上传图片成功！（用时：${result.duration}秒）\n" +
+                        "🖼️ 上传图片成功！（用时：${result.duration}秒）\n" +
                         "通过下方快捷路径调用此图片：\n" +
                         "image://$imageName"
                     )
@@ -238,7 +238,7 @@ object CommandImage : RawCommand(
                     option = paraMap.getOrDefault(option, option)
                     if (paraMap.values.contains(option).not()) {
                         sendQuoteReply(
-                            "未知的配置项：$option\n" +
+                            "❓ 未知的配置项：$option\n" +
                             "name（名称）\n" +
                             "image（图片）\n" +
                             "owner（所有者）\n" +
@@ -261,7 +261,7 @@ object CommandImage : RawCommand(
                                 sendQuoteReply(error)
                                 return
                             }
-                            additionalOutput = "\n【请注意】图片调用路径已变更为\nimage://$content"
+                            additionalOutput = "\n⚠️ 图片调用路径已变更为\nimage://$content"
                             ImageData.images[content] = ImageData.images.remove(name)!!
                             ImageData.images = ImageData.images.toSortedMap()
                         }
@@ -333,7 +333,7 @@ object CommandImage : RawCommand(
                     }
                     ImageData.images.remove(name)
                     ImageData.save()
-                    sendQuoteReply("删除图片 $name 成功！")
+                    sendQuoteReply("🗑️ 删除图片 $name 成功！")
                 }
 
                 else-> {
