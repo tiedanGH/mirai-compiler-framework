@@ -486,7 +486,7 @@ object CommandPastebin : RawCommand(
                         val elapsed = (System.currentTimeMillis() - thread.startTime) / 1000
                         "【#${index + 1}】 ${thread.name}\n" +
                         "${thread.sender}\n" +
-                        "${thread.from}\n" +
+                        "${thread.from} [${thread.platform}]\n" +
                         "⏱️ 等待时间：${elapsed} 秒"
                     }
                     sendQuoteReply(" ⏳ 当前正在运行或等待的进程：\n$threads")
@@ -683,7 +683,7 @@ object CommandPastebin : RawCommand(
                                 sendQuoteReply("转移失败：输入的 userID 不是整数")
                                 return
                             }
-                            if (getNickname(this, content.toLong()) == null) {
+                            if (getNickname(content.toLong()) == null) {
                                 sendQuoteReply("转移失败：无法找到目标用户 $content，转移对象必须为机器人好友或本群成员")
                                 return
                             }

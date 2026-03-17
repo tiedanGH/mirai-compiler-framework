@@ -78,6 +78,7 @@ object MiraiCompilerFramework : KotlinPlugin(
         val name: String,
         val sender: String,
         val from: String,
+        val platform: String,
         val startTime: Long = System.currentTimeMillis(),
     )
     val THREADS = ConcurrentLinkedQueue<ThreadInfo>()
@@ -123,6 +124,7 @@ object MiraiCompilerFramework : KotlinPlugin(
         MailConfig.reload()
         SystemConfig.reload()
         DockerConfig.reload()
+        PlatformConfig.reload()
     }
 
     fun reloadData() {
@@ -130,6 +132,7 @@ object MiraiCompilerFramework : KotlinPlugin(
         PastebinData.reload()
         ExtraData.reload()
         PastebinStorage.reload()
+        PastebinPlatformStorage.reload()
         PastebinBucket.reload()
         ImageData.reload()
         CodeCache.reload()
@@ -227,15 +230,24 @@ object MiraiCompilerFramework : KotlinPlugin(
     /**
      * 获取用户昵称
      */
-    fun getNickname(sender: CommandSender, qq: Long): String? {
-        val subject = sender.subject
+    fun CommandSender.getNickname(qq: Long): String? {
+        val subject = this.subject
         var nickname: String? = null
         if (subject is Group) {
             nickname = subject.getMember(qq)?.nameCardOrNick
         }
         if (nickname == null) {
-            nickname = sender.bot?.getFriend(qq)?.nameCardOrNick
+            nickname = bot?.getFriend(qq)?.nameCardOrNick
         }
         return nickname
+    }
+
+    /**
+     * 获取平台信息
+     */
+    fun CommandSender.getPlatform(): String {
+        return bot?.id
+            ?.let { PlatformConfig.platforms[it]?.get("platform") }
+            ?: "unknown"
     }
 }

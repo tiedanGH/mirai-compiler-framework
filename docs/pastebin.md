@@ -503,7 +503,7 @@
 }
 ```
 ### 下方可查看[存储功能+json格式输出]的代码示例
-- 关于存储功能的python代码示例：[https://pastebin.ubuntu.com/p/8dBPp9KJkj/](https://pastebin.ubuntu.com/p/8dBPp9KJkj/)
+- 关于存储功能的python代码示例：[https://pastebin.ubuntu.com/p/hg5kGnYGkM/](https://pastebin.ubuntu.com/p/hg5kGnYGkM/)
 - c++在使用存储功能时需要导入\"json.h\"（此文件会在配置辅助文件为“json.h”后一起上传至glot），内部包含json解析和编码功能，具体使用方法和代码示例请查看：[https://pastebin.ubuntu.com/p/qXMJcBdGFt/](https://pastebin.ubuntu.com/p/qXMJcBdGFt/)（内含源代码链接）
 
 ## bucket跨项目存储库

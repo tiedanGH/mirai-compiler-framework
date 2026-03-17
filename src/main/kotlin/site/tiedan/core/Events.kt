@@ -24,12 +24,14 @@ import site.tiedan.MiraiCompilerFramework.MSG_MAX_LENGTH
 import site.tiedan.MiraiCompilerFramework.MSG_TRANSFER_LENGTH
 import site.tiedan.MiraiCompilerFramework.THREADS
 import site.tiedan.MiraiCompilerFramework.ThreadInfo
+import site.tiedan.MiraiCompilerFramework.getPlatform
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.trimToMaxLength
 import site.tiedan.command.CommandRun.queryImageUrls
 import site.tiedan.config.DockerConfig
 import site.tiedan.config.PastebinConfig
+import site.tiedan.config.PlatformConfig
 import site.tiedan.core.PastebinCodeExecutor.executeMainProcess
 import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
@@ -56,7 +58,7 @@ object Events : SimpleListenerHost() {
     @Suppress("unused")
     @EventHandler(priority = EventPriority.NORMAL)
     internal suspend fun MessageEvent.process() {
-        if (message.content.startsWith(PastebinConfig.QUICK_PREFIX)) {
+        if (checkQuickPrefix(message.content)) {
             return toCommandSender().commandRunOnEvent(message)
         }
         if (message.content.startsWith(CMD_PREFIX)) {
@@ -65,10 +67,27 @@ object Events : SimpleListenerHost() {
     }
 
     /**
+     * 根据不同的平台检查快捷前缀
+     */
+    fun MessageEvent.checkQuickPrefix(content: String): Boolean {
+        val platform = toCommandSender().getPlatform()
+        val quickPrefix = getQuickPrefix(platform)
+        return content.startsWith(quickPrefix)
+    }
+
+    fun getQuickPrefix(platform: String): String {
+        return PlatformConfig.platforms.values
+            .firstOrNull { it["platform"] == platform }
+            ?.get("quick_prefix")
+            ?.takeIf { it.isNotEmpty() }
+            ?: PastebinConfig.QUICK_PREFIX
+    }
+
+    /**
      * 快捷前缀执行pastebin中的代码
      */
     suspend fun CommandSender.commandRunOnEvent(message: MessageChain) {
-        val msg = message.content.removePrefix(PastebinConfig.QUICK_PREFIX).trim()
+        val msg = message.content.removePrefix(getQuickPrefix(getPlatform())).trim()
         val args = msg.split(" ")
         if (args.isEmpty()) return
 
@@ -121,7 +140,9 @@ object Events : SimpleListenerHost() {
 
         val jobId = "${System.currentTimeMillis()}-${language}-$name(${user?.id})"
         val from = if (subject is Group) "${(subject as Group).name}(${(subject as Group).id})" else "private"
-        THREADS.add(ThreadInfo(jobId, "自定义${language}代码", "$name(${user?.id})", from))
+        val platform = getPlatform()
+
+        THREADS.add(ThreadInfo(jobId, "自定义${language}代码", "$name(${user?.id})", from, platform))
 
         try {
             // 检查命令的引用

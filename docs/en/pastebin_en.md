@@ -503,7 +503,7 @@ You can enable data storage with:
 }
 ```
 ### Example Code Using [Storage + JSON Output]
-- Python example using the storage feature: [https://pastebin.ubuntu.com/p/8dBPp9KJkj/](https://pastebin.ubuntu.com/p/8dBPp9KJkj/)
+- Python example using the storage feature: [https://pastebin.ubuntu.com/p/hg5kGnYGkM/](https://pastebin.ubuntu.com/p/hg5kGnYGkM/)
 - In C++, using the storage feature requires importing `json.h`. (this helper file will be uploaded to Glot when configured). It includes functions for JSON parsing and encoding. See usage and code examples here: [https://pastebin.ubuntu.com/p/qXMJcBdGFt/](https://pastebin.ubuntu.com/p/qXMJcBdGFt/)
 
 ## Bucket Cross-Project Storage

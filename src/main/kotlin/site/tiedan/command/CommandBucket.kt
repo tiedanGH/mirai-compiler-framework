@@ -324,7 +324,7 @@ object CommandBucket : RawCommand(
                                 sendQuoteReply("转移失败：输入的 userID 不是整数")
                                 return
                             }
-                            val targetName = getNickname(this, content.toLong())
+                            val targetName = getNickname(content.toLong())
                             if (targetName == null) {
                                 sendQuoteReply("转移失败：无法找到目标用户 $content，转移对象必须为机器人好友或本群成员")
                                 return

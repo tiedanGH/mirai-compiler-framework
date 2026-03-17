@@ -11,24 +11,18 @@ import net.mamoe.mirai.message.data.At
 import net.mamoe.mirai.message.data.MessageChain
 import net.mamoe.mirai.message.data.MessageChainBuilder
 import net.mamoe.mirai.message.data.PlainText
-import site.tiedan.MiraiCompilerFramework.MSG_TRANSFER_LENGTH
 import site.tiedan.MiraiCompilerFramework.MARKDOWN_MAX_TIME
+import site.tiedan.MiraiCompilerFramework.MSG_TRANSFER_LENGTH
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.logger
-import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.uploadFileToImage
-import site.tiedan.command.CommandBucket.linkedBucketID
 import site.tiedan.config.PastebinConfig
 import site.tiedan.config.SystemConfig
-import site.tiedan.data.ExtraData
-import site.tiedan.data.PastebinBucket
-import site.tiedan.data.PastebinStorage
+import site.tiedan.core.PastebinCodeExecutor.renderLatexOnline
 import site.tiedan.format.ForwardMessageGenerator.lineCount
 import site.tiedan.format.ForwardMessageGenerator.removeFirstAt
-import site.tiedan.core.PastebinCodeExecutor.renderLatexOnline
 import site.tiedan.utils.DownloadHelper.downloadImage
-import site.tiedan.utils.Security
 import java.io.File
 import java.net.URI
 import kotlin.math.ceil
@@ -141,6 +135,7 @@ object JsonProcessor {
         val userID: Long = 10001,
         val nickname: String = "",
         val from: String = "",
+        val platform: String = "",
         val images: List<ImageData> = listOf(),
     )
     @Serializable
@@ -170,9 +165,18 @@ object JsonProcessor {
     /**
      * 编码JSON字符串
      */
-    fun processEncode(global: String, storage: String, bucket: List<BucketData>, userID: Long, nickname: String, from: String, images: List<ImageData>): String {
+    fun processEncode(
+        global: String,
+        storage: String,
+        bucket: List<BucketData>,
+        userID: Long,
+        nickname: String,
+        from: String,
+        platform: String,
+        images: List<ImageData>
+    ): String {
         return try {
-            val jsonStorageObject = JsonStorage(global, storage, bucket, userID, nickname, from, images)
+            val jsonStorageObject = JsonStorage(global, storage, bucket, userID, nickname, from, platform, images)
             json.encodeToString<JsonStorage>(jsonStorageObject)
         } catch (e: Exception) {
             throw Exception("JSON编码错误【严重错误，理论不可能发生】，请提供日志反馈问题：\n${e.message}")
@@ -431,55 +435,6 @@ object JsonProcessor {
             logger.warning(e)
             sender.sendMessage(extraText + "[错误] 图片文件异常：${e.message}")
         }
-    }
-
-    /**
-     * 保存 storage、global、bucket 存储数据
-     */
-    fun savePastebinStorage(
-        name: String,
-        userID: Long,
-        global: String?,
-        storage: String?,
-        bucket: List<BucketData>?
-    ): String? {
-        if (global == null && storage == null && bucket == null) return null
-        logger.info (
-            "保存存储数据: global{${global?.length}} storage{${storage?.length}} " +
-            "bucket{${bucket?.joinToString(" ") { "[${it.id}](${it.content?.length})" }}}"
-        )
-        val storageMap = PastebinStorage.storage.getOrPut(name) {
-            mutableMapOf<Long, String>().apply { put(0, "") }
-        }
-        global?.let { storageMap[0] = it }
-        storage?.let {
-            if (it.isEmpty()) {
-                storageMap.remove(userID)
-            } else {
-                storageMap[userID] = it
-            }
-        }
-        PastebinStorage.save()
-
-        if (bucket == null) return null
-        val ret = StringBuilder()
-        val seenBucketIDs = mutableSetOf<Long>()
-        bucket.forEachIndexed { index, data ->
-            when (data.id) {
-                null -> ret.append("\n[(${index + 1})无效ID] 未指定目标存储库ID")
-                !in linkedBucketID(name) -> ret.append("\n[(${index + 1})拒绝访问] 当前项目未关联存储库 ${data.id}")
-                in seenBucketIDs -> ret.append("\n[(${index + 1})重复写入] 检测到对存储库 ${data.id} 的重复保存，单次输出仅支持写入同一存储库一次")
-                else -> if (data.content != null) {
-                    val content = if (PastebinBucket.bucket[data.id]?.get("encrypt") == "true") {
-                        Security.encrypt(data.content, ExtraData.key)
-                    } else data.content
-                    PastebinBucket.bucket[data.id]?.set("content", content)
-                    seenBucketIDs.add(data.id)
-                }
-            }
-        }
-        PastebinBucket.save()
-        return ret.takeIf { it.isNotEmpty() }?.toString()
     }
 
     /**

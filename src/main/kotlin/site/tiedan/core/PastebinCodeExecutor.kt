@@ -17,19 +17,18 @@ import net.mamoe.mirai.message.data.RawForwardMessage
 import net.mamoe.mirai.message.data.ShortVideo
 import net.mamoe.mirai.message.data.buildForwardMessage
 import site.tiedan.MiraiCompilerFramework
-import site.tiedan.MiraiCompilerFramework.ERROR_MSG_MAX_LENGTH
 import site.tiedan.MiraiCompilerFramework.ERROR_FORWARD_MAX_LENGTH
+import site.tiedan.MiraiCompilerFramework.ERROR_MSG_MAX_LENGTH
 import site.tiedan.MiraiCompilerFramework.MSG_TRANSFER_LENGTH
 import site.tiedan.MiraiCompilerFramework.THREADS
 import site.tiedan.MiraiCompilerFramework.ThreadInfo
 import site.tiedan.MiraiCompilerFramework.cacheFolder
+import site.tiedan.MiraiCompilerFramework.getPlatform
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.trimToMaxLength
 import site.tiedan.MiraiCompilerFramework.uploadFileToImage
-import site.tiedan.command.CommandBucket.bucketIdsToBucketData
-import site.tiedan.command.CommandBucket.linkedBucketID
 import site.tiedan.command.CommandRun.Image_Path
 import site.tiedan.config.DockerConfig
 import site.tiedan.config.PastebinConfig
@@ -37,7 +36,6 @@ import site.tiedan.config.SystemConfig
 import site.tiedan.data.CodeCache
 import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
-import site.tiedan.data.PastebinStorage
 import site.tiedan.format.AudioGenerator
 import site.tiedan.format.Base64Processor
 import site.tiedan.format.ForwardMessageGenerator
@@ -119,7 +117,9 @@ object PastebinCodeExecutor {
 
         val jobId = "${System.currentTimeMillis()}-${name}-$nickname($userID)"
         val from = if (subject is Group) "${(subject as Group).name}(${(subject as Group).id})" else "private"
-        THREADS.add(ThreadInfo(jobId, name, "$nickname($userID)", from))
+        val platform = getPlatform()
+
+        THREADS.add(ThreadInfo(jobId, name, "$nickname($userID)", from, platform))
 
         try {
             val language = PastebinData.pastebin[name]?.get("language").toString()
@@ -185,19 +185,21 @@ object PastebinCodeExecutor {
                     if (THREADS.size > 3) sendQuoteReply("当前进程较多（${THREADS.size - 1} 个正在等待），等待时间可能较长")
                 }
                 StorageLock.lock()
-                val global = PastebinStorage.storage[name]?.get(0) ?: ""
-                val storage = PastebinStorage.storage[name]?.get(userID) ?: ""
-                val bucket = bucketIdsToBucketData(linkedBucketID(name))
+                val global = StorageManager.getGlobalData(name)
+                val storage = StorageManager.getStorageData(name, userID, platform)
+                val bucket = StorageManager.getBucketData(name)
                 val encodeBase64 = PastebinData.pastebin[name]?.get("base64") == "true"
                 val imageData = Base64Processor.encodeImagesToBase64(imageUrls, encodeBase64)
 
-                val jsonInput = JsonProcessor.processEncode(global, storage, bucket, userID, nickname, from, imageData)
+                val jsonInput = JsonProcessor.processEncode(global, storage, bucket, userID, nickname, from, platform, imageData)
                 input = "$jsonInput\n$userInput"
+
+                val platformInfo = if (platform == "qq") "" else "($platform)"
                 logger.info(
-                    "输入存储数据: global{${global.length}} storage{${storage.length}} " +
+                    "输入存储数据: global{${global.length}} storage$platformInfo{${storage.length}} " +
                     "bucket{${bucket.joinToString(" ") { "[${it.id}](${it.content?.length})" }}}"
                 )
-                logger.debug("请求用户环境：$nickname($userID) $from")
+                logger.debug("请求用户环境：$nickname($userID) $from $platform")
             }
 
             logger.debug("[DEBUG] input:\n$input")
@@ -299,7 +301,7 @@ object PastebinCodeExecutor {
                     sendQuoteReply("【存储错误】拒绝访问：名称 $name 不存在或未开启存储，保存数据失败！")
                     return
                 }
-                val ret = JsonProcessor.savePastebinStorage(name, userID, outputGlobal, outputStorage, outputBucket)
+                val ret = StorageManager.savePastebinStorage(name, userID, platform, outputGlobal, outputStorage, outputBucket)
                 if (ret != null) sendQuoteReply("【存储错误】$ret")
             }
         } catch (e: Exception) {
