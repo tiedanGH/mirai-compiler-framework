@@ -56,7 +56,31 @@ object PastebinUrlHelper {
         UrlInfo("https://p.ip.fi/", "https://p.ip.fi/", true),
     )
 
-    fun checkUrl(url: String): Boolean = supportedUrls.any { url.startsWith(it.url) }
+    /**
+     * 检查链接是否合法
+     */
+    fun checkUrl(url: String): Boolean {
+        val actualUrl = if (url.startsWith("[")) {
+            url.substringAfter("[").substringBefore("]")
+        } else {
+            url
+        }
+
+        return supportedUrls.any { actualUrl.startsWith(it.url) }
+    }
+
+    /**
+     * 提取链接URL
+     */
+    fun extractUrl(url: String): String {
+        if (url.startsWith("[")) {
+            val end = url.indexOf(']')
+            if (end > 1) {
+                return url.substring(1, end)
+            }
+        }
+        return url
+    }
 
     /**
      * 获取内容

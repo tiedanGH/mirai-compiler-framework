@@ -504,7 +504,7 @@ object CommandPastebin : RawCommand(
                     }
                     val author = args[2].content
                     val language = args[3].content
-                    val url = args[4].content
+                    val url = PastebinUrlHelper.extractUrl(args[4].content)
                     val stdin = args.drop(5).joinToString(separator = " ")
                     if (!checkUrl(url)) {
                         sendQuoteReply(
@@ -627,13 +627,16 @@ object CommandPastebin : RawCommand(
                             return
                         }
                     }
-                    if (option == "url" && !checkUrl(content)) {
-                        sendQuoteReply(
-                            "修改失败：无效的链接 $content\n" +
-                            "🔗 支持的URL格式如下方所示：\n" +
-                            supportedUrls.joinToString(separator = "") { "${it.url}...\n" }
-                        )
-                        return
+                    if (option == "url") {
+                        content = PastebinUrlHelper.extractUrl(content)
+                        if (!checkUrl(content)) {
+                            sendQuoteReply(
+                                "修改失败：无效的链接 $content\n" +
+                                "🔗 支持的URL格式如下方所示：\n" +
+                                supportedUrls.joinToString(separator = "") { "${it.url}...\n" }
+                            )
+                            return
+                        }
                     }
                     when (option) {
                         "name"-> {
