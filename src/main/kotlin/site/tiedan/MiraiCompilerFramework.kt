@@ -2,6 +2,7 @@ package site.tiedan
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import net.mamoe.mirai.Bot
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.register
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.unregister
 import net.mamoe.mirai.console.command.CommandSender
@@ -9,10 +10,7 @@ import net.mamoe.mirai.console.command.CommandSenderOnMessage
 import net.mamoe.mirai.console.plugin.jvm.JvmPluginDescription
 import net.mamoe.mirai.console.plugin.jvm.KotlinPlugin
 import net.mamoe.mirai.console.util.ConsoleExperimentalApi
-import net.mamoe.mirai.contact.Contact
-import net.mamoe.mirai.contact.Group
-import net.mamoe.mirai.contact.getMember
-import net.mamoe.mirai.contact.nameCardOrNick
+import net.mamoe.mirai.contact.*
 import net.mamoe.mirai.event.GlobalEventChannel
 import net.mamoe.mirai.message.data.Image
 import net.mamoe.mirai.message.data.Message
@@ -240,6 +238,21 @@ object MiraiCompilerFramework : KotlinPlugin(
             nickname = bot?.getFriend(qq)?.nameCardOrNick
         }
         return nickname
+    }
+
+    /**
+     * 从所有Bot实例中查找群聊或好友
+     */
+    fun findGroupFromAllBots(groupId: Long): Group? {
+        return Bot.instances.firstNotNullOfOrNull { bot ->
+            bot.getGroup(groupId)
+        }
+    }
+
+    fun findFriendFromAllBots(friendId: Long): Friend? {
+        return Bot.instances.firstNotNullOfOrNull { bot ->
+            bot.getFriend(friendId)
+        }
     }
 
     /**

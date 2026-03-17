@@ -23,6 +23,8 @@ import site.tiedan.MiraiCompilerFramework.MSG_TRANSFER_LENGTH
 import site.tiedan.MiraiCompilerFramework.THREADS
 import site.tiedan.MiraiCompilerFramework.ThreadInfo
 import site.tiedan.MiraiCompilerFramework.cacheFolder
+import site.tiedan.MiraiCompilerFramework.findFriendFromAllBots
+import site.tiedan.MiraiCompilerFramework.findGroupFromAllBots
 import site.tiedan.MiraiCompilerFramework.getPlatform
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.save
@@ -130,7 +132,7 @@ object PastebinCodeExecutor {
             val storageMode = PastebinData.pastebin[name]?.get("storage")
             var input = userInput
 
-            var output = ""
+            var output: String
             var outputFormat = format
             var outputAt = true
             var messageList: List<JsonProcessor.SingleChainMessage> = listOf(JsonProcessor.SingleChainMessage())
@@ -328,7 +330,7 @@ object PastebinCodeExecutor {
      * @param forwardTitle 转发消息的标题
      * @param updateStorage 更新存储数据函数
      */
-    suspend fun CommandSender.handleOutputFormats(
+    private suspend fun CommandSender.handleOutputFormats(
         name: String,
         output: String,
         outputFormat: String,
@@ -445,7 +447,7 @@ object PastebinCodeExecutor {
      * @param name 项目名称
      * @param activeMessage 主动消息列表
      */
-    suspend fun CommandSender.handleActiveMessage(
+    private suspend fun CommandSender.handleActiveMessage(
         name: String,
         activeMessage: List<JsonProcessor.ActiveMessage>
     ): String {
@@ -480,13 +482,13 @@ object PastebinCodeExecutor {
             }
         }
 
-        activeMessage.forEachIndexed { index, activeMessage ->
+        activeMessage.forEachIndexed { index, active ->
             if (index >= 10) {
                 return "$result\n[上限] 执行中断：单次主动消息上限为10条"
             }
-            val groupID = activeMessage.groupID
-            val userID = activeMessage.userID
-            val activeSingleMessage = activeMessage.message
+            val groupID = active.groupID
+            val userID = active.userID
+            val activeSingleMessage = active.message
             if (groupID == null && userID == null) {
                 result += "\n[(${index + 1})参数] 目标无效：groupID和userID均为空"
                 return@forEachIndexed
@@ -504,7 +506,9 @@ object PastebinCodeExecutor {
                 "$name[主动消息]"
             ) { _, _, _ -> /* ignore */ }
             val msgToSend: Message = when (message) {
-                is MessageChain, is ForwardMessage, is Image -> message
+                is MessageChain -> message
+                is ForwardMessage -> message
+                is Image -> message
                 is String -> {
                     isMultipleMessage = true
                     PlainText("主动消息MultipleMessage输出模式")
@@ -517,7 +521,7 @@ object PastebinCodeExecutor {
 
             // 群聊主动消息
             if (groupID != null) {
-                val group = bot?.getGroup(groupID)
+                val group = findGroupFromAllBots(groupID)
                 sendMessageToTarget(index, "群聊", groupID, group) { g ->
                     if (msgToSend is ForwardMessage && PastebinConfig.enable_ForwardMessage) {
                         g.sendMessage(msgToSend)
@@ -547,7 +551,7 @@ object PastebinCodeExecutor {
             }
             // 私信主动消息
             if (userID == null) return@forEachIndexed
-            val friend = bot?.getFriend(userID)
+            val friend = findFriendFromAllBots(userID)
             val now = LocalTime.now().hour
             val allowTime = ExtraData.private_allowTime[userID]
             if (allowTime != null) {
@@ -650,7 +654,7 @@ object PastebinCodeExecutor {
     /**
      * 运行代码并返回输出字符串
      */
-    fun runCodeToString(
+    private fun runCodeToString(
         name: String,
         language: String,
         code: String,
