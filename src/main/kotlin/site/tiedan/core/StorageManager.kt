@@ -1,5 +1,6 @@
 package site.tiedan.core
 
+import kotlinx.coroutines.sync.Mutex
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.command.CommandBucket.bucketIdsToBucketData
@@ -13,11 +14,19 @@ import site.tiedan.utils.Security
 import kotlin.collections.set
 
 /**
- * ## 数据存储管理器
+ * # 数据存储管理器
+ * - 获取数据 [getGlobalData] [getStorageData] [getBucketData]
+ * - 保存数据 [savePastebinStorage] [saveBucketData]
  *
  * @author tiedanGH
  */
 object StorageManager {
+
+    private val StorageLock = Mutex()
+
+    fun isLocked(): Boolean = StorageLock.isLocked
+    suspend fun lock() = StorageLock.lock()
+    fun unlock() = StorageLock.unlock()
 
     /**
      * 获取 global 存储数据
@@ -85,7 +94,7 @@ object StorageManager {
 
             // storage
             val platformMap = (PastebinPlatformStorage.storage[platform] ?: mutableMapOf()).toMutableMap()
-            val nameMap = (platformMap[name] ?: mutableMapOf<Long, String>()).toMutableMap()
+            val nameMap = (platformMap[name] ?: mutableMapOf()).toMutableMap()
 
             storage?.let {
                 if (it.isEmpty()) nameMap.remove(userID) else nameMap[userID] = it

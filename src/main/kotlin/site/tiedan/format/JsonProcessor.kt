@@ -19,7 +19,7 @@ import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.uploadFileToImage
 import site.tiedan.config.PastebinConfig
 import site.tiedan.config.SystemConfig
-import site.tiedan.core.PastebinCodeExecutor.renderLatexOnline
+import site.tiedan.core.OutputHandler
 import site.tiedan.format.ForwardMessageGenerator.lineCount
 import site.tiedan.format.ForwardMessageGenerator.removeFirstAt
 import site.tiedan.utils.DownloadHelper.downloadImage
@@ -257,7 +257,7 @@ object JsonProcessor {
                     }
                 }
                 "LaTeX"-> {
-                    val renderResult = renderLatexOnline(content)
+                    val renderResult = OutputHandler.renderLatexOnline(content)
                     if (renderResult.startsWith("QuickLaTeX")) {
                         builder.add("[错误] $renderResult")
                         continue
@@ -375,7 +375,7 @@ object JsonProcessor {
                         }
                     }
                     "LaTeX"-> {
-                        val renderResult = renderLatexOnline(content)
+                        val renderResult = OutputHandler.renderLatexOnline(content)
                         if (renderResult.startsWith("QuickLaTeX")) {
                             sender.sendMessage(extraText + "[错误] $renderResult")
                             continue
