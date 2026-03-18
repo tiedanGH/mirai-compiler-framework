@@ -579,9 +579,16 @@ object CommandBucket : RawCommand(
                     val id = checkBucketNameOrID(args[1].content, "删除") ?: return
                     val ownerID = PastebinBucket.bucket[id]?.get("userID")
                     val isOwner = userID.toString() == ownerID
-                    if (!isOwner && !isAdmin) {
-                        sendQuoteReply("无权删除此存储库，如需删除请联系所有者：$ownerID。如果您对此存储库存在疑问，请联系指令管理员")
-                        return
+                    val forceDelete = args.getOrNull(2)?.content == "force"
+                    if (!isOwner) {
+                        if (!isAdmin) {
+                            sendQuoteReply("无权删除此存储库，如需删除请联系所有者：$ownerID。如果您对此存储库存在疑问，请联系指令管理员")
+                            return
+                        }
+                        if (!forceDelete) {
+                            sendQuoteReply("操作保护：您并非该存储库所有者。若需要管理员强制删除，请在指令末尾添加 force 参数")
+                            return
+                        }
                     }
                     val projects = PastebinBucket.bucket[id]?.get("projects") ?: ""
 

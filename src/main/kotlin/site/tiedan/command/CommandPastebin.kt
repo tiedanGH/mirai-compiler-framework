@@ -894,12 +894,21 @@ object CommandPastebin : RawCommand(
                         sendQuoteReply("删除失败：名称 $name 不存在")
                         return
                     }
+
                     val ownerID = PastebinData.pastebin[name]?.get("userID")
                     val isOwner = userID.toString() == ownerID
-                    if (!isOwner && !isAdmin) {
-                        sendQuoteReply("无权删除此项目，如需删除请联系所有者：$ownerID。如果您认为此条记录存在不合适的内容或其他问题，请联系指令管理员")
-                        return
+                    val forceDelete = args.getOrNull(2)?.content == "force"
+                    if (!isOwner) {
+                        if (!isAdmin) {
+                            sendQuoteReply("无权删除此项目，如需删除请联系所有者：$ownerID。如果您认为此条记录存在不合适的内容或其他问题，请联系指令管理员")
+                            return
+                        }
+                        if (!forceDelete) {
+                            sendQuoteReply("操作保护：您并非该项目所有者。若需要管理员强制删除，请在指令末尾添加 force 参数")
+                            return
+                        }
                     }
+
                     val storageMode = PastebinData.pastebin[name]?.get("storage") == "true"
                     val linkedBuckets = bucketIDsToNames(linkedBucketID(name))
                     requestUserConfirmation(userID, args.content,
