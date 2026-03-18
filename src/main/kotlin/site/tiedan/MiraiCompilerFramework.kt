@@ -259,8 +259,7 @@ object MiraiCompilerFramework : KotlinPlugin(
      * 获取平台信息
      */
     fun CommandSender.getPlatform(): String {
-        return bot?.id
-            ?.let { PlatformConfig.platforms[it]?.get("platform") }
-            ?: "unknown"
+        val botId = bot?.id ?: return "unknown"
+        return PlatformConfig.platforms[botId]?.get("platform") ?: "qq"
     }
 }
