@@ -80,12 +80,12 @@ object StorageManager {
         global?.let { globalMap[0L] = it }
 
         if (isQQ) {
-            // QQ
-            PastebinStorage.storage[name] = globalMap
-            // storage
+            // QQ - storage
             storage?.let {
                 if (it.isEmpty()) globalMap.remove(userID) else globalMap[userID] = it
             }
+            PastebinStorage.storage[name] = globalMap
+
             PastebinStorage.save()
         } else {
             // 其他平台
