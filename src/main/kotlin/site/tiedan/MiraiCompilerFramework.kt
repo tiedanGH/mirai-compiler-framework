@@ -262,4 +262,18 @@ object MiraiCompilerFramework : KotlinPlugin(
         val botId = bot?.id ?: return "unknown"
         return PlatformConfig.platforms[botId]?.get("platform") ?: "qq"
     }
+
+    /**
+     * 获取平台对应的快捷运行前缀
+     */
+    fun getQuickPrefix(platform: String): List<String> {
+        // 平台自定义额外前缀
+        val platformPrefix = PlatformConfig.platforms.values
+            .firstOrNull { it["platform"] == platform }
+            ?.get("quick_prefix")
+            ?.takeIf { it.isNotEmpty() }
+        val platformList = listOf(platformPrefix).filterNotNull()
+        // 合并默认前缀 + 平台前缀
+        return (PastebinConfig.QUICK_PREFIX + platformList).distinct()
+    }
 }

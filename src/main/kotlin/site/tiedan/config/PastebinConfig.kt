@@ -12,7 +12,7 @@ internal object PastebinConfig : AutoSavePluginConfig("PastebinConfig") {
     val admins: List<Long> by value(listOf(10000L))
 
     @ValueDescription("快捷运行前缀（可代替run命令）")
-    val QUICK_PREFIX: String by value("##")
+    val QUICK_PREFIX: List<String> by value(listOf("##"))
 
     @ValueDescription("最多进程数限制")
     val thread_limit: Int by value(3)

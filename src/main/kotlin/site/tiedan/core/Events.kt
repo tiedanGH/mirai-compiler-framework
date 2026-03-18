@@ -18,6 +18,7 @@ import net.mamoe.mirai.message.data.QuoteReply
 import net.mamoe.mirai.message.data.content
 import net.mamoe.mirai.message.data.findIsInstance
 import net.mamoe.mirai.utils.warning
+import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.CMD_PREFIX
 import site.tiedan.MiraiCompilerFramework.ERROR_MSG_MAX_LENGTH
 import site.tiedan.MiraiCompilerFramework.MSG_MAX_LENGTH
@@ -31,7 +32,6 @@ import site.tiedan.MiraiCompilerFramework.trimToMaxLength
 import site.tiedan.command.CommandRun.queryImageUrls
 import site.tiedan.config.DockerConfig
 import site.tiedan.config.PastebinConfig
-import site.tiedan.config.PlatformConfig
 import site.tiedan.core.PastebinCodeExecutor.executeMainProcess
 import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
@@ -71,37 +71,35 @@ object Events : SimpleListenerHost() {
      */
     fun MessageEvent.checkQuickPrefix(content: String): Boolean {
         val platform = toCommandSender().getPlatform()
-        val quickPrefix = getQuickPrefix(platform)
-        return content.startsWith(quickPrefix)
-    }
-
-    fun getQuickPrefix(platform: String): String {
-        return PlatformConfig.platforms.values
-            .firstOrNull { it["platform"] == platform }
-            ?.get("quick_prefix")
-            ?.takeIf { it.isNotEmpty() }
-            ?: PastebinConfig.QUICK_PREFIX
+        val quickPrefixes = MiraiCompilerFramework.getQuickPrefix(platform)
+        return quickPrefixes.any { content.startsWith(it) }
     }
 
     /**
      * 快捷前缀执行pastebin中的代码
      */
     suspend fun CommandSender.commandRunOnEvent(message: MessageChain) {
-        val msg = message.content.removePrefix(getQuickPrefix(getPlatform())).trim()
-        val args = msg.split(" ")
+        val content = message.content
+        val quickPrefix = MiraiCompilerFramework.getQuickPrefix(getPlatform())
+            .firstOrNull { content.startsWith(it) }
+            ?: return
+
+        val msg = content.removePrefix(quickPrefix).trim()
+        if (msg.isEmpty()) return
+
+        val args = msg.split(Regex("\\s+"))
         if (args.isEmpty()) return
 
         val name = PastebinData.alias[args[0]] ?: args[0]
 
-        if (PastebinData.pastebin.contains(name).not()) return
+        if (name !in PastebinData.pastebin) return
 
-        val userInput = args.drop(1).joinToString(separator = " ")
-        val imageUrls = message.queryImageUrls()
-        if (message[QuoteReply.Key] != null) {
-            message.findIsInstance<QuoteReply>()
-                ?.source?.originalMessage?.queryImageUrls()
-                ?.let { imageUrls.addAll(0, it) }
-        }
+        val userInput = args.drop(1).joinToString(" ")
+        val imageUrls = message.queryImageUrls().toMutableList()
+
+        message.findIsInstance<QuoteReply>()
+            ?.source?.originalMessage?.queryImageUrls()
+            ?.let { imageUrls.addAll(0, it) }
 
         this.executeMainProcess(name, userInput, imageUrls)
     }
