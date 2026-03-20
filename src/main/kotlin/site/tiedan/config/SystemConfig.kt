@@ -14,6 +14,9 @@ internal object SystemConfig : AutoSavePluginConfig("SystemConfig") {
     @ValueDescription("私信词汇黑名单（拦截私信中的禁用词汇，支持正则）")
     val privateBlackList: List<String> by value(listOf())
 
+    @ValueDescription("KOOK Bot Token（仅用于KOOK用户头像，不使用KOOK请忽略）")
+    val kookToken: String by value()
+
     @ValueDescription("测试目录（无需配置）")
     val TEST_PATH: String by value()
 

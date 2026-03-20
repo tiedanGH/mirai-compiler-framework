@@ -25,6 +25,7 @@ import site.tiedan.config.*
 import site.tiedan.core.Events
 import site.tiedan.data.*
 import site.tiedan.module.*
+import site.tiedan.utils.KookAvatarService
 import site.tiedan.utils.Security
 import java.io.File
 import java.math.BigDecimal
@@ -134,8 +135,12 @@ object MiraiCompilerFramework : KotlinPlugin(
         PastebinBucket.reload()
         ImageData.reload()
         CodeCache.reload()
+        KookAvatarCache.reload()
     }
 
+    /**
+     * 请求用户二次确认指令
+     */
     val pendingCommand = mutableMapOf<Long, String>()
     suspend fun CommandSender.requestUserConfirmation(userID: Long, command: String, alert: String): Boolean? {
         if (!pendingCommand.contains(userID)) {
@@ -238,6 +243,17 @@ object MiraiCompilerFramework : KotlinPlugin(
             nickname = bot?.getFriend(qq)?.nameCardOrNick
         }
         return nickname
+    }
+
+    /**
+     * 获取用户头像URL
+     */
+    fun getAvatarUrl(id: Long, platform: String): String {
+        return when (platform) {
+            "qq" -> "https://q.qlogo.cn/g?b=qq&nk=$id&s=140"
+            "kook" -> KookAvatarService.getAvatarUrl(id)
+            else -> "[unknown platform]"
+        }
     }
 
     /**

@@ -51,6 +51,24 @@ object HttpUtil {
     }
 
     /**
+     * ### 发送带 Header 的 GET 请求
+     */
+    fun get(url: String, headers: Map<String, String>): String {
+        val requestBuilder = Request.Builder().url(url)
+        for ((key, value) in headers) {
+            requestBuilder.addHeader(key, value)
+        }
+        val request = requestBuilder.build()
+        return okHttpClient.newCall(request).execute().use { response ->
+            val body = response.body.string()
+            if (!response.isSuccessful) {
+                throw HttpException(response.code, response.message, url, body)
+            }
+            body
+        }
+    }
+
+    /**
      * ### 发送带Json参数的POST请求
      */
     fun post(url: String, json: String): okhttp3.Response {

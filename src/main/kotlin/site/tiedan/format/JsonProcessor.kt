@@ -134,6 +134,7 @@ object JsonProcessor {
         val bucket: List<BucketData> = listOf(),
         val userID: Long = 10001,
         val nickname: String = "",
+        val avatar: String = "",
         val from: String = "",
         val platform: String = "",
         val images: List<ImageData> = listOf(),
@@ -171,12 +172,13 @@ object JsonProcessor {
         bucket: List<BucketData>,
         userID: Long,
         nickname: String,
+        avatar: String,
         from: String,
         platform: String,
         images: List<ImageData>
     ): String {
         return try {
-            val jsonStorageObject = JsonStorage(global, storage, bucket, userID, nickname, from, platform, images)
+            val jsonStorageObject = JsonStorage(global, storage, bucket, userID, nickname, avatar, from, platform, images)
             json.encodeToString<JsonStorage>(jsonStorageObject)
         } catch (e: Exception) {
             throw Exception("JSON编码错误【严重错误，理论不可能发生】，请提供日志反馈问题：\n${e.message}")
