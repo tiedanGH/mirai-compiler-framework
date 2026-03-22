@@ -4,7 +4,6 @@ import net.mamoe.mirai.console.command.CommandManager.INSTANCE.commandPrefix
 import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.console.command.RawCommand
 import net.mamoe.mirai.console.command.isNotConsole
-import net.mamoe.mirai.contact.Group
 import net.mamoe.mirai.contact.MessageTooLargeException
 import net.mamoe.mirai.contact.PermissionDeniedException
 import net.mamoe.mirai.containsFriend
@@ -15,6 +14,7 @@ import site.tiedan.MiraiCompilerFramework.ERROR_MSG_MAX_LENGTH
 import site.tiedan.MiraiCompilerFramework.THREADS
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.getNickname
+import site.tiedan.MiraiCompilerFramework.getPlatform
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.pendingCommand
 import site.tiedan.MiraiCompilerFramework.requestUserConfirmation
@@ -27,6 +27,7 @@ import site.tiedan.command.CommandBucket.linkedBucketID
 import site.tiedan.command.CommandBucket.removeProjectFromBucket
 import site.tiedan.config.MailConfig
 import site.tiedan.config.PastebinConfig
+import site.tiedan.config.PlatformConfig
 import site.tiedan.data.*
 import site.tiedan.data.CodeCache
 import site.tiedan.data.ExtraData
@@ -43,6 +44,7 @@ import site.tiedan.utils.PastebinUrlHelper.supportedUrls
 import java.io.File
 import java.net.ConnectException
 import kotlin.math.ceil
+import kotlin.text.isNotEmpty
 
 /**
  * # pb代码项目操作指令
@@ -469,8 +471,15 @@ object CommandPastebin : RawCommand(
                     }
                     sendQuoteReply(info)
                     if (PastebinData.censorList.contains(name).not()) {
-                        if (subject is Group) {
-                            sendMessage("${PastebinConfig.QUICK_PREFIX}${alias ?: name} ${PastebinData.pastebin[name]?.get("stdin")}")
+                        // 根据不同的平台输出不同的快捷前缀
+                        val platformPrefix = PlatformConfig.platforms.values
+                            .firstOrNull { it["platform"] == getPlatform() }
+                            ?.get("quick_prefix")
+                            ?.takeIf { it.isNotEmpty() }
+                        if (platformPrefix.isNullOrEmpty().not()) {
+                            sendMessage("${platformPrefix}${alias ?: name} ${PastebinData.pastebin[name]?.get("stdin")}")
+                        } else if (PastebinConfig.QUICK_PREFIX.isNotEmpty()) {
+                            sendMessage("${PastebinConfig.QUICK_PREFIX.first()}${alias ?: name} ${PastebinData.pastebin[name]?.get("stdin")}")
                         } else {
                             sendMessage("#run ${alias ?: name} ${PastebinData.pastebin[name]?.get("stdin")}")
                         }
