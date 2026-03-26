@@ -1,17 +1,15 @@
-隐藏Url的名称: 
-  - 密码游戏
-  - 猜密码
-  - 猜密码解密
-  - 数字炸弹
-  - 股票
-仅限群聊运行的名称: 
+# 隐藏Url的名称
+hiddenUrl: []
+# 仅限群聊运行的名称
+groupOnly:
   - 溜冰棋
   - 陨落双子星
   - Nerduel
   - wordle
-  - 股票
-待审核列表: []
-别名: 
+# 待审核列表
+censorList: []
+# 别名
+alias:
   comb: 拼装毁灭者
   ncmr: 名字竞技：神话篇
   rob: robb
@@ -21,7 +19,8 @@
   fiveofakind: 五条时刻
   hm: hangman
   oas: OASIS
-pastebin代码数据: 
+# pastebin代码数据
+pastebin:
   死神之门: 
     author: 管家
     userID: 3507807523
@@ -406,12 +405,6 @@ pastebin代码数据:
     language: python
     url: 'https://pastebin.ubuntu.com/p/xy2FtDJS7n/'
     stdin: '<bot数量> <bot前缀> <额外添加的人名> 只有人名无bot则不需要输入bot数量和前缀 第一个人名前可以加seed_来修改种子'
-  密码游戏: 
-    author: 九九归一
-    userID: 1956607464
-    language: python
-    url: 'https://pastebin.ubuntu.com/p/gBMptgcnbf/'
-    stdin: ''
   低俗辱骂不合规: 
     author: 齐齐
     userID: 416390650
@@ -610,18 +603,6 @@ pastebin代码数据:
     language: cpp
     url: 'https://pastebin.ubuntu.com/p/rhhT2GK2Wb/'
     stdin: 巢
-  猜密码: 
-    author: Change
-    userID: 3357982517
-    language: python
-    url: 'https://pastebin.ubuntu.com/p/3nD8SWhBdB/'
-    stdin: 种子(无请输入0) 验证密码
-  猜密码解密: 
-    author: Change
-    userID: 3357982517
-    language: python
-    url: 'https://pastebin.ubuntu.com/p/dK9tggdJw2/'
-    stdin: 种子
   2048: 
     author: 九九归一
     userID: 1956607464
@@ -760,12 +741,6 @@ pastebin代码数据:
     stdin: ''
     format: json
     storage: true
-  数字炸弹: 
-    author: 齐齐
-    userID: 416390650
-    language: python
-    url: 'https://pastebin.ubuntu.com/p/Ry2hfMXWqB/'
-    stdin: h
   数字炸弹2: 
     author: 齐齐
     userID: 416390650
@@ -994,14 +969,6 @@ pastebin代码数据:
     stdin: ''
     storage: true
     format: json
-  股票: 
-    author: 齐齐
-    userID: 416390650
-    language: python
-    url: 'https://pastebin.ubuntu.com/p/2N7mPYh6pF/'
-    stdin: ''
-    format: json
-    storage: true
   日志: 
     author: 齐齐
     userID: 416390650
