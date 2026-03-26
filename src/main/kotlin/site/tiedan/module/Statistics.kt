@@ -199,41 +199,66 @@ object Statistics {
             PastebinData.pastebin.filterValues { it["userID"] == userID.toString() }
         }
         val projectCount = filtered.size
-        if (projectCount == 0) {
-            return "·未上传过代码项目"
+
+        val collabCount = if (userID == null) {
+            null
+        } else {
+            PastebinData.pastebin.values.count { map ->
+                val raw = map["collaborators"] ?: return@count false
+                raw.split(",").mapNotNull { it.trim().toLongOrNull() }.contains(userID)
+            }
         }
 
-        val lang = filtered.values.mapNotNull { it["language"]?.lowercase() }
-        val langCounts: Map<String, Int> = lang.groupingBy { it }.eachCount()
-        val langStats = langCounts.entries
-            .sortedByDescending { it.value }
-            .joinToString(separator = "\n") { (lang, cnt) ->
-                val percent = cnt.toDouble() / projectCount * 100
-                val formatted = String.format("%.2f", percent)
-                " 🔸 $lang: ${formatted}%"
-            }
+        if (projectCount == 0 && (collabCount == null || collabCount == 0)) {
+            return "🌱 未上传过代码项目"
+        }
 
-        val languageMap: Map<String, String> = filtered
-            .mapNotNull { (key, valueMap) ->
-                valueMap["language"]?.lowercase()?.let { language ->
-                    key to language
+        val langStats = if (projectCount == 0) {
+            ""
+        } else {
+            val lang = filtered.values.mapNotNull { it["language"]?.lowercase() }
+            val langCounts: Map<String, Int> = lang.groupingBy { it }.eachCount()
+            langCounts.entries
+                .sortedByDescending { it.value }
+                .joinToString(separator = "\n") { (lang, cnt) ->
+                    val percent = cnt.toDouble() / projectCount * 100
+                    val formatted = String.format("%.2f", percent)
+                    " 🔸 $lang: ${formatted}%"
                 }
-            }.toMap()
-        val top10Project = languageMap.entries
-            .sortedByDescending { (key, _) ->
-                ExtraData.statistics[key]?.get("score") ?: 0.0
-            }
-            .take(10)
-            .joinToString(separator = "、") { (key, language) ->
-                val info = if (userID != null) "（$language）" else ""
-                "$key$info"
-            }
+        }
 
-        return "📁 项目总数：$projectCount\n" +
-                "$langStats\n" +
-                "\n" +
-                "🔥 近期热门项目：\n" +
-                top10Project
+        val top10Project = if (projectCount == 0) {
+            ""
+        } else {
+            val languageMap: Map<String, String> = filtered
+                .mapNotNull { (key, valueMap) ->
+                    valueMap["language"]?.lowercase()?.let { language ->
+                        key to language
+                    }
+                }.toMap()
+            languageMap.entries
+                .sortedByDescending { (key, _) ->
+                    ExtraData.statistics[key]?.get("score") ?: 0.0
+                }
+                .take(10)
+                .joinToString(separator = "、") { (key, language) ->
+                    val info = if (userID != null) "（$language）" else ""
+                    "$key$info"
+                }
+        }
+
+        return buildString {
+            appendLine("📁 项目总数：$projectCount")
+            if (collabCount != null && collabCount > 0) {
+                append("🤝 协作项目：$collabCount")
+                if (projectCount > 0) appendLine()  // 除非有项目统计，否则末尾不换行
+            }
+            if (projectCount > 0) {
+                appendLine(langStats)
+                appendLine()
+                append("🔥 近期热门项目：$top10Project")
+            }
+        }
     }
 
     fun imageStatistics(userID: Long): String {

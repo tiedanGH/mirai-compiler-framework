@@ -138,21 +138,19 @@ object CommandPastebin : RawCommand(
                     val id = args.getOrNull(1)?.content?.replace("@", "")?.toLongOrNull() ?: userID
                     val time = ExtraData.private_allowTime[id]
                     val reply = buildString {
-                        append("　【个人信息")
-                        if (id != userID) append(" - $id")
-                        appendLine("】　")
-                        append("💬 接收主动私信：")
-                        if (bot?.containsFriend(userID) != true) {
-                            appendLine("未添加好友")
-                        } else if (time == null) {
-                            appendLine("不允许")
-                        } else if (time.second - time.first == 23 || time.second == time.first - 1) {
-                            appendLine("始终允许")
-                        } else {
-                            appendLine("${time.first}:00 ~ ${time.second}:59")
+                        appendLine("　【个人信息】　")
+                        appendLine("🆔 $id")
+
+                        val allowStatus = when {
+                            bot?.containsFriend(id) != true -> "未添加好友"
+                            time == null -> "不允许"
+                            time.second - time.first == 23 || time.second == time.first - 1 -> "始终允许"
+                            else -> "${time.first}:00 ~ ${time.second}:59"
                         }
-                        append(Statistics.imageStatistics(id))
-                        append(Statistics.summarizeStatistics(id))
+                        appendLine("💬 接收主动私信：$allowStatus")
+
+                        appendLine(Statistics.imageStatistics(id))
+                        appendLine(Statistics.summarizeStatistics(id))
                     }
                     sendQuoteReply(reply)
                 }
@@ -435,7 +433,12 @@ object CommandPastebin : RawCommand(
                         alias?.let { append("（$it）") }
                         appendLine()
                         appendLine("作者：${data["author"]}")
-                        if (showAll) appendLine("userID: ${data["userID"]}")
+                        if (showAll) {
+                            appendLine("userID: ${data["userID"]}")
+                            val collaborators = data["collaborators"]
+                            if (collaborators.isNullOrEmpty().not())
+                                appendLine("协作者: $collaborators")
+                        }
                         appendLine("语言：${data["language"]}")
                         append("源代码URL：")
                         appendLine(
@@ -569,12 +572,15 @@ object CommandPastebin : RawCommand(
                         )
                         return
                     }
+
                     val ownerID = PastebinData.pastebin[name]?.get("userID")
                     val isOwner = userID.toString() == ownerID
-                    if (!isOwner && !isAdmin) {
+                    val isCollaborator = isCollaborator(name, userID)
+                    if (!isOwner && !isAdmin && !isCollaborator) {
                         sendQuoteReply("无权修改此项目，如需修改请联系所有者：$ownerID")
                         return
                     }
+
                     val paraMap = mapOf(
                         // 基础信息修改
                         "名称" to "name",
@@ -584,6 +590,8 @@ object CommandPastebin : RawCommand(
                         "链接" to "url",
                         "示例输入" to "stdin",
                         "所有者ID" to "userID",
+                        "协作者" to "collaborators",
+                        "collab" to "collaborators",
                         // 启用拓展功能
                         "隐藏链接" to "hide",
                         "仅限群聊" to "groupOnly",
@@ -604,6 +612,7 @@ object CommandPastebin : RawCommand(
                             "url（链接）\n" +
                             "stdin（示例输入）\n" +
                             "userID（所有者ID）\n" +
+                            "collab（协作者）\n" +
                             "---启用拓展功能---\n" +
                             "hide（隐藏链接）\n" +
                             "groupOnly（仅限群聊）\n" +
@@ -614,11 +623,15 @@ object CommandPastebin : RawCommand(
                         )
                         return
                     }
+                    if (isCollaborator && !isOwner && !isAdmin && (option == "name" || option == "userID" || option == "collaborators")) {
+                        sendQuoteReply("无权修改此配置项：协作者只能修改除 name（名称）、userID（所有者）和 collaborators（协作者）以外的项目配置")
+                        return
+                    }
                     if (option == "format" && args.size > 5) {
                         sendQuoteReply("修改失败：format中仅能包含两个参数（输出格式，图片宽度/配置存储）")
                         return
                     }
-                    if (option != "stdin" && option != "format" && args.size > 4) {
+                    if (option != "stdin" && option != "format" && option != "collaborators" && args.size > 4) {
                         sendQuoteReply("修改失败：$option 参数中不能包含空格！")
                         return
                     }
@@ -710,6 +723,34 @@ object CommandPastebin : RawCommand(
                             }
 
                             PastebinData.pastebin[name]?.set("userID", content)
+                        }
+                        "collaborators"-> {
+                            val normalized = content.trim()
+                            when (normalized.lowercase()) {
+                                "clear", "none", "empty", "清空", "无" -> {
+                                    content = "无"
+                                    PastebinData.pastebin[name]?.remove("collaborators")
+                                }
+                                else -> {
+                                    val ids = normalized
+                                        .split(",", "，", " ")
+                                        .mapNotNull { it.trim().takeIf { s -> s.isNotEmpty() }?.toLongOrNull() }
+                                        .distinct()
+
+                                    if (ids.isEmpty()) {
+                                        sendQuoteReply("修改失败：协作者列表为空或格式错误，请输入全部账号ID，多个ID可使用空格、英文逗号或中文逗号分隔。删除全部协作者请输入“无”")
+                                        return
+                                    }
+                                    if (ownerID?.toLongOrNull() in ids) {
+                                        sendQuoteReply("修改失败：项目所有者无需重复添加为协作者")
+                                        return
+                                    }
+
+                                    val collabStr = ids.distinct().sorted().joinToString(",")
+                                    PastebinData.pastebin[name]?.set("collaborators", collabStr)
+                                    content = collabStr
+                                }
+                            }
                         }
                         "hide"-> {
                             when (content) {
@@ -1180,5 +1221,17 @@ object CommandPastebin : RawCommand(
             logger.warning(e)
             sendQuoteReply("[指令执行未知错误]\n请联系管理员查看后台：${e::class.simpleName}(${e.message})")
         }
+    }
+
+    private fun isCollaborator(name: String, userID: Long): Boolean {
+        val raw = PastebinData.pastebin[name]?.get("collaborators")
+        return parseCollaborators(raw).contains(userID)
+    }
+
+    private fun parseCollaborators(raw: String?): MutableSet<Long> {
+        if (raw.isNullOrBlank()) return mutableSetOf()
+        return raw.split(",")
+            .mapNotNull { it.trim().takeIf { s -> s.isNotEmpty() }?.toLongOrNull() }
+            .toMutableSet()
     }
 }

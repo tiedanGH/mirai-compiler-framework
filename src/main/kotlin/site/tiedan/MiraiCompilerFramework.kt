@@ -240,7 +240,7 @@ object MiraiCompilerFramework : KotlinPlugin(
             nickname = subject.getMember(qq)?.nameCardOrNick
         }
         if (nickname == null) {
-            nickname = bot?.getFriend(qq)?.nameCardOrNick
+            nickname = findFriendFromAllBots(qq)?.nameCardOrNick
         }
         return nickname
     }
