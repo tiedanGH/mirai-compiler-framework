@@ -1008,12 +1008,15 @@ object CommandPastebin : RawCommand(
                         return
                     }
                     val storage = PastebinStorage.storage[name]
+
                     val ownerID = PastebinData.pastebin[name]?.get("userID")
                     val isOwner = userID.toString() == ownerID
-                    if (!isOwner && !isAdmin) {
+                    val isCollaborator = isCollaborator(name, userID)
+                    if (!isOwner && !isAdmin && !isCollaborator) {
                         sendQuoteReply("【查询名称】$name\n【用户数量】${storage?.size?.minus(1)}\n无权查看数据内容，仅所有者可查看存储数据详细内容")
                         return
                     }
+
                     val mail = args.getOrNull(2)?.content == "邮件" || args.getOrNull(2)?.content == "mail"
                     if (MailConfig.enable && mail && storage != null) {
                         var output = "【查询名称】$name\n【用户数量】${storage.size - 1}\n\n"
