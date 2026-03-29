@@ -65,6 +65,8 @@ object MiraiCompilerFramework : KotlinPlugin(
         "Audio",
     )
 
+    const val CONSOLE_USER_ID = "10000"
+
     @OptIn(ConsoleExperimentalApi::class)
     val baseDataFolder = "./data/$dataHolderName"
 

@@ -11,6 +11,7 @@ import net.mamoe.mirai.message.data.RawForwardMessage
 import net.mamoe.mirai.message.data.buildForwardMessage
 import net.mamoe.mirai.message.data.content
 import site.tiedan.MiraiCompilerFramework
+import site.tiedan.MiraiCompilerFramework.CONSOLE_USER_ID
 import site.tiedan.MiraiCompilerFramework.Command
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.getNickname
@@ -70,7 +71,7 @@ object CommandBucket : RawCommand(
     override suspend fun CommandSender.onCommand(args: MessageChain) {
 
         val platform = getPlatform()
-        val userID = getUserPlatformID(this.user?.id) ?: "10000"
+        val userID = getUserPlatformID(this.user?.id) ?: CONSOLE_USER_ID
         val userName = this.name
         val isAdmin = PastebinConfig.admins.contains(userID)
 

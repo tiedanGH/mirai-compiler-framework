@@ -20,6 +20,7 @@ import net.mamoe.mirai.message.data.findIsInstance
 import net.mamoe.mirai.utils.warning
 import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.CMD_PREFIX
+import site.tiedan.MiraiCompilerFramework.CONSOLE_USER_ID
 import site.tiedan.MiraiCompilerFramework.ERROR_MSG_MAX_LENGTH
 import site.tiedan.MiraiCompilerFramework.MSG_MAX_LENGTH
 import site.tiedan.MiraiCompilerFramework.MSG_TRANSFER_LENGTH
@@ -114,7 +115,7 @@ object Events : SimpleListenerHost() {
             return
         }
 
-        val userID = getUserPlatformID(this.user?.id) ?: "10000"
+        val userID = getUserPlatformID(this.user?.id) ?: CONSOLE_USER_ID
         if (ExtraData.BlackList.contains(userID)) {
             return logger.warning("$userID 已被拉黑，请求被拒绝")
         }

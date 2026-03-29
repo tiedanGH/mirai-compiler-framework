@@ -4,6 +4,7 @@ import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.contact.Group
 import net.mamoe.mirai.message.data.*
 import site.tiedan.MiraiCompilerFramework
+import site.tiedan.MiraiCompilerFramework.CONSOLE_USER_ID
 import site.tiedan.MiraiCompilerFramework.ERROR_FORWARD_MAX_LENGTH
 import site.tiedan.MiraiCompilerFramework.ERROR_MSG_MAX_LENGTH
 import site.tiedan.MiraiCompilerFramework.THREADS
@@ -50,7 +51,7 @@ object PastebinCodeExecutor {
      */
     suspend fun CommandSender.executeMainProcess(name: String, userInput: String, imageUrls: List<String>) {
 
-        val userID = getUserPlatformID(this.user?.id) ?: "10000"
+        val userID = getUserPlatformID(this.user?.id) ?: CONSOLE_USER_ID
         val numID = parseUserID(userID)
             ?: return sendQuoteReply("[用户ID解析失败] 无法解析您的用户ID，请联系管理员")
         val nickname = this.name

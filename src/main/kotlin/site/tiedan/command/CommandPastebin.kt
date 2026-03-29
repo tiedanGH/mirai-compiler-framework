@@ -9,6 +9,7 @@ import net.mamoe.mirai.contact.PermissionDeniedException
 import net.mamoe.mirai.containsFriend
 import net.mamoe.mirai.message.data.*
 import site.tiedan.MiraiCompilerFramework
+import site.tiedan.MiraiCompilerFramework.CONSOLE_USER_ID
 import site.tiedan.MiraiCompilerFramework.Command
 import site.tiedan.MiraiCompilerFramework.ERROR_MSG_MAX_LENGTH
 import site.tiedan.MiraiCompilerFramework.THREADS
@@ -88,7 +89,7 @@ object CommandPastebin : RawCommand(
     override suspend fun CommandSender.onCommand(args: MessageChain) {
 
         val platform = getPlatform()
-        val userID = getUserPlatformID(this.user?.id) ?: "10000"
+        val userID = getUserPlatformID(this.user?.id) ?: CONSOLE_USER_ID
         val numID = parseUserID(userID)
             ?: return sendQuoteReply("[用户ID解析失败] 无法解析您的用户ID，请联系管理员")
         val isAdmin = PastebinConfig.admins.contains(userID)
@@ -140,15 +141,26 @@ object CommandPastebin : RawCommand(
                 }
 
                 "profile", "简介"-> {   // 查看个人信息
-                    val atID = args.getOrNull(1)?.content?.replace("@", "")?.toLongOrNull()
-                    val platformID = getUserPlatformID(atID) ?: userID
+                    val content = args.getOrNull(1)?.content?.trim()
+
+                    val platformID = content?.let {
+                        if (it.startsWith("@")) {
+                            it.removePrefix("@").toLongOrNull()
+                                ?.let { id -> getUserPlatformID(id) ?: CONSOLE_USER_ID }
+                                ?: it
+                        } else {
+                            it
+                        }
+                    } ?: userID
+                    val numID = platformID.substringAfterLast("_").toLongOrNull()
                     val time = ExtraData.private_allowTime[platformID]
+
                     val reply = buildString {
                         appendLine("　【个人信息】　")
                         appendLine("🆔 $platformID")
 
                         val allowStatus = when {
-                            bot?.containsFriend(numID) != true -> "未添加好友"
+                            numID == null || bot?.containsFriend(numID) != true -> "未添加好友"
                             time == null -> "不允许"
                             time.second - time.first == 23 || time.second == time.first - 1 -> "始终允许"
                             else -> "${time.first}:00 ~ ${time.second}:59"
@@ -158,6 +170,7 @@ object CommandPastebin : RawCommand(
                         appendLine(Statistics.imageStatistics(platformID))
                         appendLine(Statistics.summarizeStatistics(platformID))
                     }
+
                     sendQuoteReply(reply)
                 }
 
