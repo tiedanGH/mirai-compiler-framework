@@ -75,7 +75,7 @@ object CommandPastebin : RawCommand(
         Command("pb delete <名称>", "pb 删除 <名称>", "永久删除项目", 2),
 
         Command("pb set <名称> format <输出格式> [宽度/存储]", "pb 修改 <名称> 输出格式 <输出格式> [宽度/存储]", "修改输出格式", 3),
-        Command("pb storage <名称> [查询ID/mail]", "pb 存储 <名称> [查询ID/邮件]", "查询存储数据", 3),
+        Command("pb storage <名称> [查询ID/mail] [邮件地址]", "pb 存储 <名称> [查询ID/邮件] [邮件地址]", "查询存储数据", 3),
         Command("pb export <名称>", "pb 导出 <名称>", "将项目代码缓存导出为临时链接（过期时使用）", 3),
         Command("bucket help", "存储库 帮助", "跨项目存储库操作指令", 3),
         Command("image help", "图片 帮助", "本地图片操作指令", 3),
@@ -87,6 +87,7 @@ object CommandPastebin : RawCommand(
 
     override suspend fun CommandSender.onCommand(args: MessageChain) {
 
+        val platform = getPlatform()
         val userID = getUserPlatformID(this.user?.id) ?: "10000"
         val numID = parseUserID(userID)
             ?: return sendQuoteReply("[用户ID解析失败] 无法解析您的用户ID，请联系管理员")
@@ -481,7 +482,7 @@ object CommandPastebin : RawCommand(
                     if (PastebinData.censorList.contains(name).not()) {
                         // 根据不同的平台输出不同的快捷前缀
                         val platformPrefix = PlatformConfig.platforms.values
-                            .firstOrNull { it["platform"] == getPlatform() }
+                            .firstOrNull { it["platform"] == platform }
                             ?.get("quick_prefix")
                             ?.takeIf { it.isNotEmpty() }
                         if (platformPrefix.isNullOrEmpty().not()) {
@@ -1025,8 +1026,21 @@ object CommandPastebin : RawCommand(
                         return
                     }
 
-                    val mail = args.getOrNull(2)?.content == "邮件" || args.getOrNull(2)?.content == "mail"
-                    if (MailConfig.enable && mail && storage != null) {
+                    val requestMail = args.getOrNull(2)?.content == "邮件" || args.getOrNull(2)?.content == "mail"
+                    if (MailConfig.enable && requestMail && storage != null) {
+                        val mail = args.getOrNull(3)?.content
+                        if (mail == null && platform != "qq") {
+                            sendQuoteReply(
+                                "⚠️ 当前平台 $platform 仅支持邮件查询：\n" +
+                                "${commandPrefix}pb storage $name mail <邮箱地址>"
+                            )
+                            return
+                        }
+                        if (mail != null && !Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$").matches(mail)) {
+                            sendQuoteReply("邮箱地址无效：请输入正确的邮箱地址")
+                            return
+                        }
+
                         var output = "【查询名称】$name\n【用户数量】${storage.size - 1}\n\n"
                         for (id in storage.keys) {
                             output += if (id == 0L) {
@@ -1036,14 +1050,18 @@ object CommandPastebin : RawCommand(
                             }
                         }
                         logger.info("请求使用邮件发送结果：$name")
-                        MailService.sendStorageMail(this, output, userID, name)
+                        MailService.sendStorageMail(this, output, userID, name, mail)
                         return
                     }
 
-                    if (!PastebinConfig.enable_ForwardMessage) {
-                        sendQuoteReply("当前未开启转发消息，仅能通过邮件查询存储数据")
+                    if (!PastebinConfig.enable_ForwardMessage || platform != "qq") {
+                        sendQuoteReply(
+                            "⚠️ 当前未启用转发消息，或该平台不支持此功能，仅可通过邮箱查询存储数据：\n" +
+                            "${commandPrefix}pb storage $name mail <邮箱地址>"
+                        )
                         return
                     }
+
                     val id = try {
                         if (args[2].content == "global" || args[2].content == "全局") 0
                         else args[2].content.toLong()

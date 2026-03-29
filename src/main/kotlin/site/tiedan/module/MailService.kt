@@ -24,20 +24,20 @@ object MailService {
      * 发送存储数据查询邮件
      * @param sender 命令发送者
      * @param output 存储数据内容
-     * @param userID 用户QQ号
+     * @param userID 用户ID
      * @param name 查询名称
+     * @param mail 收件邮箱地址
      */
     suspend fun sendStorageMail(
         sender: CommandSender,
         output: String,
         userID: String,
         name: String,
+        mail: String?
     ) {
-        if (userID == "10000") {
-            sender.sendQuoteReply("[错误] 控制台环境禁止使用此邮件发送功能")
-            return
-        }
-        // TODO 平台限制检测，其他平台必须提供完整邮箱地址
+        // 收信邮件：未提供地址自动使用QQ邮箱
+        val address = mail ?: "${userID}@qq.com"
+
         try {
             withContext(Dispatchers.IO) {
                 FileOutputStream("${cacheFolder}storage.txt").use { outputStream ->
@@ -57,13 +57,13 @@ object MailService {
         }
 
         val mail = buildMailContent(session) {
-            to = "${userID}@qq.com"
+            to = address
             title = "存储数据查询"
 
             htmlWithFooter {
                 append("""
                 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; margin: -20px -20px 20px -20px;">
-                    <h1 style="margin: 0; font-size: 24px;">📦 存储数据查询结果</h1>
+                    <h1 style="margin: 0; font-size: 24px;">💾 存储数据查询结果</h1>
                 </div>
                 
                 <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 4px;">

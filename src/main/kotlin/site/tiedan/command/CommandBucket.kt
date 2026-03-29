@@ -14,6 +14,7 @@ import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.Command
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.getNickname
+import site.tiedan.MiraiCompilerFramework.getPlatform
 import site.tiedan.MiraiCompilerFramework.getUserPlatformID
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.parseUserID
@@ -53,7 +54,7 @@ object CommandBucket : RawCommand(
     private val commandList = arrayOf(
         Command("bk list [文字/备份]", "bk 列表 [文字/备份]", "查看存储库列表", 1),
         Command("bk info <ID/名称>", "bk 信息 <ID/名称>", "查看存储库信息", 1),
-        Command("bk storage <ID/名称> [密码] [备份编号/mail]", "bk 存储 <ID/名称> [密码] [备份编号/邮件]", "查询存储库数据", 1),
+        Command("bk storage <ID/名称> [密码] [备份ID/mail] [邮件地址]", "bk 存储 <ID/名称> [密码] [备份ID/邮件] [邮件地址]", "查询存储库数据", 1),
         Command("bk create <名称> <密码>", "bk 创建 <名称> <密码>", "创建新存储库", 1),
         Command("bk set <ID/名称> <参数名> <内容>", "bk 修改 <ID/名称> <参数名> <内容>", "修改存储库属性", 1),
 
@@ -68,6 +69,7 @@ object CommandBucket : RawCommand(
 
     override suspend fun CommandSender.onCommand(args: MessageChain) {
 
+        val platform = getPlatform()
         val userID = getUserPlatformID(this.user?.id) ?: "10000"
         val userName = this.name
         val isAdmin = PastebinConfig.admins.contains(userID)
@@ -161,8 +163,21 @@ object CommandBucket : RawCommand(
                         return
                     }
 
-                    val mail = args.getOrNull(3)?.content == "邮件" || args.getOrNull(3)?.content == "mail"
-                    if (MailConfig.enable && mail && bucket.isNotEmpty()) {
+                    val requestMail = args.getOrNull(3)?.content == "邮件" || args.getOrNull(3)?.content == "mail"
+                    if (MailConfig.enable && requestMail && bucket.isNotEmpty()) {
+                        val mail = args.getOrNull(4)?.content
+                        if (mail == null && platform != "qq") {
+                            sendQuoteReply(
+                                "⚠️ 当前平台 $platform 仅支持邮件查询：\n" +
+                                "${commandPrefix}bk storage $id <密码> mail <邮箱地址>"
+                            )
+                            return
+                        }
+                        if (mail != null && !Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$").matches(mail)) {
+                            sendQuoteReply("邮箱地址无效：请输入正确的邮箱地址")
+                            return
+                        }
+
                         val allBackupData = PastebinBucket.backups[id]
                             ?.mapIndexed { index, backup ->
                                 "【备份${index + 1}数据】\n" + (
@@ -180,14 +195,18 @@ object CommandBucket : RawCommand(
                                 "\n\n" +
                                 allBackupData
                         logger.info("请求使用邮件发送结果：${bucketInfo(id)}")
-                        MailService.sendStorageMail(this, output, userID, bucketInfo(id))
+                        MailService.sendStorageMail(this, output, userID, bucketInfo(id), mail)
                         return
                     }
 
-                    if (!PastebinConfig.enable_ForwardMessage) {
-                        sendQuoteReply("当前未开启转发消息，仅能通过邮件查询存储数据")
+                    if (!PastebinConfig.enable_ForwardMessage || platform != "qq") {
+                        sendQuoteReply(
+                            "⚠️ 当前未启用转发消息，或该平台不支持此功能，仅可通过邮箱查询存储数据：\n" +
+                            "${commandPrefix}bk storage $id <密码> mail <邮箱地址>"
+                        )
                         return
                     }
+
                     val backupID = args.getOrNull(3)?.content?.toIntOrNull() ?: 0
                     val backup = (backupID - 1).takeIf { backupID > 0 }?.let { PastebinBucket.backups[id]?.get(it) }
                     try {
