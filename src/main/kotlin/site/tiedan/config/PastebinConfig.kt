@@ -9,7 +9,7 @@ internal object PastebinConfig : AutoSavePluginConfig("PastebinConfig") {
     val API_TOKEN: String by value()
 
     @ValueDescription("pastebin指令权限")
-    val admins: List<Long> by value(listOf(10000L))
+    val admins: List<String> by value(listOf("10000"))
 
     @ValueDescription("快捷运行前缀（可代替run命令）")
     val QUICK_PREFIX: List<String> by value(listOf("##"))

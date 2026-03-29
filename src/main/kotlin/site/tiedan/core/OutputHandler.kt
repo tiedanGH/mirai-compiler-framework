@@ -282,7 +282,12 @@ object OutputHandler {
             if (userID == null) return@forEachIndexed
             val friend = findFriendFromAllBots(userID)
             val now = LocalTime.now().hour
-            val allowTime = ExtraData.private_allowTime[userID]
+            // 获取允许时间：优先匹配QQ好友，然后匹配其他平台ID
+            val allowTime = ExtraData.private_allowTime[userID.toString()]
+                ?: ExtraData.private_allowTime
+                    .entries
+                    .firstOrNull { (key, _) -> key.endsWith("_${userID}") }
+                    ?.value
             if (allowTime != null) {
                 if (notInAllowTime(now, allowTime.first, allowTime.second)) {
                     result += "\n[(${index + 1})私信] 权限不足：不在${userID}设置的可用时间段内"

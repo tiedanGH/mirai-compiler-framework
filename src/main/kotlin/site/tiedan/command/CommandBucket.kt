@@ -14,12 +14,15 @@ import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.Command
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.getNickname
+import site.tiedan.MiraiCompilerFramework.getUserPlatformID
 import site.tiedan.MiraiCompilerFramework.logger
+import site.tiedan.MiraiCompilerFramework.parseUserID
 import site.tiedan.MiraiCompilerFramework.pendingCommand
 import site.tiedan.MiraiCompilerFramework.requestUserConfirmation
 import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.uploadFileToImage
+import site.tiedan.command.CommandPastebin.isCollaborator
 import site.tiedan.config.MailConfig
 import site.tiedan.config.PastebinConfig
 import site.tiedan.data.ExtraData
@@ -65,7 +68,7 @@ object CommandBucket : RawCommand(
 
     override suspend fun CommandSender.onCommand(args: MessageChain) {
 
-        val userID = this.user?.id ?: 10000
+        val userID = getUserPlatformID(this.user?.id) ?: "10000"
         val userName = this.name
         val isAdmin = PastebinConfig.admins.contains(userID)
 
@@ -236,7 +239,7 @@ object CommandBucket : RawCommand(
                 }
 
                 "create", "创建"-> {   // 创建新存储库
-                    if (PastebinData.pastebin.none { it.value["userID"] == userID.toString() }) {
+                    if (PastebinData.pastebin.none { it.value["userID"] == userID }) {
                         sendQuoteReply("创建失败：请先创建一个项目，然后再创建存储库")
                         return
                     }
@@ -255,7 +258,7 @@ object CommandBucket : RawCommand(
                         "name" to name,
                         "password" to Security.hashPassword(password),
                         "owner" to userName,
-                        "userID" to userID.toString(),
+                        "userID" to userID,
                         "projects" to "",
                         "desc" to "",
                         "content" to "",
@@ -278,7 +281,7 @@ object CommandBucket : RawCommand(
                     var content = args.drop(3).joinToString(separator = " ")
                     var additionalOutput = ""
                     val ownerID = PastebinBucket.bucket[id]?.get("userID")
-                    val isOwner = userID.toString() == ownerID
+                    val isOwner = userID == ownerID
                     if (!isOwner && !isAdmin) {
                         sendQuoteReply("无权修改此存储库，如需修改请联系所有者：$ownerID")
                         return
@@ -320,11 +323,12 @@ object CommandBucket : RawCommand(
                             PastebinBucket.bucket[id]?.set("password", Security.hashPassword(newPassword))
                         }
                         "userID"-> {
-                            if (content.toLongOrNull() == null) {
-                                sendQuoteReply("转移失败：输入的 userID 不是整数")
+                            val id = parseUserID(content)
+                            if (id == null) {
+                                sendQuoteReply("转移失败：输入的 userID 格式不正确，应为纯数字或带平台前缀 kook_123")
                                 return
                             }
-                            val targetName = getNickname(content.toLong())
+                            val targetName = getNickname(id)
                             if (targetName == null) {
                                 sendQuoteReply("转移失败：无法找到目标用户 $content，转移对象必须为机器人好友或本群成员")
                                 return
@@ -578,7 +582,7 @@ object CommandBucket : RawCommand(
                 "delete", "删除"-> {   // 永久删除存储库
                     val id = checkBucketNameOrID(args[1].content, "删除") ?: return
                     val ownerID = PastebinBucket.bucket[id]?.get("userID")
-                    val isOwner = userID.toString() == ownerID
+                    val isOwner = userID == ownerID
                     val forceDelete = args.getOrNull(2)?.content == "force"
                     if (!isOwner) {
                         if (!isAdmin) {
@@ -633,14 +637,15 @@ object CommandBucket : RawCommand(
         return id
     }
 
-    suspend fun CommandSender.checkPassword(id: Long, password: String?, userID: Long, isAdmin: Boolean): Boolean? {
+    suspend fun CommandSender.checkPassword(id: Long, password: String?, userID: String, isAdmin: Boolean): Boolean? {
         val data = PastebinBucket.bucket[id] ?: return null
         val storedHashed = data["password"] ?: return null
 
-        val isOwner = userID.toString() == data["userID"]
+        val isOwner = userID == data["userID"]
         val passwordCorrect = password != null && Security.verifyPassword(password, storedHashed)
 
-            if (!isOwner && !passwordCorrect) {
+        // 关闭了管理员的访问权限，必须要求密码
+        if (!isOwner && !passwordCorrect) {
             sendQuoteReply("拒绝访问：存储库密码错误")
             return null
         }
@@ -654,7 +659,7 @@ object CommandBucket : RawCommand(
     )
     suspend fun CommandSender.prepareProjectContext(
         args: MessageChain,
-        userID: Long
+        userID: String
     ): ProjectContext? {
         val projectName = args[1].content
         if (!PastebinData.pastebin.contains(projectName)) {
@@ -669,7 +674,10 @@ object CommandBucket : RawCommand(
             return null
         }
         val projectOwnerID = PastebinData.pastebin[projectName]?.get("userID")
-        if (userID.toString() != projectOwnerID && !PastebinConfig.admins.contains(userID)) {
+        val isOwner = userID == projectOwnerID
+        val isAdmin = PastebinConfig.admins.contains(userID)
+        val isCollaborator = isCollaborator(projectName, userID)
+        if (!isOwner && !isAdmin && !isCollaborator) {
             sendQuoteReply("无权修改此项目，如需修改请联系所有者：$projectOwnerID")
             return null
         }

@@ -9,7 +9,9 @@ import site.tiedan.MiraiCompilerFramework.ERROR_MSG_MAX_LENGTH
 import site.tiedan.MiraiCompilerFramework.THREADS
 import site.tiedan.MiraiCompilerFramework.ThreadInfo
 import site.tiedan.MiraiCompilerFramework.getPlatform
+import site.tiedan.MiraiCompilerFramework.getUserPlatformID
 import site.tiedan.MiraiCompilerFramework.logger
+import site.tiedan.MiraiCompilerFramework.parseUserID
 import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.trimToMaxLength
@@ -48,11 +50,13 @@ object PastebinCodeExecutor {
      */
     suspend fun CommandSender.executeMainProcess(name: String, userInput: String, imageUrls: List<String>) {
 
-        val userID = user?.id ?: 10000
+        val userID = getUserPlatformID(this.user?.id) ?: "10000"
+        val numID = parseUserID(userID)
+            ?: return sendQuoteReply("[用户ID解析失败] 无法解析您的用户ID，请联系管理员")
         val nickname = this.name
 
         if (ExtraData.BlackList.contains(userID)) {
-            logger.warning("${userID}已被拉黑，请求被拒绝")
+            logger.warning("$userID 已被拉黑，请求被拒绝")
             return
         }
 
@@ -67,9 +71,10 @@ object PastebinCodeExecutor {
             sendQuoteReply("执行失败：当前已经有 ${THREADS.size} 个进程正在执行，请等待几秒后再次尝试")
             return
         }
-        if (PastebinData.groupOnly.contains(name) && (subject is Group).not() &&
-            userID.toString() != PastebinData.pastebin[name]?.get("userID") && PastebinConfig.admins.contains(userID).not()
-            ) {
+        val ownerID = PastebinData.pastebin[name]?.get("userID")
+        val isOwner = userID == ownerID
+        val isAdmin = PastebinConfig.admins.contains(userID)
+        if (PastebinData.groupOnly.contains(name) && (subject is Group).not() && !isOwner && !isAdmin) {
             sendQuoteReply("执行失败：此条代码链接被标记为仅限群聊中执行！")
             return
         }
@@ -149,13 +154,13 @@ object PastebinCodeExecutor {
                 }
                 StorageManager.lock()
                 val global = StorageManager.getGlobalData(name)
-                val storage = StorageManager.getStorageData(name, userID, platform)
+                val storage = StorageManager.getStorageData(name, numID, platform)
                 val bucket = StorageManager.getBucketData(name)
                 val encodeBase64 = PastebinData.pastebin[name]?.get("base64") == "true"
                 val imageData = Base64Processor.encodeImagesToBase64(imageUrls, encodeBase64)
-                val avatar = MiraiCompilerFramework.getAvatarUrl(userID, platform)
+                val avatar = MiraiCompilerFramework.getAvatarUrl(numID, platform)
 
-                val jsonInput = JsonProcessor.processEncode(global, storage, bucket, userID, nickname, avatar, from, platform, imageData)
+                val jsonInput = JsonProcessor.processEncode(global, storage, bucket, numID, nickname, avatar, from, platform, imageData)
                 input = "$jsonInput\n$userInput"
 
                 val platformInfo = if (platform == "qq") "" else "($platform)"
@@ -163,7 +168,7 @@ object PastebinCodeExecutor {
                     "输入存储数据: global{${global.length}} storage$platformInfo{${storage.length}} " +
                     "bucket{${bucket.joinToString(" ") { "[${it.id}](${it.content?.length})" }}}"
                 )
-                logger.debug("请求用户环境：$nickname($userID) $from $platform")
+                logger.debug("请求用户环境：$nickname($numID) $from $platform")
             }
 
             logger.debug("[DEBUG] input:\n$input")
@@ -265,7 +270,7 @@ object PastebinCodeExecutor {
                     sendQuoteReply("【存储错误】拒绝访问：名称 $name 不存在或未开启存储，保存数据失败！")
                     return
                 }
-                val ret = StorageManager.savePastebinStorage(name, userID, platform, outputGlobal, outputStorage, outputBucket)
+                val ret = StorageManager.savePastebinStorage(name, numID, platform, outputGlobal, outputStorage, outputBucket)
                 if (ret != null) sendQuoteReply("【存储错误】$ret")
             }
         } catch (e: Exception) {

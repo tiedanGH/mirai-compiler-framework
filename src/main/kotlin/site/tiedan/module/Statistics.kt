@@ -4,6 +4,7 @@ import site.tiedan.MiraiCompilerFramework.imageFolder
 import site.tiedan.MiraiCompilerFramework.roundTo2
 import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.command.CommandBucket.projectsCount
+import site.tiedan.command.CommandPastebin.containsCollaborator
 import site.tiedan.data.CodeCache
 import site.tiedan.data.ExtraData
 import site.tiedan.data.ImageData
@@ -192,20 +193,17 @@ object Statistics {
     /**
      * 汇总语言比例和热门项目统计
      */
-    fun summarizeStatistics(userID: Long?): String {
+    fun summarizeStatistics(userID: String?): String {
         val filtered = if (userID == null) {
             PastebinData.pastebin
         } else {
-            PastebinData.pastebin.filterValues { it["userID"] == userID.toString() }
+            PastebinData.pastebin.filterValues { it["userID"] == userID }
         }
         val projectCount = filtered.size
 
-        val collabCount = if (userID == null) {
-            null
-        } else {
+        val collabCount = userID?.let { id ->
             PastebinData.pastebin.values.count { map ->
-                val raw = map["collaborators"] ?: return@count false
-                raw.split(",").mapNotNull { it.trim().toLongOrNull() }.contains(userID)
+                map["collaborators"]?.containsCollaborator(id) == true
             }
         }
 
@@ -261,8 +259,8 @@ object Statistics {
         }
     }
 
-    fun imageStatistics(userID: Long): String {
-        val imageCount = ImageData.images.values.count { it["userID"] == userID.toString() }
+    fun imageStatistics(userID: String): String {
+        val imageCount = ImageData.images.values.count { it["userID"] == userID }
         return if (imageCount > 0) "🖼️ 上传图片：$imageCount\n" else ""
     }
 

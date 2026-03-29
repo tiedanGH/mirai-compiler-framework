@@ -16,8 +16,10 @@ import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.Command
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.getNickname
+import site.tiedan.MiraiCompilerFramework.getUserPlatformID
 import site.tiedan.MiraiCompilerFramework.imageFolder
 import site.tiedan.MiraiCompilerFramework.logger
+import site.tiedan.MiraiCompilerFramework.parseUserID
 import site.tiedan.MiraiCompilerFramework.pendingCommand
 import site.tiedan.MiraiCompilerFramework.requestUserConfirmation
 import site.tiedan.MiraiCompilerFramework.save
@@ -28,10 +30,10 @@ import site.tiedan.config.PastebinConfig
 import site.tiedan.data.ImageData
 import site.tiedan.data.PastebinData
 import site.tiedan.format.MarkdownImageGenerator
-import site.tiedan.utils.FuzzySearch
 import site.tiedan.utils.DownloadHelper
 import site.tiedan.utils.DownloadHelper.downloadFile
 import site.tiedan.utils.DownloadHelper.downloadImage
+import site.tiedan.utils.FuzzySearch
 import java.io.File
 import kotlin.collections.orEmpty
 import kotlin.collections.set
@@ -59,7 +61,7 @@ object CommandImage : RawCommand(
 
     override suspend fun CommandSender.onCommand(args: MessageChain) {
 
-        val userID = this.user?.id ?: 10000
+        val userID = getUserPlatformID(this.user?.id) ?: "10000"
         val userName = this.name
         val isAdmin = PastebinConfig.admins.contains(userID)
 
@@ -180,7 +182,7 @@ object CommandImage : RawCommand(
                 }
 
                 "upload", "上传"-> {   // 上传图片至服务器
-                    if (PastebinData.pastebin.none { it.value["userID"] == userID.toString() && it.value["format"] != null }) {
+                    if (PastebinData.pastebin.none { it.value["userID"] == userID && it.value["format"] != null }) {
                         sendQuoteReply("上传失败：请先创建一个非text输出格式的项目，然后再上传图片")
                         return
                     }
@@ -195,7 +197,7 @@ object CommandImage : RawCommand(
 
                     ImageData.images[imageName] = mutableMapOf(
                         "owner" to userName,
-                        "userID" to userID.toString(),
+                        "userID" to userID,
                     )
                     ImageData.images = ImageData.images.toSortedMap()
                     ImageData.save()
@@ -224,7 +226,7 @@ object CommandImage : RawCommand(
                         return
                     }
                     val ownerID = ImageData.images[name]?.get("userID")
-                    val isOwner = userID.toString() == ownerID
+                    val isOwner = userID == ownerID
                     if (!isOwner && !isAdmin) {
                         sendQuoteReply("无权修改此图片，如需修改请联系所有者：$ownerID")
                         return
@@ -274,11 +276,12 @@ object CommandImage : RawCommand(
                             content = result.duration.toString()
                         }
                         "userID" -> {
-                            if (content.toLongOrNull() == null) {
-                                sendQuoteReply("转移失败：输入的 userID 不是整数")
+                            val id = parseUserID(content)
+                            if (id == null) {
+                                sendQuoteReply("转移失败：输入的 userID 格式不正确，应为纯数字或带平台前缀 kook_123")
                                 return
                             }
-                            val targetName = getNickname(content.toLong())
+                            val targetName = getNickname(id)
                             if (targetName == null) {
                                 sendQuoteReply("转移失败：无法找到目标用户 $content，转移对象必须为机器人好友或本群成员")
                                 return
@@ -320,7 +323,7 @@ object CommandImage : RawCommand(
                         return
                     }
                     val ownerID = ImageData.images[name]?.get("userID")
-                    val isOwner = userID.toString() == ownerID
+                    val isOwner = userID == ownerID
                     if (!isOwner && !isAdmin) {
                         sendQuoteReply("无权删除此图片，如需删除请联系所有者：$ownerID。如果您对此图片存在疑问，请联系指令管理员")
                         return

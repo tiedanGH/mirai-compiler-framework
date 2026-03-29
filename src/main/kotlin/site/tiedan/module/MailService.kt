@@ -30,13 +30,14 @@ object MailService {
     suspend fun sendStorageMail(
         sender: CommandSender,
         output: String,
-        userID: Long,
+        userID: String,
         name: String,
     ) {
-        if (userID == 10000L) {
+        if (userID == "10000") {
             sender.sendQuoteReply("[错误] 控制台环境禁止使用此邮件发送功能")
             return
         }
+        // TODO 平台限制检测，其他平台必须提供完整邮箱地址
         try {
             withContext(Dispatchers.IO) {
                 FileOutputStream("${cacheFolder}storage.txt").use { outputStream ->

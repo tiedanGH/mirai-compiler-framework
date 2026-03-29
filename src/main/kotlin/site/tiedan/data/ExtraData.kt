@@ -8,13 +8,13 @@ import net.mamoe.mirai.console.data.value
 internal object ExtraData : AutoSavePluginData("ExtraData") {
 
     @ValueDescription("黑名单用户")
-    var BlackList: MutableList<Long> by value()
+    var BlackList: MutableList<String> by value()
 
     @ValueDescription("钥匙")
     var key: String by value()
 
     @ValueDescription("接收主动私信时间段")
-    var private_allowTime: MutableMap<Long, Pair<Int, Int>> by value()
+    var private_allowTime: MutableMap<String, Pair<Int, Int>> by value()
 
     @ValueDescription("数据统计")
     var statistics: MutableMap<String, MutableMap<String, Double>> by value()

@@ -141,8 +141,8 @@ object MiraiCompilerFramework : KotlinPlugin(
     /**
      * 请求用户二次确认指令
      */
-    val pendingCommand = mutableMapOf<Long, String>()
-    suspend fun CommandSender.requestUserConfirmation(userID: Long, command: String, alert: String): Boolean? {
+    val pendingCommand = mutableMapOf<String, String>()
+    suspend fun CommandSender.requestUserConfirmation(userID: String, command: String, alert: String): Boolean? {
         if (!pendingCommand.contains(userID)) {
             pendingCommand.put(userID, command)
             sendQuoteReply(alert)
@@ -277,6 +277,29 @@ object MiraiCompilerFramework : KotlinPlugin(
     fun CommandSender.getPlatform(): String {
         val botId = bot?.id ?: return "unknown"
         return PlatformConfig.platforms[botId]?.get("platform") ?: "qq"
+    }
+
+    /**
+     * 获取和解析带平台前缀的用户ID
+     */
+    fun CommandSender.getUserPlatformID(originID: Long?): String? {
+        val userID = originID ?: return null    // 控制台环境
+        val platform = getPlatform()
+        return if (platform == "qq") {
+            userID.toString()
+        } else {
+            "${platform}_$userID"
+        }
+    }
+
+    fun parseUserID(content: String): Long? {
+        return when {
+            content.toLongOrNull() != null -> // 纯数字
+                content.toLong()
+            Regex("^[a-zA-Z0-9]+_(\\d+)$").matches(content) -> // 带平台前缀
+                content.substringAfter("_").toLongOrNull()
+            else -> null
+        }
     }
 
     /**

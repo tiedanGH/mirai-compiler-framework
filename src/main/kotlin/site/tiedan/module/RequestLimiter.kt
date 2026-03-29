@@ -23,13 +23,13 @@ object RequestLimiter {
     private val SHORT_THRESHOLDS = listOf(15, 20, 25)
     private val LONG_THRESHOLDS = listOf(130, 145, 150)
 
-    private val userRequestTimes = ConcurrentHashMap<Long, MutableList<Long>>()
-    private val userWarningLevels = ConcurrentHashMap<Long, WarningLevel>()
+    private val userRequestTimes = ConcurrentHashMap<String, MutableList<Long>>()
+    private val userWarningLevels = ConcurrentHashMap<String, WarningLevel>()
 
     /**
      * 记录新执行请求
      */
-    fun newRequest(userID: Long): Pair<String, Boolean> {
+    fun newRequest(userID: String): Pair<String, Boolean> {
         val isAdmin = PastebinConfig.admins.contains(userID)
 
         val currentTime = System.currentTimeMillis()

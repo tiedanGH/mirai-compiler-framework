@@ -15,7 +15,9 @@ import site.tiedan.MiraiCompilerFramework.THREADS
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.getNickname
 import site.tiedan.MiraiCompilerFramework.getPlatform
+import site.tiedan.MiraiCompilerFramework.getUserPlatformID
 import site.tiedan.MiraiCompilerFramework.logger
+import site.tiedan.MiraiCompilerFramework.parseUserID
 import site.tiedan.MiraiCompilerFramework.pendingCommand
 import site.tiedan.MiraiCompilerFramework.requestUserConfirmation
 import site.tiedan.MiraiCompilerFramework.save
@@ -60,7 +62,7 @@ object CommandPastebin : RawCommand(
 ){
     private val commandList = arrayOf(
         Command("pb support", "pb 支持", "支持粘贴代码的网站", 1),
-        Command("pb profile [QQ]", "pb 简介 [QQ]", "查看个人信息", 1),
+        Command("pb profile [ID]", "pb 简介 [账户ID]", "查看个人信息", 1),
         Command("pb private", "pb 私信时段", "允许私信主动消息", 1),
         Command("pb stats [名称]", "pb 统计 [名称]", "查看统计信息", 1),
         Command("pb list [查询模式]", "pb 列表 [查询模式]", "查看项目列表", 1),
@@ -79,13 +81,15 @@ object CommandPastebin : RawCommand(
         Command("image help", "图片 帮助", "本地图片操作指令", 3),
 
         Command("pb handle <名称> <同意/拒绝> [备注]", "pb 处理 <名称> <同意/拒绝> [备注]", "处理添加和修改申请", 4),
-        Command("pb black [qq]", "pb 黑名单 [QQ号]", "黑名单处理", 4),
+        Command("pb black [ID]", "pb 黑名单 [账户ID]", "黑名单处理", 4),
         Command("pb reload", "pb 重载", "重载本地数据", 4),
     )
 
     override suspend fun CommandSender.onCommand(args: MessageChain) {
 
-        val userID = this.user?.id ?: 10000
+        val userID = getUserPlatformID(this.user?.id) ?: "10000"
+        val numID = parseUserID(userID)
+            ?: return sendQuoteReply("[用户ID解析失败] 无法解析您的用户ID，请联系管理员")
         val isAdmin = PastebinConfig.admins.contains(userID)
 
         if (pendingCommand[userID]?.let { it != args.content } == true) {
@@ -135,28 +139,29 @@ object CommandPastebin : RawCommand(
                 }
 
                 "profile", "简介"-> {   // 查看个人信息
-                    val id = args.getOrNull(1)?.content?.replace("@", "")?.toLongOrNull() ?: userID
-                    val time = ExtraData.private_allowTime[id]
+                    val atID = args.getOrNull(1)?.content?.replace("@", "")?.toLongOrNull()
+                    val platformID = getUserPlatformID(atID) ?: userID
+                    val time = ExtraData.private_allowTime[platformID]
                     val reply = buildString {
                         appendLine("　【个人信息】　")
-                        appendLine("🆔 $id")
+                        appendLine("🆔 $platformID")
 
                         val allowStatus = when {
-                            bot?.containsFriend(id) != true -> "未添加好友"
+                            bot?.containsFriend(numID) != true -> "未添加好友"
                             time == null -> "不允许"
                             time.second - time.first == 23 || time.second == time.first - 1 -> "始终允许"
                             else -> "${time.first}:00 ~ ${time.second}:59"
                         }
                         appendLine("💬 接收主动私信：$allowStatus")
 
-                        appendLine(Statistics.imageStatistics(id))
-                        appendLine(Statistics.summarizeStatistics(id))
+                        appendLine(Statistics.imageStatistics(platformID))
+                        appendLine(Statistics.summarizeStatistics(platformID))
                     }
                     sendQuoteReply(reply)
                 }
 
                 "private", "私信时段"-> {   // 允许私信主动消息
-                    if (bot?.containsFriend(userID) != true && isNotConsole()) {
+                    if (bot?.containsFriend(numID) != true && isNotConsole()) {
                         sendQuoteReply("请先添加bot为好友才能使用此功能")
                         return
                     }
@@ -424,7 +429,7 @@ object CommandPastebin : RawCommand(
 
                     val data = PastebinData.pastebin[name].orEmpty()
                     val ownerID = PastebinData.pastebin[name]?.get("userID")
-                    val isOwner = userID.toString() == ownerID
+                    val isOwner = userID == ownerID
                     val showAll = args.getOrNull(2)?.content == "show" && (isOwner || isAdmin)
                     val alias = PastebinData.alias.entries.find { it.value == name }?.key
                     val info = buildString {
@@ -529,7 +534,7 @@ object CommandPastebin : RawCommand(
                     PastebinData.pastebin[name] =
                         mutableMapOf(
                             "author" to author,
-                            "userID" to userID.toString(),
+                            "userID" to userID,
                             "language" to language,
                             "url" to url,
                             "stdin" to stdin
@@ -574,7 +579,7 @@ object CommandPastebin : RawCommand(
                     }
 
                     val ownerID = PastebinData.pastebin[name]?.get("userID")
-                    val isOwner = userID.toString() == ownerID
+                    val isOwner = userID == ownerID
                     val isCollaborator = isCollaborator(name, userID)
                     if (!isOwner && !isAdmin && !isCollaborator) {
                         sendQuoteReply("无权修改此项目，如需修改请联系所有者：$ownerID")
@@ -701,14 +706,17 @@ object CommandPastebin : RawCommand(
                             }
                         }
                         "userID"-> {
-                            if (content.toLongOrNull() == null) {
-                                sendQuoteReply("转移失败：输入的 userID 不是整数")
+                            val id = parseUserID(content)
+                            if (id == null) {
+                                sendQuoteReply("转移失败：输入的 userID 格式不正确，应为纯数字或带平台前缀 kook_123")
                                 return
                             }
-                            if (getNickname(content.toLong()) == null) {
+                            val targetName = getNickname(id)
+                            if (targetName == null) {
                                 sendQuoteReply("转移失败：无法找到目标用户 $content，转移对象必须为机器人好友或本群成员")
                                 return
                             }
+
                             if (!isAdmin) {
                                 requestUserConfirmation(
                                     userID, args.content,
@@ -725,28 +733,28 @@ object CommandPastebin : RawCommand(
                             PastebinData.pastebin[name]?.set("userID", content)
                         }
                         "collaborators"-> {
-                            val normalized = content.trim()
-                            when (normalized.lowercase()) {
+                            when (content.lowercase()) {
                                 "clear", "none", "empty", "清空", "无" -> {
                                     content = "无"
                                     PastebinData.pastebin[name]?.remove("collaborators")
                                 }
                                 else -> {
-                                    val ids = normalized
+                                    val ids = content
                                         .split(",", "，", " ")
-                                        .mapNotNull { it.trim().takeIf { s -> s.isNotEmpty() }?.toLongOrNull() }
+                                        .mapNotNull { it.trim().takeIf { s -> s.isNotEmpty() } }
+                                        .filter { parseUserID(it) != null }
                                         .distinct()
 
                                     if (ids.isEmpty()) {
                                         sendQuoteReply("修改失败：协作者列表为空或格式错误，请输入全部账号ID，多个ID可使用空格、英文逗号或中文逗号分隔。删除全部协作者请输入“无”")
                                         return
                                     }
-                                    if (ownerID?.toLongOrNull() in ids) {
+                                    if (ownerID in ids) {
                                         sendQuoteReply("修改失败：项目所有者无需重复添加为协作者")
                                         return
                                     }
 
-                                    val collabStr = ids.distinct().sorted().joinToString(",")
+                                    val collabStr = ids.joinToString(",")
                                     PastebinData.pastebin[name]?.set("collaborators", collabStr)
                                     content = collabStr
                                 }
@@ -946,7 +954,7 @@ object CommandPastebin : RawCommand(
                     }
 
                     val ownerID = PastebinData.pastebin[name]?.get("userID")
-                    val isOwner = userID.toString() == ownerID
+                    val isOwner = userID == ownerID
                     val forceDelete = args.getOrNull(2)?.content == "force"
                     if (!isOwner) {
                         if (!isAdmin) {
@@ -1010,7 +1018,7 @@ object CommandPastebin : RawCommand(
                     val storage = PastebinStorage.storage[name]
 
                     val ownerID = PastebinData.pastebin[name]?.get("userID")
-                    val isOwner = userID.toString() == ownerID
+                    val isOwner = userID == ownerID
                     val isCollaborator = isCollaborator(name, userID)
                     if (!isOwner && !isAdmin && !isCollaborator) {
                         sendQuoteReply("【查询名称】$name\n【用户数量】${storage?.size?.minus(1)}\n无权查看数据内容，仅所有者可查看存储数据详细内容")
@@ -1167,11 +1175,11 @@ object CommandPastebin : RawCommand(
                                             "申请内容：pastebin运行链接\n" +
                                             "结果：$option\n" +
                                             "备注：$remark"
-                            bot?.getFriendOrFail(PastebinData.pastebin[name]!!["userID"]!!.toLong())!!.sendMessage(noticeApply)   // 抄送结果至申请人
+                            bot?.getFriendOrFail(parseUserID(PastebinData.pastebin[name]!!["userID"]!!)!!)!!.sendMessage(noticeApply)   // 抄送结果至申请人
                             "已将结果发送至申请人"
                         } catch (e: Exception) {
                             logger.warning(e)
-                            "发送消息至申请人时出现错误，可能因为机器人权限不足或未找到对象，详细信息请查看后台"
+                            "发送消息至申请人时出现错误，可能因为机器人权限不足或未找到对象，简要错误信息：${e::class.simpleName}(${e.message})"
                         }
                     if (option == "拒绝") {
                         PastebinData.pastebin.remove(name)
@@ -1182,13 +1190,13 @@ object CommandPastebin : RawCommand(
                 "black", "黑名单"-> {   // 添加/移除黑名单
                     if (!isAdmin) throw PermissionDeniedException()
                     try {
-                        val qq = args[1].content.toLong()
-                        if (ExtraData.BlackList.contains(qq)) {
-                            ExtraData.BlackList.remove(qq)
-                            sendQuoteReply("已将 $qq 移出黑名单")
+                        val platformID = args[1].content
+                        if (ExtraData.BlackList.contains(platformID)) {
+                            ExtraData.BlackList.remove(platformID)
+                            sendQuoteReply("已将 $platformID 移出黑名单")
                         } else {
-                            ExtraData.BlackList.add(qq)
-                            sendQuoteReply("已将 $qq 移入黑名单")
+                            ExtraData.BlackList.add(platformID)
+                            sendQuoteReply("已将 $platformID 移入黑名单")
                         }
                         ExtraData.save()
                     } catch (_: IndexOutOfBoundsException) {
@@ -1226,15 +1234,12 @@ object CommandPastebin : RawCommand(
         }
     }
 
-    private fun isCollaborator(name: String, userID: Long): Boolean {
-        val raw = PastebinData.pastebin[name]?.get("collaborators")
-        return parseCollaborators(raw).contains(userID)
+    fun isCollaborator(name: String, userID: String): Boolean {
+        val raw = PastebinData.pastebin[name]?.get("collaborators") ?: return false
+        return raw.containsCollaborator(userID)
     }
 
-    private fun parseCollaborators(raw: String?): MutableSet<Long> {
-        if (raw.isNullOrBlank()) return mutableSetOf()
-        return raw.split(",")
-            .mapNotNull { it.trim().takeIf { s -> s.isNotEmpty() }?.toLongOrNull() }
-            .toMutableSet()
+    fun String.containsCollaborator(userID: String): Boolean {
+        return this.split(",").any { it.trim() == userID }
     }
 }

@@ -26,6 +26,7 @@ import site.tiedan.MiraiCompilerFramework.MSG_TRANSFER_LENGTH
 import site.tiedan.MiraiCompilerFramework.THREADS
 import site.tiedan.MiraiCompilerFramework.ThreadInfo
 import site.tiedan.MiraiCompilerFramework.getPlatform
+import site.tiedan.MiraiCompilerFramework.getUserPlatformID
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.trimToMaxLength
@@ -112,8 +113,10 @@ object Events : SimpleListenerHost() {
             sendQuoteReply("审核功能已开启，无法自定义执行代码！")
             return
         }
-        if (ExtraData.BlackList.contains(user?.id)) {
-            return logger.warning("${user?.id}已被拉黑，请求被拒绝")
+
+        val userID = getUserPlatformID(this.user?.id) ?: "10000"
+        if (ExtraData.BlackList.contains(userID)) {
+            return logger.warning("$userID 已被拉黑，请求被拒绝")
         }
 
         val msg = message.content.removePrefix(CMD_PREFIX).trim()
