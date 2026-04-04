@@ -72,11 +72,12 @@ View and add pastebin code, profile info, statistics, and configure advanced fea
 | `/pb thread`           | Query running and pending processes     | 
 
 ### ✏️ Update Pastebin Data
-| Command                                                        | Description                |
-|----------------------------------------------------------------|----------------------------|
-| `/pb add <name> <author> <language> <source code URL> [stdin]` | Add Pastebin project       |
-| `/pb set <name> <param> <value>`                               | Modify project attributes  |
-| `/pb delete <name>`                                            | Permanently delete project |
+| Command                                                        | Description                                     |
+|----------------------------------------------------------------|-------------------------------------------------|
+| `/pb add <name> <author> <language> <source code URL> [stdin]` | Add Pastebin project                            |
+| `/pb set <name> <param> <value>`                               | Modify project attributes                       |
+| `/pb collab add/remove <ID>`                                   | Batch edit collaborators for all owned projects |
+| `/pb delete <name>`                                            | Permanently delete project                      |
 
 ### ⚙️ Pastebin Advanced Features
 | Command                                                 | Description                                          |

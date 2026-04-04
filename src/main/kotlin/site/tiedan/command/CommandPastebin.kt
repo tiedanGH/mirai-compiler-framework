@@ -63,7 +63,7 @@ object CommandPastebin : RawCommand(
 ){
     private val commandList = arrayOf(
         Command("pb support", "pb 支持", "支持粘贴代码的网站", 1),
-        Command("pb profile [ID]", "pb 简介 [账户ID]", "查看个人信息", 1),
+        Command("pb profile [ID]", "pb 简介 [平台ID]", "查看个人信息", 1),
         Command("pb private", "pb 私信时段", "允许私信主动消息", 1),
         Command("pb stats [名称]", "pb 统计 [名称]", "查看统计信息", 1),
         Command("pb list [查询模式]", "pb 列表 [查询模式]", "查看项目列表", 1),
@@ -73,6 +73,7 @@ object CommandPastebin : RawCommand(
 
         Command("pb add <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]", "pb 添加 <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]", "添加Pastebin项目", 2),
         Command("pb set <名称> <参数名> <内容>", "pb 修改 <名称> <参数名> <内容>", "修改项目属性", 2),
+        Command("pb collab add/remove <ID>", "pb 协作 添加/移除 <平台ID>", "批量编辑自己全部项目的协作者", 2),
         Command("pb delete <名称>", "pb 删除 <名称>", "永久删除项目", 2),
 
         Command("pb set <名称> format <输出格式> [宽度/存储]", "pb 修改 <名称> 输出格式 <输出格式> [宽度/存储]", "修改输出格式", 3),
@@ -82,7 +83,7 @@ object CommandPastebin : RawCommand(
         Command("image help", "图片 帮助", "本地图片操作指令", 3),
 
         Command("pb handle <名称> <同意/拒绝> [备注]", "pb 处理 <名称> <同意/拒绝> [备注]", "处理添加和修改申请", 4),
-        Command("pb black [ID]", "pb 黑名单 [账户ID]", "黑名单处理", 4),
+        Command("pb black [ID]", "pb 黑名单 [平台ID]", "黑名单处理", 4),
         Command("pb reload", "pb 重载", "重载本地数据", 4),
     )
 
@@ -756,21 +757,19 @@ object CommandPastebin : RawCommand(
                                     val ids = content
                                         .split(",", "，", " ")
                                         .mapNotNull { it.trim().takeIf { s -> s.isNotEmpty() } }
-                                        .filter { parseUserID(it) != null }
-                                        .distinct()
 
-                                    if (ids.isEmpty()) {
-                                        sendQuoteReply("修改失败：协作者列表为空或格式错误，请输入全部账号ID，多个ID可使用空格、英文逗号或中文逗号分隔。删除全部协作者请输入“无”")
-                                        return
-                                    }
                                     if (ownerID in ids) {
                                         sendQuoteReply("修改失败：项目所有者无需重复添加为协作者")
                                         return
                                     }
+                                    val normalized = normalizeCollaborators(ownerID ?: "", ids)
+                                    if (normalized == null) {
+                                        sendQuoteReply("修改失败：协作者列表为空或格式错误，请输入全部账号ID，多个ID可使用空格、逗号分隔。删除全部协作者请输入“无”")
+                                        return
+                                    }
 
-                                    val collabStr = ids.joinToString(",")
-                                    PastebinData.pastebin[name]?.set("collaborators", collabStr)
-                                    content = collabStr
+                                    PastebinData.pastebin[name]?.set("collaborators", normalized)
+                                    content = normalized
                                 }
                             }
                         }
@@ -958,6 +957,37 @@ object CommandPastebin : RawCommand(
                     PastebinStorage.save()
                     CodeCache.save()
                     ExtraData.save()
+                }
+
+                "collab", "collaborators", "协作", "协作者" -> {   // 批量编辑自己全部项目的协作者
+                    val subAction = args.getOrNull(1)?.content
+                    val targetPlatformID = args.getOrNull(2)?.content
+
+                    if (subAction == null || targetPlatformID == null) {
+                        sendQuoteReply(
+                            "[参数不足] 请参考以下指令批量编辑协作者：\n" +
+                            "${commandPrefix}pb collab add <ID>\n" +
+                            "${commandPrefix}pb collab remove <ID>\n" +
+                            "${commandPrefix}pb 协作 添加 <平台ID>\n" +
+                            "${commandPrefix}pb 协作 移除 <平台ID>"
+                        )
+                        return
+                    }
+
+                    when (subAction.lowercase()) {
+                        "add", "添加", "新增" -> {
+                            handleBatchCollaboratorAction("add", targetPlatformID, userID, args.content)
+                        }
+                        "remove", "rm", "移除", "删除" -> {
+                            handleBatchCollaboratorAction("remove", targetPlatformID, userID, args.content)
+                        }
+                        else -> {
+                            sendQuoteReply(
+                                "未知的操作：$subAction\n" +
+                                "仅支持 add/remove（添加/移除）"
+                            )
+                        }
+                    }
                 }
 
                 "delete", "remove", "删除", "移除"-> {   // 永久删除项目
@@ -1265,12 +1295,119 @@ object CommandPastebin : RawCommand(
         }
     }
 
+    /**
+     * ## 协作者相关操作
+     */
     fun isCollaborator(name: String, userID: String): Boolean {
         val raw = PastebinData.pastebin[name]?.get("collaborators") ?: return false
         return raw.containsCollaborator(userID)
     }
 
     fun String.containsCollaborator(userID: String): Boolean {
-        return this.split(",").any { it.trim() == userID }
+        return this.parseCollaborators().contains(userID)
+    }
+
+    private fun String.parseCollaborators(): List<String> {
+        return this.split(",", "，", " ")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+    }
+
+    private fun normalizeCollaborators(ownerID: String, collaborators: List<String>): String? {
+        val normalized = collaborators
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .filter { parseUserID(it) != null }
+            .filter { it != ownerID }
+            .distinct()
+        return normalized.takeIf { it.isNotEmpty() }?.joinToString(",")
+    }
+
+    // 批量添加/移除协作者
+    private suspend fun CommandSender.handleBatchCollaboratorAction(
+        action: String,
+        targetPlatformID: String,
+        userID: String,
+        commandContent: String
+    ) {
+        if (parseUserID(targetPlatformID) == null) {
+            sendQuoteReply("操作失败：协作者ID格式错误，应为纯数字或带平台前缀 kook_123")
+            return
+        }
+        if (targetPlatformID == userID) {
+            sendQuoteReply("操作失败：项目所有者无需将自己添加/移除协作者")
+            return
+        }
+
+        val ownedProjects = PastebinData.pastebin.filterValues { it["userID"] == userID }
+        if (ownedProjects.isEmpty()) {
+            sendQuoteReply("操作失败：您没有创建过任何项目，无法执行批量协作者操作")
+            return
+        }
+
+        val affectedProjects = ownedProjects
+            .filter { (_, data) ->
+                val collaborators = data["collaborators"]?.parseCollaborators().orEmpty()
+                when (action) {
+                    "add" -> targetPlatformID !in collaborators
+                    "remove" -> targetPlatformID in collaborators
+                    else -> false
+                }
+            }
+            .keys
+            .sorted()
+
+        if (affectedProjects.isEmpty()) {
+            val tip = when (action) {
+                "add" -> "没有可新增的项目：该ID已经是您所有项目的协作者"
+                "remove" -> "没有可移除的项目：该ID当前不是您任何项目的协作者"
+                else -> "错误：不支持的操作"
+            }
+            sendQuoteReply(tip)
+            return
+        }
+
+        val actionText = if (action == "add") "批量添加协作者" else "批量移除协作者"
+
+        requestUserConfirmation(
+            userID, commandContent,
+            " +++⚠️ 批量修改确认 ⚠️+++\n" +
+            "操作：$actionText\n" +
+            "目标ID：$targetPlatformID\n" +
+            "受影响项目（${affectedProjects.size}个）：\n" +
+            affectedProjects.joinToString("、", postfix = "\n") +
+            "\n" +
+            "如确认无误，请再次执行相同指令以完成操作"
+        ) ?: return
+
+        affectedProjects.forEach { projectName ->
+            val project = PastebinData.pastebin[projectName] ?: return@forEach
+            val ownerID = project["userID"] ?: return@forEach
+            val collaborators = project["collaborators"]?.parseCollaborators()?.toMutableList() ?: mutableListOf()
+
+            when (action) {
+                "add" -> collaborators.add(targetPlatformID)
+                "remove" -> collaborators.removeAll { it == targetPlatformID }
+            }
+
+            val normalized = normalizeCollaborators(ownerID, collaborators)
+            if (normalized == null) {
+                project.remove("collaborators")
+            } else {
+                project["collaborators"] = normalized
+            }
+        }
+
+        PastebinData.save()
+
+        sendQuoteReply(
+            buildString {
+                appendLine("✅ 批量协作者操作完成")
+                appendLine("操作：$actionText")
+                appendLine("目标ID：$targetPlatformID")
+                append("已修改项目：${affectedProjects.size} 个")
+            }
+        )
     }
 }
