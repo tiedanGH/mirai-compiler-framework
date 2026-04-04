@@ -464,11 +464,15 @@
 - 存储功能参数包含`storage`和`global`，**变量类型均为String（但可以为空值null）**
 - `storage`为每个用户独立的存储，绑定用户的`userID`，不同用户间数据互不影响。**用户A执行时则返回用户A的存档，而无法获取用户B的存档**
 - `global`为全局存储，每个用户执行时都能获取此参数，修改后会影响全部用户。**用户A执行时修改了全局存储，用户B再执行时获取到的为修改后的值**
+- `bucket`为跨项目存储库参数，**使用方法详见 [bucket跨项目存储库](#bucket跨项目存储库)**
 - **注意：ForwardMessage使用存储功能时，必须在`JsonForwardMessage`中添加存储参数，如果添加在`messages`内的`JsonMessage`对象中，存储的数据不能读取**
-- 此外，此功能还可以获取到用户的ID和昵称，方便记录全局数据
-    + `userID`(Long)——为用户的账号ID，是读取存储数据的唯一凭证
+- 此外，此功能还可以获取到用户的信息和执行环境，方便记录全局数据
+    + `userID`(Long)——为用户的账号ID，是读取存储数据的唯一凭证（不同平台下数据独立存储，互不影响）
+    + `platformID`(String)——为用户的账号ID在当前平台上的字符串形式，**非QQ平台会自动添加平台前缀，如：kook_114514**
     + `nickname`(String)——为用户的昵称，如果在群聊执行且用户有群昵称则优先获取群昵称，**不同用户的群昵称可能存在相同**
-    + `from`(String)——为用户执行代码的环境。在群聊执行为当前的群聊名称和群号（具体格式为"群名称(群号)"），在私信执行为"private"
+    + `avatar`(String)——为用户的头像URL图片链接，如果获取失败则为当前平台图标
+    + `from`(String)——为用户执行代码的环境。在群聊执行为当前的群聊名称和群号（具体格式为`群名称(群号)`），在私信执行为`private`
+    + `platform`(String)——为用户执行代码的平台，如：qq、kook
 - **注意：当关闭存储功能或删除项目时，存储的数据将被清空**
 - 补充：「`#pb storage <名称> [userID]`」用来查询当前存储内容，方便程序调试
 ### 程序输入示例
@@ -503,7 +507,7 @@
 }
 ```
 ### 下方可查看[存储功能+json格式输出]的代码示例
-- 关于存储功能的python代码示例：[https://pastebin.ubuntu.com/p/hg5kGnYGkM/](https://pastebin.ubuntu.com/p/hg5kGnYGkM/)
+- 关于存储功能的python代码示例：[https://pastebin.ubuntu.com/p/KxBSqjJJxf/](https://pastebin.ubuntu.com/p/KxBSqjJJxf/)
 - c++在使用存储功能时需要导入\"json.h\"（此文件会在配置辅助文件为“json.h”后一起上传至glot），内部包含json解析和编码功能，具体使用方法和代码示例请查看：[https://pastebin.ubuntu.com/p/qXMJcBdGFt/](https://pastebin.ubuntu.com/p/qXMJcBdGFt/)（内含源代码链接）
 
 ## bucket跨项目存储库

@@ -64,7 +64,7 @@ View and add pastebin code, profile info, statistics, and configure advanced fea
 | Command                | Description                             |
 |------------------------|-----------------------------------------|
 | `/pb support`          | List websites currently supported by PB |
-| `/pb profile [QQ]`     | View personal profile info              |
+| `/pb profile [ID]`     | View personal profile info              |
 | `/pb private`          | Enable proactive private messaging      |
 | `/pb stats [name]`     | View statistics                         |
 | `/pb list [QueryMode]` | View full list                          |
@@ -82,7 +82,7 @@ View and add pastebin code, profile info, statistics, and configure advanced fea
 | Command                                                 | Description                                          |
 |---------------------------------------------------------|------------------------------------------------------|
 | `/pb set <name> format <output format> [width/storage]` | Modify output format                                 |
-| `/pb storage <name> [query ID]`                         | Query stored data                                    |
+| `/pb storage <name> [query ID/mail] [address]`          | Query stored data                                    |
 | `/pb export <name>`                                     | Export code cache to a temp link (when link expires) |
 
 > 👉 For help with image output, data storage, and other advanced features, please see [pb Commands & Advanced Features Help](pastebin_en.md)
@@ -105,13 +105,13 @@ Run code saved in Pastebin
 Manage and operate cross-project Buckets.
 
 ### 🗄 Bucket Management Commands
-| Command                                       | Description              |
-|-----------------------------------------------|--------------------------|
-| `/bk list [text/backup]`                      | View Bucket list         |
-| `/bk info <ID/name>`                          | View Bucket info         |
-| `/bk storage <ID/name> [password] [backupID]` | Query Bucket stored data |
-| `/bk create <name> <password>`                | Create new Bucket        |
-| `/bk set <ID/name> <param> <value>`           | Modify Bucket attributes |
+| Command                                                      | Description              |
+|--------------------------------------------------------------|--------------------------|
+| `/bk list [text/backup]`                                     | View Bucket list         |
+| `/bk info <ID/name>`                                         | View Bucket info         |
+| `/bk storage <ID/name> [password] [backupID/mail] [address]` | Query Bucket stored data |
+| `/bk create <name> <password>`                               | Create new Bucket        |
+| `/bk set <ID/name> <param> <value>`                          | Modify Bucket attributes |
 
 ### 🔗 Project-Bucket Linking Commands
 | Command                                  | Description                |

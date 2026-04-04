@@ -464,11 +464,15 @@ You can enable data storage with:
 - The storage feature uses two parameters: `storage` and `global`. **Both are of type `String` (but may also be `null`).**
 - `storage` refers to user-specific storage, bound to the user’s `userID`. **Each user has separate data. When user A runs the program, they only get their own data and cannot access user B's.**
 - `global` is shared across all users. **If user A modifies global data, user B will see the updated value when they run the program.**
+- `bucket` is used for cross-project storage, **please refer to [Cross-Project Repository Buckets](#bucket-cross-project-storage) for usage details.**
 - **Note:** When using `ForwardMessage` with storage, the `storage` and `global` parameters **must** be included in the outer `JsonForwardMessage` object. If placed only inside the nested `JsonMessage`, the data will not be saved.
-- Additionally, this feature can retrieve the user’s ID and nickname to help track global data:
-    + `userID` (Long) — The user’s account ID, used as the key to fetch storage data.
+- Additionally, this feature can retrieve user information and the execution environment, facilitating the recording of global data:
+    + `userID` (Long) — The user’s account ID, used as the key to fetch storage data. (Data is stored independently across different platforms and does not affect other platforms.)
+    + `platformID` (String) — The string representation of the user's account ID on the current platform. **For platforms other than QQ, a platform prefix will be automatically added (e.g., `kook_114514`).**
     + `nickname` (String) — The user’s nickname. If executed in a group and the user has a group nickname, that is preferred. **Note: Different users may have the same nickname.**
+    + `avatar` (String) — The URL link to the user's avatar image; if retrieval fails, it defaults to the current platform's icon.
     + `from` (String) — The environment where the command is run. In group chats, it's the group name and ID in the format: `"GroupName(GroupID)"`; in private chats, it will be `"private"`.
+    + `platform` (String) — The platform on which the code is executed for the user (e.g., `qq`, `kook`).
 - **Warning:** When the storage feature is disabled or an entry is deleted, **all associated data will be cleared**.
 - Additional command: `#pb storage <name> [userID]` — View current storage contents, useful for debugging.
 ### Program Input Example
@@ -503,7 +507,7 @@ You can enable data storage with:
 }
 ```
 ### Example Code Using [Storage + JSON Output]
-- Python example using the storage feature: [https://pastebin.ubuntu.com/p/hg5kGnYGkM/](https://pastebin.ubuntu.com/p/hg5kGnYGkM/)
+- Python example using the storage feature: [https://pastebin.ubuntu.com/p/KxBSqjJJxf/](https://pastebin.ubuntu.com/p/KxBSqjJJxf/)
 - In C++, using the storage feature requires importing `json.h`. (this helper file will be uploaded to Glot when configured). It includes functions for JSON parsing and encoding. See usage and code examples here: [https://pastebin.ubuntu.com/p/qXMJcBdGFt/](https://pastebin.ubuntu.com/p/qXMJcBdGFt/)
 
 ## Bucket Cross-Project Storage
