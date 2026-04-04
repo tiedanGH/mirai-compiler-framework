@@ -161,7 +161,7 @@ object PastebinCodeExecutor {
                 val imageData = Base64Processor.encodeImagesToBase64(imageUrls, encodeBase64)
                 val avatar = MiraiCompilerFramework.getAvatarUrl(numID, platform)
 
-                val jsonInput = JsonProcessor.processEncode(global, storage, bucket, numID, nickname, avatar, from, platform, imageData)
+                val jsonInput = JsonProcessor.processEncode(global, storage, bucket, numID, userID, nickname, avatar, from, platform, imageData)
                 input = "$jsonInput\n$userInput"
 
                 val platformInfo = if (platform == "qq") "" else "($platform)"
