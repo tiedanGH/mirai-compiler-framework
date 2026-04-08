@@ -19,7 +19,7 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:5.0.0-alpha.16")
     api("jakarta.mail:jakarta.mail-api:2.1.5")
     implementation("org.eclipse.angus:angus-mail:2.0.5")
-    implementation("org.apache.tika:tika-core:3.2.3")
+    implementation("org.apache.tika:tika-core:3.3.0")
     implementation("xyz.cssxsh.baidu:baidu-aip:3.3.2")
     implementation("at.favre.lib:bcrypt:0.10.2")
 
