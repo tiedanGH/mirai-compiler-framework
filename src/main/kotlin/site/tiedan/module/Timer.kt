@@ -1,19 +1,16 @@
 package site.tiedan.module
 
 import net.mamoe.mirai.utils.info
-import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.roundTo2
 import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.data.ExtraData
-import java.io.File
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import java.util.*
 
 object Timer {
+
     fun executeScheduledTasks() {
-        backupYmlDataFiles()
+        BackupManager.dailyBackup()
         executeClearBlackList()
         dailyDecayScore()
     }
@@ -46,35 +43,6 @@ object Timer {
         }
         ExtraData.save()
         logger.info { "热度指数衰减执行完成" }
-    }
-
-    private fun backupYmlDataFiles() {
-        val baseDir = File(MiraiCompilerFramework.baseDataFolder)
-        if (!baseDir.exists() || !baseDir.isDirectory) return
-
-        val bakDir = File(baseDir, "backup")
-        if (!bakDir.exists()) bakDir.mkdirs()
-
-        val today = LocalDate.now().format(DateTimeFormatter.ISO_DATE)
-        val todayDir = File(bakDir, today)
-        if (!todayDir.exists()) todayDir.mkdirs()
-
-        baseDir.listFiles { file ->
-            file.isFile && file.extension.equals("yml", ignoreCase = true)
-        }?.forEach { ymlFile ->
-            val target = File(todayDir, ymlFile.name)
-            ymlFile.copyTo(target, overwrite = true)
-        }
-
-        val dateDirs = bakDir.listFiles { file -> file.isDirectory }?.toList() ?: return
-        if (dateDirs.size > 7) {
-            val sorted = dateDirs.sortedBy { it.name }
-            val toDelete = sorted.take(dateDirs.size - 7)
-            toDelete.forEach { dir ->
-                dir.deleteRecursively()
-            }
-        }
-        logger.info { "YML 数据文件自动备份完成" }
     }
 
     private fun getCalender(hour: Int, minute: Int = 0, second: Int = 0, millisecond: Int = 0): Calendar {

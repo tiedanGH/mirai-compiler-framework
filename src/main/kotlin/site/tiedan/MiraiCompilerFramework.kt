@@ -3,6 +3,7 @@ package site.tiedan
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import net.mamoe.mirai.Bot
+import net.mamoe.mirai.console.MiraiConsole
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.register
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.unregister
 import net.mamoe.mirai.console.command.CommandSender
@@ -96,6 +97,19 @@ object MiraiCompilerFramework : KotlinPlugin(
         reloadConfig()
         reloadData()
 
+        // 存储数据完整性检查：检测 PastebinStorage 存储数据是否异常丢失
+        if (!BackupManager.checkStorageIntegrity()) {
+            logger.error("============================================================")
+            logger.error("【严重错误】检测到存储数据文件 PastebinStorage.yml 异常丢失或被重置为默认值！")
+            logger.error("为避免框架继续运行后用默认数据覆盖已有备份，已主动停止 Mirai。")
+            logger.error("请从下列备份目录恢复数据后再重新启动：")
+            logger.error("  · 定时备份：${baseDataFolder}/backup/<日期>/")
+            logger.error("  · 关闭备份：${baseDataFolder}/backup/shutdown/<时间>/")
+            logger.error("============================================================")
+            MiraiConsole.job.cancel()
+            return
+        }
+
         startTimer()
 
         if (PastebinConfig.API_TOKEN.isEmpty())
@@ -118,6 +132,9 @@ object MiraiCompilerFramework : KotlinPlugin(
         CommandBucket.unregister()
         CommandImage.unregister()
         CommandRun.unregister()
+
+        // 关闭时额外备份一次数据
+        BackupManager.backupOnShutdown()
     }
 
     fun reloadConfig() {
