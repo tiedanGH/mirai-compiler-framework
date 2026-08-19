@@ -109,15 +109,15 @@ object MailService {
             current.contextClassLoader = MailConfig::class.java.classLoader
             Transport.send(mail)
             sender.sendQuoteReply("[请求使用邮件发送]\n存储数据导出成功（文件总长度：${output.length}），并通过邮件发送，请您登录邮箱查看")
+            File("${cacheFolder}storage.txt").delete()  // 仅在邮件发送成功后删除临时文件；发送失败时保留文件，便于后续排查或手动恢复
         } catch (e: MessagingException) {
             logger.warning(e)
-            sender.sendQuoteReply("[请求使用邮件发送]\n存储数据导出成功（文件总长度：${output.length}），但邮件发送失败，原因: ${e.message}")
+            sender.sendQuoteReply("[请求使用邮件发送]\n存储数据导出成功（文件总长度：${output.length}），但邮件发送失败。本地文件已保留，请联系管理员。原因:\n${e.message}")
         } catch (e: Exception) {
             logger.warning(e)
-            sender.sendQuoteReply("[请求使用邮件发送]\n存储数据导出成功（文件总长度：${output.length}），但发生其他未知错误: ${e.message}")
+            sender.sendQuoteReply("[请求使用邮件发送]\n存储数据导出成功（文件总长度：${output.length}），但发生其他未知错误。本地文件已保留，请联系管理员。原因:\n${e.message}")
         } finally {
             current.contextClassLoader = oc
-            File("${cacheFolder}storage.txt").delete()
         }
     }
 
