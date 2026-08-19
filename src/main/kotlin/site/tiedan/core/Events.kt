@@ -28,6 +28,7 @@ import site.tiedan.MiraiCompilerFramework.THREADS
 import site.tiedan.MiraiCompilerFramework.ThreadInfo
 import site.tiedan.MiraiCompilerFramework.getPlatform
 import site.tiedan.MiraiCompilerFramework.getUserPlatformID
+import site.tiedan.MiraiCompilerFramework.isBotEnabled
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.trimToMaxLength
@@ -60,6 +61,7 @@ object Events : SimpleListenerHost() {
     @Suppress("unused")
     @EventHandler(priority = EventPriority.NORMAL)
     internal suspend fun MessageEvent.process() {
+        if (!isBotEnabled(bot.id)) return
         if (checkQuickPrefix(message.content)) {
             return toCommandSender().commandRunOnEvent(message)
         }

@@ -19,6 +19,7 @@ import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.getNickname
 import site.tiedan.MiraiCompilerFramework.getUserPlatformID
 import site.tiedan.MiraiCompilerFramework.imageFolder
+import site.tiedan.MiraiCompilerFramework.isBotEnabled
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.parseUserID
 import site.tiedan.MiraiCompilerFramework.pendingCommand
@@ -61,6 +62,8 @@ object CommandImage : RawCommand(
     )
 
     override suspend fun CommandSender.onCommand(args: MessageChain) {
+
+        if (!isBotEnabled(bot?.id)) return
 
         val userID = getUserPlatformID(this.user?.id) ?: CONSOLE_USER_ID
         val userName = this.name

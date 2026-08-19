@@ -3,6 +3,7 @@ package site.tiedan.command
 import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.Command
 import site.tiedan.MiraiCompilerFramework.CMD_PREFIX
+import site.tiedan.MiraiCompilerFramework.isBotEnabled
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.commandPrefix
@@ -35,6 +36,7 @@ object CommandGlot : RawCommand(
     )
 
     override suspend fun CommandSender.onCommand(args: MessageChain) {
+        if (!isBotEnabled(bot?.id)) return
         try {
             when (args[0].content) {
 

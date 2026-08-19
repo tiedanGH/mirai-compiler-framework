@@ -7,6 +7,7 @@ import net.mamoe.mirai.console.command.RawCommand
 import net.mamoe.mirai.message.data.*
 import net.mamoe.mirai.message.data.Image.Key.queryUrl
 import site.tiedan.MiraiCompilerFramework
+import site.tiedan.MiraiCompilerFramework.isBotEnabled
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.data.PastebinData
 import site.tiedan.utils.FuzzySearch
@@ -33,6 +34,8 @@ object CommandRun : RawCommand(
      * 从保存的pastebin链接中直接运行
      */
     override suspend fun CommandSender.onCommand(args: MessageChain) {
+
+        if (!isBotEnabled(bot?.id)) return
 
         val name = try {
             PastebinData.alias[args[0].content] ?: args[0].content

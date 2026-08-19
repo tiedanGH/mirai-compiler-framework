@@ -116,6 +116,9 @@ object MiraiCompilerFramework : KotlinPlugin(
             logger.error("Glot API token为空，请先在PastebinConfig中配置才能使用本框架，访问 https://glot.io/account/token 获取token")
         if (PastebinConfig.Hastebin_TOKEN.isEmpty())
             logger.warning("Hastebin token为空，将无法获取Hastebin上的代码，如需注册请访问 https://www.toptal.com/developers/hastebin/documentation")
+        val disabledBots = PlatformConfig.platforms.keys.filterNot { isBotEnabled(it) }
+        if (disabledBots.isNotEmpty())
+            logger.warning("以下Bot已在PlatformConfig中配置为禁用，将不响应任何执行、指令和事件：$disabledBots")
         if (ExtraData.key.isEmpty()) {
             ExtraData.key = Security.generateAesKey()
             ExtraData.save()
@@ -288,6 +291,16 @@ object MiraiCompilerFramework : KotlinPlugin(
         return Bot.instances.firstNotNullOfOrNull { bot ->
             bot.getFriend(friendId)
         }
+    }
+
+    /**
+     * 检查Bot是否启用
+     *
+     * 仅当显式配置 `enable` 为 false 时禁用，未配置该Bot或未配置 `enable` 均视为启用
+     */
+    fun isBotEnabled(botId: Long?): Boolean {
+        val id = botId ?: return true
+        return PlatformConfig.platforms[id]?.get("enable") != "false"
     }
 
     /**
