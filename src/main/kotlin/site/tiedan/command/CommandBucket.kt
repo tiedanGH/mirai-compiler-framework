@@ -35,6 +35,7 @@ import site.tiedan.format.MarkdownImageGenerator
 import site.tiedan.module.MailService
 import site.tiedan.utils.FuzzySearch
 import site.tiedan.utils.Security
+import site.tiedan.utils.YamlSafeValue
 import java.io.File
 import java.time.Instant
 import java.time.ZoneId
@@ -269,6 +270,10 @@ object CommandBucket : RawCommand(
                         sendQuoteReply("创建失败：存储库名称不能为纯数字")
                         return
                     }
+                    if (YamlSafeValue.isNullLiteral(name)) {
+                        sendQuoteReply("创建失败：存储库名称不能使用 YAML 保留字（null、Null、NULL、~），请更换名称")
+                        return
+                    }
                     if (nameToID(name) != null) {
                         sendQuoteReply("创建失败：名称 $name 已存在")
                         return
@@ -333,6 +338,10 @@ object CommandBucket : RawCommand(
                         sendQuoteReply("修改失败：修改后的值为空！")
                         return
                     }
+                    if (YamlSafeValue.isNullLiteral(content)) {
+                        sendQuoteReply("修改失败：值不能使用 YAML 保留字（null、Null、NULL、~），请更换内容")
+                        return
+                    }
                     when (option) {
                         "password"-> {
                             if (subject is Group) {
@@ -375,6 +384,9 @@ object CommandBucket : RawCommand(
                                 ?: return sendQuoteReply("备份编号无效：备份编号仅支持 1-3")
                             val newName = paras.getOrNull(1)
                                 ?: return sendQuoteReply("修改失败：请输入修改后的新备份名称")
+                            if (YamlSafeValue.isNullLiteral(newName)) {
+                                return sendQuoteReply("修改失败：备份名称不能使用 YAML 保留字（null、Null、NULL、~），请更换名称")
+                            }
                             val backup = PastebinBucket.backups[id]?.get(num)
                                 ?: return sendQuoteReply("修改失败：备份编号 ${num + 1} 尚未初始化")
 
@@ -721,7 +733,7 @@ object CommandBucket : RawCommand(
     fun bucketIdsToBucketData(ids: List<Long>): List<JsonProcessor.BucketData> {
         return ids.map { id ->
             val bk = PastebinBucket.bucket[id]
-            val storage = bk?.get("content") ?: ""
+            val storage = YamlSafeValue.unescape(bk?.get("content") ?: "")
             JsonProcessor.BucketData(
                 id = id,
                 name = bk?.get("name"),

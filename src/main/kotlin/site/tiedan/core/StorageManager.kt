@@ -11,6 +11,7 @@ import site.tiedan.data.PastebinPlatformStorage
 import site.tiedan.data.PastebinStorage
 import site.tiedan.format.JsonProcessor.BucketData
 import site.tiedan.utils.Security
+import site.tiedan.utils.YamlSafeValue
 import kotlin.collections.set
 
 /**
@@ -32,18 +33,18 @@ object StorageManager {
      * 获取 global 存储数据
      */
     fun getGlobalData(name: String): String {
-        return PastebinStorage.storage[name]?.get(0L) ?: ""
+        return YamlSafeValue.unescape(PastebinStorage.storage[name]?.get(0L) ?: "")
     }
 
     /**
      * 获取 storage 存储数据
      */
     fun getStorageData(name: String, userID: Long, platform: String): String {
-        return when (platform) {
+        return YamlSafeValue.unescape(when (platform) {
             "qq" -> PastebinStorage.storage[name]?.get(userID) ?: ""
 
             else -> PastebinPlatformStorage.storage[platform]?.get(name)?.get(userID) ?: ""
-        }
+        })
     }
 
     /**
@@ -77,12 +78,12 @@ object StorageManager {
 
         // global
         val globalMap = (PastebinStorage.storage[name] ?: mutableMapOf(0L to "")).toMutableMap()
-        global?.let { globalMap[0L] = it }
+        global?.let { globalMap[0L] = YamlSafeValue.escape(it) }
 
         if (isQQ) {
             // QQ - storage
             storage?.let {
-                if (it.isEmpty()) globalMap.remove(userID) else globalMap[userID] = it
+                if (it.isEmpty()) globalMap.remove(userID) else globalMap[userID] = YamlSafeValue.escape(it)
             }
             PastebinStorage.storage[name] = globalMap
 
@@ -97,7 +98,7 @@ object StorageManager {
             val nameMap = (platformMap[name] ?: mutableMapOf()).toMutableMap()
 
             storage?.let {
-                if (it.isEmpty()) nameMap.remove(userID) else nameMap[userID] = it
+                if (it.isEmpty()) nameMap.remove(userID) else nameMap[userID] = YamlSafeValue.escape(it)
             }
 
             platformMap[name] = nameMap
@@ -137,7 +138,7 @@ object StorageManager {
                     } else {
                         data.content
                     }
-                    PastebinBucket.bucket[bucketId]?.set("content", content)
+                    PastebinBucket.bucket[bucketId]?.set("content", YamlSafeValue.escape(content))
                     seenBucketIDs.add(bucketId)
                 }
             }

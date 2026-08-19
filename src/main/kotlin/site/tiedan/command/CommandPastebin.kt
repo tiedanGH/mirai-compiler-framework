@@ -44,6 +44,7 @@ import site.tiedan.utils.HttpUtil
 import site.tiedan.utils.PastebinUrlHelper
 import site.tiedan.utils.PastebinUrlHelper.checkUrl
 import site.tiedan.utils.PastebinUrlHelper.supportedUrls
+import site.tiedan.utils.YamlSafeValue
 import java.io.File
 import java.net.ConnectException
 import kotlin.math.ceil
@@ -1059,7 +1060,7 @@ object CommandPastebin : RawCommand(
                         )
                         return
                     }
-                    val storage = PastebinStorage.storage[name]
+                    val storage = PastebinStorage.storage[name]?.mapValues { YamlSafeValue.unescape(it.value) }
 
                     val ownerID = PastebinData.pastebin[name]?.get("userID")
                     val isOwner = userID == ownerID
