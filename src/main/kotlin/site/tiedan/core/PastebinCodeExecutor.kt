@@ -110,7 +110,7 @@ object PastebinCodeExecutor {
 
             // 从url或缓存获取代码
             val code: String = try {
-                if (PastebinUrlHelper.supportedUrls.any { url.startsWith(it.url) && it.enableCache }) {
+                if (PastebinUrlHelper.allUrls.any { url.startsWith(it.url) && it.enableCache }) {
                     if (CodeCache.CodeCache.contains(name)) {
                         logger.debug("从 CodeCache: $name 中获取代码")
                         CodeCache.CodeCache[name]!!
@@ -131,6 +131,9 @@ object PastebinCodeExecutor {
                     logger.info("从 $url 中获取代码")
                     PastebinUrlHelper.get(url)
                 }
+            } catch (e: PastebinUrlHelper.ServiceDiscontinuedException) {
+                sendQuoteReply("[获取代码失败]\n${e.message}")
+                return
             } catch (e: Exception) {
                 sendQuoteReply(
                     "[获取代码失败] 请重新尝试\n" +

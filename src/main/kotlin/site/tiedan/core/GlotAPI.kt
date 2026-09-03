@@ -134,16 +134,43 @@ object GlotAPI {
         listLanguages().find { it.name.equals(language, true) } ?: throw Exception("不支持的语言 $language")
 
     /**
+     * 新版 glot.io 页面内嵌的编辑器数据，[SSR_SELECTOR] 中为该结构的 JSON
+     */
+    @Serializable
+    data class SsrData(val editor: SsrEditor)
+    @Serializable
+    data class SsrEditor(
+        val title: String = "",
+        val language: String = "",
+        val files: List<CodeFile> = emptyList(),
+        val stdin: String? = null,
+    )
+
+    /** 新版页面内嵌数据所在元素 */
+    private const val SSR_SELECTOR = "#glot-ssr-data"
+
+    /**
+     * 获取 glot.io 页面中的文件列表
+     *
+     * @param url glot.io 页面地址，如 `https://glot.io/new/python`、`https://glot.io/snippets/<id>`
+     * @return 页面中的全部文件，首个元素为主文件
+     */
+    fun getEditorFiles(url: String): List<CodeFile> {
+        val document = HttpUtil.getDocument(url)
+        val ssrData = HttpUtil.documentSelect(document, SSR_SELECTOR).firstOrNull()?.data()
+            ?: throw Exception("无法获取 $url 的页面数据")
+        return json.decodeFromString<SsrData>(ssrData).editor.files
+            .ifEmpty { throw Exception("未获取到 $url 中的任何文件") }
+    }
+
+    /**
      * 获取指定编程语言的模板文件（缓存）
      */
     fun getTemplateFile(language: String): CodeFile {
         val lang = getSupport(language)
         if (GlotCache.templateFiles.containsKey(lang.name))
             return GlotCache.templateFiles[lang.name]!!
-        val document = HttpUtil.getDocument(URL_NEW + lang.name)
-        val filename = HttpUtil.documentSelect(document, ".filename").firstOrNull()?.text() ?: throw Exception("无法获取文件名")
-        val fileContent = HttpUtil.documentSelect(document, "#editor-1").firstOrNull()?.wholeText() ?: throw Exception("无法获取模板文件内容")
-        val templateFile = CodeFile(filename, fileContent)
+        val templateFile = getEditorFiles(URL_NEW + lang.name).first()
         GlotCache.templateFiles[lang.name] = templateFile
         return templateFile
     }

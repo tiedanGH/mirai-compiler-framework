@@ -44,6 +44,7 @@ import site.tiedan.utils.FuzzySearch
 import site.tiedan.utils.HttpUtil
 import site.tiedan.utils.PastebinUrlHelper
 import site.tiedan.utils.PastebinUrlHelper.checkUrl
+import site.tiedan.utils.PastebinUrlHelper.discontinuedUrls
 import site.tiedan.utils.PastebinUrlHelper.supportedUrls
 import site.tiedan.utils.YamlSafeValue
 import java.io.File
@@ -140,8 +141,10 @@ object CommandPastebin : RawCommand(
                 "support", "支持"-> {   // 支持粘贴代码的网站
                     sendQuoteReply(
                         "🌐 目前pb支持粘贴代码的网站：\n" +
-                        supportedUrls.joinToString(separator = "") { "${it.website}\n" } +
-                        "💡 如有更多好用的网站欢迎推荐"
+                        supportedUrls.joinToString(separator = "\n", postfix = "\n") { it.website } +
+                        "💡 如有更多好用的网站欢迎推荐\n\n" +
+                        "⛔ 已停止服务：\n" +
+                        discontinuedUrls.joinToString(separator = "\n") { it.website }
                     )
                 }
 

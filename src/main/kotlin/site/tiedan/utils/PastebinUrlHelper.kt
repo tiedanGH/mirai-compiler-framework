@@ -3,7 +3,9 @@ package site.tiedan.utils
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
+import net.mamoe.mirai.console.command.CommandManager.INSTANCE.commandPrefix
 import site.tiedan.config.PastebinConfig
+import site.tiedan.core.GlotAPI
 import okhttp3.FormBody
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -45,19 +47,45 @@ object PastebinUrlHelper {
 
     data class UrlInfo(val website: String, val url: String, val enableCache: Boolean)
 
+    /**
+     * 支持的网站
+     */
     val supportedUrls = arrayOf(
-        UrlInfo("https://pastebin.ubuntu.com/", "https://pastebin.ubuntu.com/p/", true),
-        UrlInfo("https://glot.io/snippets/", "https://glot.io/snippets/", false),
-        UrlInfo("https://pastebin.com/ (raw)", "https://pastebin.com/raw/", false),
+        UrlInfo("https://pastes.dev/", "https://pastes.dev/", true),
         UrlInfo("https://gist.github.com/ (raw)", "https://gist.githubusercontent.com/", true),
         UrlInfo("https://www.toptal.com/developers/hastebin/", "https://hastebin.com/share/", true),
-        UrlInfo("https://bytebin.lucko.me/", "https://bytebin.lucko.me/", true),
-        UrlInfo("https://pastes.dev/", "https://pastes.dev/", true),
+        UrlInfo("https://glot.io/snippets/", "https://glot.io/snippets/", false),
+        UrlInfo("https://pastebin.com/ (raw)", "https://pastebin.com/raw/", false),
         UrlInfo("https://p.ip.fi/", "https://p.ip.fi/", true),
     )
 
     /**
+     * 已停止服务的网站。仍保留登记，用于：
+     * 1. [allUrls] 能按 `enableCache` 命中本地代码缓存，让**已缓存**的历史项目继续可用
+     * 2. [get] 能识别链接并给出明确的停服提示
+     */
+    val discontinuedUrls = arrayOf(
+        UrlInfo("https://pastebin.ubuntu.com/", "https://pastebin.ubuntu.com/p/", true),
+        UrlInfo("https://bytebin.lucko.me/", "https://bytebin.lucko.me/", true),
+    )
+
+    class ServiceDiscontinuedException(message: String) : Exception(message)
+
+    /**
+     * 访问已停服网站（[discontinuedUrls]）时追加的迁移提示
+     */
+    private val MIGRATION_TIP =
+        "请联系此项目作者将代码迁移至其他网站后重新设置链接\n" +
+        "通过「${commandPrefix}pb support」查看可用网站"
+
+    /**
+     * 支持的网站 + 已停服的网站，用于需要识别全部历史链接的场景（如代码缓存判断）
+     */
+    val allUrls = supportedUrls + discontinuedUrls
+
+    /**
      * 检查链接是否合法
+     * 已停服的网站（[discontinuedUrls]）不再放行
      */
     fun checkUrl(url: String): Boolean {
         val actualUrl = if (url.startsWith("[")) {
@@ -89,12 +117,14 @@ object PastebinUrlHelper {
      */
     fun get(url: String): String {
         return when {
-            url.startsWith("https://pastebin.ubuntu.com/p/") ->
-                HttpUtil.documentSelect(HttpUtil.getDocument(url), "#hidden-content").text()
+            url.startsWith("https://pastebin.ubuntu.com/p/") -> {
+                // 网站已停止服务，原始获取方法保留供参考：
+                // HttpUtil.documentSelect(HttpUtil.getDocument(url), "#hidden-content").text()
+                throw ServiceDiscontinuedException("Ubuntu Pastebin 已停止服务，无法再获取代码\n$MIGRATION_TIP")
+            }
 
             url.startsWith("https://glot.io/snippets/") ->
-                HttpUtil.documentSelect(HttpUtil.getDocument(url), "#editor-1").firstOrNull()?.wholeText()
-                    ?: throw Exception("获取 $url 内容失败")
+                GlotAPI.getEditorFiles(url).first().content
 
             url.startsWith("https://pastebin.com/raw/") -> getRawText(url)
 
@@ -110,7 +140,11 @@ object PastebinUrlHelper {
                 }
             }
 
-            url.startsWith("https://bytebin.lucko.me/") -> getRawText(url)
+            url.startsWith("https://bytebin.lucko.me/") -> {
+                // 网站已废弃且即将永久关闭，原始获取方法保留供参考：
+                // getRawText(url)
+                throw ServiceDiscontinuedException("bytebin 已废弃且即将永久关闭，作者已声明请勿继续使用该服务\n$MIGRATION_TIP")
+            }
 
             url.startsWith("https://pastes.dev/") -> getRawText(url.replace("pastes", "api.pastes"))
 
