@@ -1,7 +1,7 @@
 package site.tiedan.core
 
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
 import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.console.command.CommandSender.Companion.asCommandSender
 import net.mamoe.mirai.contact.Group
@@ -15,6 +15,7 @@ import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.trimToMaxLength
 import site.tiedan.MiraiCompilerFramework.uploadFileToImage
+import site.tiedan.MiraiCompilerFramework.uploadTempImage
 import site.tiedan.config.PastebinConfig
 import site.tiedan.data.ExtraData
 import site.tiedan.format.*
@@ -24,6 +25,7 @@ import site.tiedan.format.JsonProcessor.toJsonSingleMessages
 import site.tiedan.format.JsonProcessor.toSingleChainMessages
 import site.tiedan.utils.DownloadHelper.downloadImage
 import java.io.File
+import java.util.UUID
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URI
@@ -41,11 +43,12 @@ import java.time.LocalTime
  */
 object OutputHandler {
 
-    private val OutputLock = Mutex()
+    // 输出进程池（配置修改重启生效）
+    private val OutputPool by lazy { Semaphore(PastebinConfig.output_limit.coerceAtLeast(1)) }
 
-     fun isLocked(): Boolean = OutputLock.isLocked
-     suspend fun lock() = OutputLock.lock()
-     fun unlock() = OutputLock.unlock()
+     fun isFull(): Boolean = OutputPool.availablePermits == 0
+     suspend fun acquire() = OutputPool.acquire()
+     fun release() = OutputPool.release()
 
     /**
      * ## 处理程序输出格式
@@ -93,11 +96,10 @@ object OutputHandler {
             // markdown转图片输出
             "markdown"-> {
                 val markdownResult = MarkdownImageGenerator.processMarkdown(name, output, width ?: "600")
-                if (!markdownResult.success) {
+                if (!markdownResult.success || markdownResult.file == null) {
                     return sendQuoteReply(markdownResult.message)
                 }
-                val file = File("${cacheFolder}markdown.png")
-                subject?.uploadFileToImage(file)     // 返回结果图片
+                subject?.uploadTempImage(markdownResult.file)     // 返回结果图片
                     ?: return sendQuoteReply("[错误] 图片文件异常：ExternalResource上传失败，请尝试重新执行")
             }
             // base64自定义格式输出
@@ -106,34 +108,37 @@ object OutputHandler {
                 if (!base64Result.success) {
                     return sendQuoteReply(base64Result.extension)
                 }
-                Base64Processor.fileToMessage(base64Result.fileType, base64Result.extension, subject, true)
+                Base64Processor.fileToMessage(base64Result.fileType, base64Result.file, subject, true)
                     ?: return sendQuoteReply("[错误] Base64文件转换时出现未知错误，请联系管理员")
             }
             // 普通图片输出
             "image"-> {
-                val file = if (output.startsWith("file:///")) {
+                val isLocalFile = output.startsWith("file:///")
+                val file = if (isLocalFile) {
                     File(URI(output))
                 } else {
-                    val downloadResult = downloadImage(name, output, cacheFolder, "image", force = true)
+                    val imageName = "image_${UUID.randomUUID()}"
+                    val downloadResult = downloadImage(name, output, cacheFolder, imageName, force = true)
                     if (!downloadResult.success) {
                         return sendQuoteReply(downloadResult.message)
                     }
-                    File("${cacheFolder}image")
+                    File("$cacheFolder$imageName")
                 }
                 if (!file.exists()) {
                     return sendQuoteReply("[错误] 本地图片文件不存在，请检查路径")
                 }
-                subject?.uploadFileToImage(file)     // 返回结果图片
+                // 本地路径不可删除
+                (if (isLocalFile) subject?.uploadFileToImage(file) else subject?.uploadTempImage(file))
                     ?: return sendQuoteReply("[错误] 图片文件异常：ExternalResource上传失败，请尝试重新执行")
             }
             // LaTeX转图片输出
             "LaTeX"-> {
-                val renderResult = renderLatexOnline(output)
+                val latexFile = File("${cacheFolder}latex_${UUID.randomUUID()}.png")
+                val renderResult = renderLatexOnline(output, latexFile)
                 if (renderResult.startsWith("QuickLaTeX")) {
                     return sendQuoteReply("[错误] $renderResult")
                 }
-                val file = File("${cacheFolder}latex.png")
-                subject?.uploadFileToImage(file)     // 返回结果图片
+                subject?.uploadTempImage(latexFile)     // 返回结果图片
                     ?: return sendQuoteReply("[错误] 图片文件异常：ExternalResource上传失败，请尝试重新执行")
             }
             // json分支功能MessageChain
@@ -347,9 +352,9 @@ object OutputHandler {
      * ### 在线API将 LaTeX 转换为图片
      * @param latex 待转换 LaTeX 字符串
      */
-    fun renderLatexOnline(latex: String): String {
+    fun renderLatexOnline(latex: String, outputFile: File): String {
         val apiUrl = "https://quicklatex.com/latex3.f"
-        val outputFilePath = "${cacheFolder}latex.png"
+        val outputFilePath = outputFile.path
         val postData = "formula=${URLEncoder.encode(latex, "GBK").replace("+", "%20")}&fsize=15px&fcolor=000000&bcolor=FFFFFF&mode=0&out=1"
 
         try {

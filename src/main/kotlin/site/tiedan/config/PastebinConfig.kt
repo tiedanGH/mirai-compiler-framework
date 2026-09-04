@@ -17,6 +17,9 @@ internal object PastebinConfig : AutoSavePluginConfig("PastebinConfig") {
     @ValueDescription("最多进程数限制")
     val thread_limit: Int by value(3)
 
+    @ValueDescription("最多同时进行的输出进程数（修改需重启生效）")
+    val output_limit: Int by value(3)
+
     @ValueDescription("是否启用转发消息（消息过长时收入转发消息，部分框架可能不支持）")
     val enable_ForwardMessage: Boolean by value(true)
 

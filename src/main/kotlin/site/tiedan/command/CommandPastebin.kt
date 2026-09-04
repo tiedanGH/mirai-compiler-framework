@@ -13,7 +13,6 @@ import site.tiedan.MiraiCompilerFramework.CONSOLE_USER_ID
 import site.tiedan.MiraiCompilerFramework.Command
 import site.tiedan.MiraiCompilerFramework.ERROR_MSG_MAX_LENGTH
 import site.tiedan.MiraiCompilerFramework.THREADS
-import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.getNickname
 import site.tiedan.MiraiCompilerFramework.getPlatform
 import site.tiedan.MiraiCompilerFramework.getUserPlatformID
@@ -25,7 +24,7 @@ import site.tiedan.MiraiCompilerFramework.requestUserConfirmation
 import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.trimToMaxLength
-import site.tiedan.MiraiCompilerFramework.uploadFileToImage
+import site.tiedan.MiraiCompilerFramework.uploadTempImage
 import site.tiedan.command.CommandBucket.bucketIDsToNames
 import site.tiedan.command.CommandBucket.linkedBucketID
 import site.tiedan.command.CommandBucket.removeProjectFromBucket
@@ -354,12 +353,11 @@ object CommandPastebin : RawCommand(
                                 MarkdownImageGenerator.generatePastebinListHtml(sortMode, filter),
                                 width = if (filter.isFilterEnabled) "600" else "2000"
                             )
-                            if (!markdownResult.success) {
+                            if (!markdownResult.success || markdownResult.file == null) {
                                 sendQuoteReply(markdownResult.message)
                                 return
                             }
-                            val file = File("${cacheFolder}markdown.png")
-                            val image = subject?.uploadFileToImage(file)
+                            val image = subject?.uploadTempImage(markdownResult.file)
                                 ?: return sendQuoteReply("[错误] 图片文件异常：ExternalResource上传失败，请尝试重新执行")
                             sendMessage(image)
                         }

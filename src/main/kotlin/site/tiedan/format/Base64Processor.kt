@@ -39,7 +39,7 @@ object Base64Processor {
         FileType.Video,
     )
 
-    data class Base64Result(val success: Boolean, val extension: String, val fileType: FileType)
+    data class Base64Result(val success: Boolean, val extension: String, val fileType: FileType, val file: File? = null)
 
     /**
      * 解析base64字符串
@@ -85,11 +85,11 @@ object Base64Processor {
                 }
             }
 
-            val outputFile = File("${cacheFolder}base64.$extension")
+            val outputFile = File("${cacheFolder}base64_${UUID.randomUUID()}.$extension")
             outputFile.writeBytes(decodedBytes)
 
             logger.info("Base64解码并写入文件成功：${outputFile.name}")
-            return base64Data
+            return base64Data.copy(file = outputFile)
         } catch (e: Exception) {
             val content = base64Str.substringAfter(",", base64Str)
             val m = Regex("[^A-Za-z0-9+/=\\-_\\r\\n]").find(content)
@@ -127,24 +127,24 @@ object Base64Processor {
     /**
      * 将本地文件上传为在线消息
      */
-    suspend fun fileToMessage(fileType: FileType, extension: String, subject: Contact?, supportAll: Boolean): Message? {
+    suspend fun fileToMessage(fileType: FileType, file: File?, subject: Contact?, supportAll: Boolean): Message? {
         val errorMessage = PlainText("[错误] base64在MessageChain输出格式下不兼容此文件格式，请更换其他输出格式")
-        val file = File("${cacheFolder}base64.$extension")
-        when (fileType) {
+        if (file == null) return null
+        val message = when (fileType) {
             FileType.Image -> {
-                return subject?.uploadFileToImage(file)
+                subject?.uploadFileToImage(file)
             }
 
             FileType.Audio -> {
                 if (!supportAll) return errorMessage
                 val receiver = subject as? AudioSupported
-                return file.toExternalResource().use { receiver?.uploadAudio(it) }
+                file.toExternalResource().use { receiver?.uploadAudio(it) }
             }
 
             FileType.Video -> {
                 if (!supportAll) return errorMessage
                 val thumbnail = File("${cacheFolder}thumbnail.png")
-                return file.toExternalResource().use { video ->
+                file.toExternalResource().use { video ->
                     thumbnail.toExternalResource().use { thumbnail ->
                         subject?.uploadShortVideo(thumbnail, video)
                     }
@@ -153,7 +153,7 @@ object Base64Processor {
 
             FileType.Text -> {
                 val output = file.readText()
-                return if ((output.length > MSG_TRANSFER_LENGTH || output.lines().size > 30) && PastebinConfig.enable_ForwardMessage) {
+                if ((output.length > MSG_TRANSFER_LENGTH || output.lines().size > 30) && PastebinConfig.enable_ForwardMessage) {
                     ForwardMessageGenerator.stringToForwardMessage(StringBuilder(output), subject)
                 } else {
                     PlainText(output)
@@ -164,6 +164,8 @@ object Base64Processor {
 
             else-> return errorMessage
         }
+        if (message != null) file.delete()
+        return message
     }
 
     /**
@@ -179,15 +181,18 @@ object Base64Processor {
                 imageData.add(ImageData(url, null))
                 continue
             }
-            val downloadResult = downloadFile(null, url, cacheFolder, "base64_download", MARKDOWN_MAX_TIME - timeUsed, force = true)
+            val tempName = "base64_download_${UUID.randomUUID()}"
+            val tempFile = File("$cacheFolder$tempName")
+            val downloadResult = downloadFile(null, url, cacheFolder, tempName, MARKDOWN_MAX_TIME - timeUsed, force = true)
             if (!downloadResult.success) {
                 imageData.add(ImageData(url, null, downloadResult.message))
                 continue
             }
             timeUsed += ceil(downloadResult.duration).toLong()
-            val result = fileToDataUri(File("${cacheFolder}base64_download"))
+            val result = fileToDataUri(tempFile)
             if (result.first) {
                 imageData.add(ImageData(url, result.second))
+                tempFile.delete()
             } else {
                 imageData.add(ImageData(url, null, "$errorMessage${result.second}"))
             }

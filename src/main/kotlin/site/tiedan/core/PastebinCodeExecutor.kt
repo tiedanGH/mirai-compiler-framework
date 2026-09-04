@@ -90,6 +90,10 @@ object PastebinCodeExecutor {
 
         THREADS.add(ThreadInfo(jobId, name, "$nickname($userID)", from, platform))
 
+        // 记录本进程下的锁状态
+        var storageLocked = false
+        var outputAcquired = false
+
         try {
             val language = PastebinData.pastebin[name]?.get("language").toString()
             val url = PastebinData.pastebin[name]?.get("url").toString()
@@ -152,17 +156,20 @@ object PastebinCodeExecutor {
 
             // 输入存储的数据
             if (storageMode == "true") {
+                // base64图片输入
+                val encodeBase64 = PastebinData.pastebin[name]?.get("base64") == "true"
+                val imageData = Base64Processor.encodeImagesToBase64(imageUrls, encodeBase64)
+                val avatar = MiraiCompilerFramework.getAvatarUrl(numID, platform)
+
                 if (StorageManager.isLocked()) {
                     logger.debug("(${userID})执行$name [存储]进程执行请求等待中...")
                     if (THREADS.size > 3) sendQuoteReply("当前进程较多（${THREADS.size - 1} 个正在等待），等待时间可能较长")
                 }
                 StorageManager.lock()
+                storageLocked = true
                 val global = StorageManager.getGlobalData(name)
                 val storage = StorageManager.getStorageData(name, numID, platform)
                 val bucket = StorageManager.getBucketData(name)
-                val encodeBase64 = PastebinData.pastebin[name]?.get("base64") == "true"
-                val imageData = Base64Processor.encodeImagesToBase64(imageUrls, encodeBase64)
-                val avatar = MiraiCompilerFramework.getAvatarUrl(numID, platform)
 
                 val jsonInput = JsonProcessor.processEncode(global, storage, bucket, numID, userID, nickname, avatar, from, platform, imageData)
                 input = "$jsonInput\n$userInput"
@@ -230,8 +237,9 @@ object PastebinCodeExecutor {
             }
             // 非text输出需锁定输出进程
             if (outputFormat != "text") {
-                if (OutputHandler.isLocked()) logger.debug("(${userID})执行$name [输出]进程执行请求等待中...")
-                OutputHandler.lock()
+                if (OutputHandler.isFull()) logger.debug("(${userID})执行$name [输出]进程执行请求等待中...")
+                OutputHandler.acquire()
+                outputAcquired = true
             }
             // 处理程序输出格式
             val message = this.handleOutputFormats(
@@ -286,8 +294,8 @@ object PastebinCodeExecutor {
             )
         } finally {
             THREADS.removeIf { it.id == jobId }
-            if (OutputHandler.isLocked()) OutputHandler.unlock()
-            if (StorageManager.isLocked()) StorageManager.unlock()
+            if (outputAcquired) OutputHandler.release()
+            if (storageLocked) StorageManager.unlock()
         }
     }
 

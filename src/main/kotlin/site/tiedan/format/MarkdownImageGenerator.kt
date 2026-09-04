@@ -5,8 +5,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import site.tiedan.config.PastebinConfig
 import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.MARKDOWN_MAX_TIME
 import site.tiedan.MiraiCompilerFramework.cacheFolder
@@ -23,6 +24,7 @@ import site.tiedan.data.PastebinBucket
 import site.tiedan.data.PastebinData
 import site.tiedan.module.Statistics
 import java.io.File
+import java.util.UUID
 import java.lang.management.ManagementFactory
 import java.time.Duration
 import java.time.Instant
@@ -37,11 +39,12 @@ import kotlin.math.ceil
  * @author tiedanGH
  */
 object MarkdownImageGenerator {
-    private val MarkdownLock = Mutex()
+    // markdown 转图片进程池（配置修改重启生效）
+    private val MarkdownPool = Semaphore(PastebinConfig.output_limit.coerceAtLeast(1))
     // 操作系统相关信息（仅用于监测内存用量）
     private val osBean = ManagementFactory.getOperatingSystemMXBean() as OperatingSystemMXBean
 
-    data class MarkdownResult(val success: Boolean, val message: String, val duration: Long)
+    data class MarkdownResult(val success: Boolean, val message: String, val duration: Long, val file: File? = null)
 
     /**
      * ### 调用 markdown2image
@@ -55,7 +58,8 @@ object MarkdownImageGenerator {
         originalContent: String,
         width: String = "600",
         timeout: Long = MARKDOWN_MAX_TIME
-    ): MarkdownResult = MarkdownLock.withLock {
+    ): MarkdownResult = MarkdownPool.withPermit {
+        val taskId = UUID.randomUUID()
         var duration = 0.0
         val result = run {
             val content = originalContent.ifBlank { "[警告] `content`内容为空或仅包含空白字符" }
@@ -67,21 +71,22 @@ object MarkdownImageGenerator {
             try {
                 logger.debug("请求调用系统命令执行Markdown转图片")
 
-                val tempFile = File("${cacheFolder}tmp.md")
+                val tempFile = File("${cacheFolder}tmp_$taskId.md")
+                val outputFile = File("${cacheFolder}markdown_$taskId.png")
                 tempFile.writeText(content)
                 val process = if (System.getProperty("os.name").lowercase().contains("windows")) {
                     ProcessBuilder(
                         "${cacheFolder}markdown2image.exe",
-                        "--input=${cacheFolder}tmp.md",
+                        "--input=${tempFile.path}",
                         "--width=$width",
-                        "--output=${cacheFolder}markdown.png"
+                        "--output=${outputFile.path}"
                     ).directory(File(".")).start()
                 } else {
                     ProcessBuilder(
                         "${cacheFolder}markdown2image",
-                        "--input=${cacheFolder}tmp.md",
+                        "--input=${tempFile.path}",
                         "--width=$width",
-                        "--output=${cacheFolder}markdown.png"
+                        "--output=${outputFile.path}"
                     ).directory(File(".")).start()
                 }
                 // 在后台线程中监控进程的内存使用情况
@@ -125,7 +130,7 @@ object MarkdownImageGenerator {
                 val endTime = Instant.now()     // 记录结束时间
                 duration = (Duration.between(startTime, endTime).toMillis() / 1000.0).roundTo2()
                 logger.info("Markdown执行成功，用时${duration}秒")
-                return@run MarkdownResult(true, "执行Markdown转图片成功", ceil(duration).toLong())
+                return@run MarkdownResult(true, "执行Markdown转图片成功", ceil(duration).toLong(), outputFile)
             } catch (e: Exception) {
                 logger.warning(e)
                 saveErrorRecord("$e\n\n$content", "${e::class.simpleName}")

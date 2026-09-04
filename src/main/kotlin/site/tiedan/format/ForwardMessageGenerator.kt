@@ -17,12 +17,14 @@ import site.tiedan.MiraiCompilerFramework.MARKDOWN_MAX_TIME
 import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.uploadFileToImage
+import site.tiedan.MiraiCompilerFramework.uploadTempImage
 import site.tiedan.MiraiCompilerFramework.trimToMaxLength
 import site.tiedan.format.JsonProcessor.json
 import site.tiedan.format.JsonProcessor.toJsonSingleMessages
 import site.tiedan.core.OutputHandler.renderLatexOnline
 import site.tiedan.utils.DownloadHelper.downloadImage
 import java.io.File
+import java.util.UUID
 import java.net.URI
 import kotlin.math.ceil
 
@@ -108,12 +110,12 @@ object ForwardMessageGenerator {
                         "markdown"-> {
                             val markdownResult = MarkdownImageGenerator.processMarkdown(name, content, m.width.toString(), MARKDOWN_MAX_TIME - timeUsed)
                             timeUsed += markdownResult.duration
-                            if (!markdownResult.success) {
+                            if (!markdownResult.success || markdownResult.file == null) {
                                 subject.bot named "Error" says "[markdown2image错误] ${markdownResult.message}"
                                 continue
                             }
                             try {
-                                val image = subject.uploadFileToImage(File("${cacheFolder}markdown.png"))
+                                val image = subject.uploadTempImage(markdownResult.file)
                                 if (image == null)
                                     subject.bot named result.name says "[错误] 图片文件异常：ExternalResource上传失败"
                                 else
@@ -132,30 +134,33 @@ object ForwardMessageGenerator {
                             subject.bot named result.name says (
                                 Base64Processor.fileToMessage(
                                     base64Result.fileType,
-                                    base64Result.extension,
+                                    base64Result.file,
                                     subject,
                                     true
                                 ) ?: PlainText("[错误] Base64文件转换时出现未知错误，请联系管理员")
                             )
                         }
                         "image"-> {
-                            val file = if (content.startsWith("file:///")) {
+                            val isLocalFile = content.startsWith("file:///")
+                            val file = if (isLocalFile) {
                                 File(URI(content))
                             } else {
-                                val downloadResult = downloadImage(name, content, cacheFolder, "image", MARKDOWN_MAX_TIME - timeUsed, force = true)
+                                val imageName = "image_${UUID.randomUUID()}"
+                                val downloadResult = downloadImage(name, content, cacheFolder, imageName, MARKDOWN_MAX_TIME - timeUsed, force = true)
                                 timeUsed += ceil(downloadResult.duration).toLong()
                                 if (!downloadResult.success) {
                                     subject.bot named "Error" says downloadResult.message
                                     continue
                                 }
-                                File("${cacheFolder}image")
+                                File("$cacheFolder$imageName")
                             }
                             try {
                                 if (!file.exists()) {
                                     subject.bot named "Error" says "[错误] 本地图片文件不存在，请检查路径"
                                     continue
                                 }
-                                val image = subject.uploadFileToImage(file)
+                                // 本地路径文件不可删除
+                                val image = if (isLocalFile) subject.uploadFileToImage(file) else subject.uploadTempImage(file)
                                 if (image == null)
                                     subject.bot named result.name says "[错误] 图片文件异常：ExternalResource上传失败"
                                 else
@@ -166,12 +171,13 @@ object ForwardMessageGenerator {
                             }
                         }
                         "LaTeX"-> {
-                            val renderResult = renderLatexOnline(content)
+                            val latexFile = File("${cacheFolder}latex_${UUID.randomUUID()}.png")
+                            val renderResult = renderLatexOnline(content, latexFile)
                             if (renderResult.startsWith("QuickLaTeX")) {
                                 subject.bot named "Error" says "[错误] $renderResult"
                             }
                             try {
-                                val image = subject.uploadFileToImage(File("${cacheFolder}latex.png"))
+                                val image = subject.uploadTempImage(latexFile)
                                 if (image == null)
                                     subject.bot named result.name says "[错误] 图片文件异常：ExternalResource上传失败"
                                 else

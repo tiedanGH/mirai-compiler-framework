@@ -13,7 +13,6 @@ import net.mamoe.mirai.message.data.content
 import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.CONSOLE_USER_ID
 import site.tiedan.MiraiCompilerFramework.Command
-import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.getNickname
 import site.tiedan.MiraiCompilerFramework.getPlatform
 import site.tiedan.MiraiCompilerFramework.getUserPlatformID
@@ -24,7 +23,7 @@ import site.tiedan.MiraiCompilerFramework.pendingCommand
 import site.tiedan.MiraiCompilerFramework.requestUserConfirmation
 import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
-import site.tiedan.MiraiCompilerFramework.uploadFileToImage
+import site.tiedan.MiraiCompilerFramework.uploadTempImage
 import site.tiedan.command.CommandPastebin.isCollaborator
 import site.tiedan.config.MailConfig
 import site.tiedan.config.PastebinConfig
@@ -37,7 +36,6 @@ import site.tiedan.module.MailService
 import site.tiedan.utils.FuzzySearch
 import site.tiedan.utils.Security
 import site.tiedan.utils.YamlSafeValue
-import java.io.File
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -121,12 +119,11 @@ object CommandBucket : RawCommand(
                             MarkdownImageGenerator.generateBucketListHtml(showBackups),
                             width = "750"
                         )
-                        if (!markdownResult.success) {
+                        if (!markdownResult.success || markdownResult.file == null) {
                             sendQuoteReply(markdownResult.message)
                             return
                         }
-                        val file = File("${cacheFolder}markdown.png")
-                        val image = subject?.uploadFileToImage(file)
+                        val image = subject?.uploadTempImage(markdownResult.file)
                             ?: return sendQuoteReply("[错误] 图片文件异常：ExternalResource上传失败，请尝试重新执行")
                         sendMessage(image)
                     }

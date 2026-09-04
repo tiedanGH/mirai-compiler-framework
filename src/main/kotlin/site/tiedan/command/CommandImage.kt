@@ -15,7 +15,6 @@ import net.mamoe.mirai.message.data.content
 import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.CONSOLE_USER_ID
 import site.tiedan.MiraiCompilerFramework.Command
-import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.getNickname
 import site.tiedan.MiraiCompilerFramework.getUserPlatformID
 import site.tiedan.MiraiCompilerFramework.imageFolder
@@ -26,7 +25,7 @@ import site.tiedan.MiraiCompilerFramework.pendingCommand
 import site.tiedan.MiraiCompilerFramework.requestUserConfirmation
 import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
-import site.tiedan.MiraiCompilerFramework.uploadFileToImage
+import site.tiedan.MiraiCompilerFramework.uploadTempImage
 import site.tiedan.command.CommandRun.Image_Path
 import site.tiedan.config.PastebinConfig
 import site.tiedan.data.ImageData
@@ -138,12 +137,11 @@ object CommandImage : RawCommand(
                                 MarkdownImageGenerator.generateImageListHtml(filter),
                                 width = "1500"
                             )
-                            if (!markdownResult.success) {
+                            if (!markdownResult.success || markdownResult.file == null) {
                                 sendQuoteReply(markdownResult.message)
                                 return
                             }
-                            val file = File("${cacheFolder}markdown.png")
-                            val image = subject?.uploadFileToImage(file)
+                            val image = subject?.uploadTempImage(markdownResult.file)
                                 ?: return sendQuoteReply("[错误] 图片文件异常：ExternalResource上传失败，请尝试重新执行")
                             sendMessage(image)
                         }
@@ -358,9 +356,8 @@ object CommandImage : RawCommand(
     private suspend fun generateImage(name: String, subject: Contact?): Image? {
         val markdown = "<style>html, body, img, * { border: 0; padding: 0; margin: 0; } </style><img src='$Image_Path$name'>"
         val markdownResult = MarkdownImageGenerator.processMarkdown(null, markdown, "20")
-        if (!markdownResult.success) return null
-        val file = File("${cacheFolder}markdown.png")
-        return subject?.uploadFileToImage(file)
+        if (!markdownResult.success || markdownResult.file == null) return null
+        return subject?.uploadTempImage(markdownResult.file)
     }
 
     private suspend fun uploadImage(imageName: String, image: Message, force: Boolean): DownloadHelper.DownloadResult {

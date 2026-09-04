@@ -218,6 +218,15 @@ object MiraiCompilerFramework : KotlinPlugin(
     }
 
     /**
+     * 上传临时文件至在线图片（上传成功后删除）
+     */
+    suspend fun Contact.uploadTempImage(file: File): Image? {
+        val image = uploadFileToImage(file)
+        if (image != null) file.delete()
+        return image
+    }
+
+    /**
      * 按最大长度截断字符串
      */
     fun trimToMaxLength(input: String, maxLength: Int = 30000): Pair<String, Boolean> {
