@@ -2,7 +2,6 @@ package site.tiedan.module
 
 import net.mamoe.mirai.utils.info
 import site.tiedan.MiraiCompilerFramework.logger
-import site.tiedan.MiraiCompilerFramework.roundTo2
 import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.data.ExtraData
 import java.util.*
@@ -36,12 +35,7 @@ object Timer {
      * 每日热度指数衰减
      */
     private fun dailyDecayScore() {
-        for (entry in ExtraData.statistics.values) {
-            val rawScore = entry["score"] ?: 0.0
-            val decayedScore = rawScore * 0.9
-            entry["score"] = decayedScore.roundTo2()
-        }
-        ExtraData.save()
+        Statistics.decayAllScores(0.9)
         logger.info { "热度指数衰减执行完成" }
     }
 

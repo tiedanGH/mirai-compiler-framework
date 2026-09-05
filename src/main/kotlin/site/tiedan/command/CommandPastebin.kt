@@ -29,9 +29,9 @@ import site.tiedan.command.CommandBucket.removeProjectFromBucket
 import site.tiedan.config.MailConfig
 import site.tiedan.config.PastebinConfig
 import site.tiedan.config.PlatformConfig
-import site.tiedan.data.CodeCache
 import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
+import site.tiedan.core.CodeCacheManager
 import site.tiedan.core.StorageManager
 import site.tiedan.format.MarkdownImageGenerator
 import site.tiedan.module.MailService
@@ -398,7 +398,7 @@ object CommandPastebin : RawCommand(
                                         override fun generatePreview(forward: RawForwardMessage): List<String> =
                                             mutableListOf(
                                                 "项目总数：${PastebinData.pastebin.size}",
-                                                "缓存数量：${CodeCache.CodeCache.size}",
+                                                "缓存数量：${CodeCacheManager.count()}",
                                                 "存储数量：${StorageManager.projectCount()}"
                                             )
 
@@ -705,13 +705,9 @@ object CommandPastebin : RawCommand(
                             // 转移存储数据（含其他平台）
                             StorageManager.renameProjectStorage(name, content)
                             // 转移缓存数据
-                            CodeCache.CodeCache.remove(name)?.let {
-                                CodeCache.CodeCache[content] = it
-                            }
+                            CodeCacheManager.rename(name, content)
                             // 转移统计数据
-                            ExtraData.statistics.remove(name)?.let {
-                                ExtraData.statistics[content] = it
-                            }
+                            Statistics.renameProject(name, content)
                         }
                         "alias"-> {
                             PastebinData.alias.entries.removeIf { it.value == name }
@@ -929,9 +925,9 @@ object CommandPastebin : RawCommand(
                             }
                         }
                         else -> {
-                            if (option == "url" && CodeCache.CodeCache.contains(name)) {
+                            if (option == "url" && CodeCacheManager.contains(name)) {
                                 additionalOutput = "🔗 源代码URL被修改，代码缓存已清除，下次执行时需重新获取代码\n"
-                                CodeCache.CodeCache.remove(name)
+                                CodeCacheManager.remove(name)
                             }
                             PastebinData.pastebin[name]?.set(option, content)
                         }
@@ -954,7 +950,7 @@ object CommandPastebin : RawCommand(
                     }
                     PastebinData.save()
                     StorageManager.saveStorage()
-                    CodeCache.save()
+                    CodeCacheManager.save()
                     ExtraData.save()
                 }
 
@@ -1030,9 +1026,9 @@ object CommandPastebin : RawCommand(
                     PastebinData.censorList.remove(name)
                     PastebinData.pastebin.remove(name)
                     PastebinData.save()
-                    CodeCache.CodeCache.remove(name)
-                    CodeCache.save()
-                    ExtraData.statistics.remove(name)
+                    CodeCacheManager.remove(name)
+                    CodeCacheManager.save()
+                    Statistics.removeProject(name)
                     ExtraData.save()
                     StorageManager.removeProjectStorage(name)
                     StorageManager.saveStorage()
@@ -1181,7 +1177,7 @@ object CommandPastebin : RawCommand(
                         return
                     }
 
-                    val exportCode = CodeCache.CodeCache[name]
+                    val exportCode = CodeCacheManager.get(name)
                     if (exportCode == null) {
                         sendQuoteReply("导出失败：$name 的代码缓存为空或项目链接类型不支持缓存功能")
                         return

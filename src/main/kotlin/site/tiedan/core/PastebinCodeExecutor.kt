@@ -22,7 +22,6 @@ import site.tiedan.config.PastebinConfig
 import site.tiedan.config.SystemConfig
 import site.tiedan.core.OutputHandler.handleActiveMessage
 import site.tiedan.core.OutputHandler.handleOutputFormats
-import site.tiedan.data.CodeCache
 import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
 import site.tiedan.format.Base64Processor
@@ -115,15 +114,15 @@ object PastebinCodeExecutor {
             // 从url或缓存获取代码
             val code: String = try {
                 if (PastebinUrlHelper.allUrls.any { url.startsWith(it.url) && it.enableCache }) {
-                    if (CodeCache.CodeCache.contains(name)) {
+                    if (CodeCacheManager.contains(name)) {
                         logger.debug("从 CodeCache: $name 中获取代码")
-                        CodeCache.CodeCache[name]!!
+                        CodeCacheManager.get(name)!!
                     } else {
                         logger.info("从 $url 中获取代码")
                         val cache = PastebinUrlHelper.get(url)
                         if (cache.isNotBlank()) {
-                            CodeCache.CodeCache[name] = cache
-                            CodeCache.save()
+                            CodeCacheManager.put(name, cache)
+                            CodeCacheManager.save()
                             sendMessage("【$name】已保存至缓存，下次执行时将从缓存中获取代码")
                             cache
                         } else {

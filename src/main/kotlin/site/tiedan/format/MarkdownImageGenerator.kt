@@ -17,7 +17,6 @@ import site.tiedan.command.CommandBucket.formatTime
 import site.tiedan.command.CommandBucket.projectsCount
 import site.tiedan.command.CommandRun.Image_Path
 import site.tiedan.config.SystemConfig
-import site.tiedan.data.ExtraData
 import site.tiedan.data.ImageData
 import site.tiedan.core.StorageManager
 import site.tiedan.data.PastebinData
@@ -211,10 +210,10 @@ object MarkdownImageGenerator {
         } ?: baseEntries
         val entriesList: List<Map.Entry<String, MutableMap<String, String>>> = when (sortMode) {
             "run" -> filteredEntries
-                .sortedByDescending { entry -> ExtraData.statistics[entry.key]?.get("run") ?: 0.0 }
+                .sortedByDescending { entry -> Statistics.getRun(entry.key) }
                 .toList()
             "score" -> filteredEntries
-                .sortedByDescending { entry -> ExtraData.statistics[entry.key]?.get("score") ?: 0.0 }
+                .sortedByDescending { entry -> Statistics.getScore(entry.key) }
                 .toList()
             else -> filteredEntries.toList()
         }
@@ -287,7 +286,7 @@ object MarkdownImageGenerator {
                         appendLine("<tr><th class='name-col'>名称</th><th class='lang-col'>语言</th><th class='author-col'>作者</th></tr>")
                         appendLine("</thead><tbody>")
                         entriesList.subList(start, end).forEach { (key, value) ->
-                            val score = ExtraData.statistics[key]?.get("score") ?: 0.0
+                            val score = Statistics.getScore(key)
                             val (style, fire) = when {
                                 score >= 1000 -> " hot-1" to " <img src='${Image_Path}fire1.png' width='16' height='16' alt='f1'>"
                                 score >= 300  -> " hot-2" to " <img src='${Image_Path}fire2.png' width='16' height='16' alt='f2'>"

@@ -4,7 +4,7 @@ import site.tiedan.MiraiCompilerFramework.imageFolder
 import site.tiedan.MiraiCompilerFramework.roundTo2
 import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.command.CommandPastebin.containsCollaborator
-import site.tiedan.data.CodeCache
+import site.tiedan.core.CodeCacheManager
 import site.tiedan.data.ExtraData
 import site.tiedan.data.ImageData
 import site.tiedan.data.PastebinData
@@ -59,6 +59,31 @@ object Statistics {
         ExtraData.save()
     }
 
+    /** 获取项目的热度指数 */
+    fun getScore(name: String): Double = ExtraData.statistics[name]?.get("score") ?: 0.0
+
+    /** 获取项目的运行次数 */
+    fun getRun(name: String): Double = ExtraData.statistics[name]?.get("run") ?: 0.0
+
+    /** 项目改名时迁移统计数据 */
+    fun renameProject(from: String, to: String) {
+        ExtraData.statistics.remove(from)?.let { ExtraData.statistics[to] = it }
+    }
+
+    /** 删除项目的统计数据 */
+    fun removeProject(name: String) {
+        ExtraData.statistics.remove(name)
+    }
+
+    /** 按比例衰减全部项目的热度指数 */
+    fun decayAllScores(factor: Double) {
+        for (entry in ExtraData.statistics.values) {
+            val rawScore = entry["score"] ?: 0.0
+            entry["score"] = (rawScore * factor).roundTo2()
+        }
+        ExtraData.save()
+    }
+
     /**
      * 获取全部统计数据
      */
@@ -93,10 +118,7 @@ object Statistics {
         val totalBackupSize = StorageManager.totalBackupSize()
         val imageCount = ImageData.images.size
         val totalSize = getFolderSize(File(imageFolder))
-        var totalCodeCache = 0L
-        for ((_, value) in CodeCache.CodeCache) {
-            totalCodeCache += value.length
-        }
+        val totalCodeCache = CodeCacheManager.totalSize()
 
         return buildString {
             appendLine("📈 总执行次数：$totalRun")
@@ -122,7 +144,7 @@ object Statistics {
             appendLine("  - 备份总大小：$totalBackupSize")
             appendLine("🖼️ 图片总数：$imageCount")
             appendLine("  - 占用空间：${formatSize(totalSize)}")
-            appendLine("📦 代码缓存总数：${CodeCache.CodeCache.size}")
+            appendLine("📦 代码缓存总数：${CodeCacheManager.count()}")
             appendLine("  - 缓存总大小：$totalCodeCache")
         }
     }
@@ -143,7 +165,7 @@ object Statistics {
         return buildString {
             appendLine("📈 总执行次数：$run")
             appendLine("🔥 热度指数：${"%.2f".format(score)}")
-            val cache = CodeCache.CodeCache[name]
+            val cache = CodeCacheManager.get(name)
             if (cache != null) {
                 val length = cache.replace("\r\n", "\n").length
                 val emoji = if (length < 800_000) "📄" else "⚠️"
@@ -231,7 +253,7 @@ object Statistics {
                 }.toMap()
             languageMap.entries
                 .sortedByDescending { (key, _) ->
-                    ExtraData.statistics[key]?.get("score") ?: 0.0
+                    getScore(key)
                 }
                 .take(10)
                 .joinToString(separator = "、") { (key, language) ->
