@@ -14,13 +14,12 @@ import site.tiedan.MiraiCompilerFramework.cacheFolder
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.roundTo2
 import site.tiedan.command.CommandBucket.formatTime
-import site.tiedan.command.CommandBucket.isBucketEmpty
 import site.tiedan.command.CommandBucket.projectsCount
 import site.tiedan.command.CommandRun.Image_Path
 import site.tiedan.config.SystemConfig
 import site.tiedan.data.ExtraData
 import site.tiedan.data.ImageData
-import site.tiedan.data.PastebinBucket
+import site.tiedan.core.StorageManager
 import site.tiedan.data.PastebinData
 import site.tiedan.module.Statistics
 import java.io.File
@@ -417,12 +416,12 @@ object MarkdownImageGenerator {
             """.trimIndent())
             appendLine("""<div class="container"><div class="title">bucket存储库列表</div>""")
 
-            PastebinBucket.bucket.entries
+            StorageManager.listBucketSlots().entries
                 .sortedBy { it.key }
-                .forEach { (id, data) ->
-                    val empty = isBucketEmpty(id)
+                .forEach { (id, bucket) ->
+                    val empty = bucket == null
                     val imgPath = if (empty) "${Image_Path}bucket_e.png"
-                    else if (data["encrypt"] == "true") "${Image_Path}bucket_l.png"
+                    else if (bucket.encrypt == true) "${Image_Path}bucket_l.png"
                     else "${Image_Path}bucket.png"
                     appendLine("""
                     <div class="card">
@@ -431,9 +430,9 @@ object MarkdownImageGenerator {
                           <td class="cell-image"><div class="cell-inner"><img src="$imgPath" alt="bucket"/></div></td>
                           <td class="cell-id"><div class="cell-inner">$id</div></td>
                           <td class="cell-meta">
-                            <div class="meta-top">${if (empty) "&nbsp;" else esc(data["name"])}</div>
+                            <div class="meta-top">${if (empty) "&nbsp;" else esc(bucket.name)}</div>
                             <div class="meta-divider"></div>
-                            <div class="meta-bottom">${if (empty) "&nbsp;" else "所有者：${esc(data["owner"])} (${esc(data["userID"])})"}</div>
+                            <div class="meta-bottom">${if (empty) "&nbsp;" else "所有者：${esc(bucket.owner)} (${esc(bucket.userID)})"}</div>
                           </td>
                           <td class="cell-stats">
                             <div class="stats-row">
@@ -443,13 +442,13 @@ object MarkdownImageGenerator {
                             <div class="stats-divider"></div>
                             <div class="stats-row">
                               <div class="label">${if (empty) "&nbsp;" else "存储库大小"}</div>
-                              <div class="value">${if (empty) "&nbsp;" else data["content"]?.length ?: 0}</div>
+                              <div class="value">${if (empty) "&nbsp;" else bucket.content.length}</div>
                             </div>
                           </td>
                         </tr>
                 """.trimIndent())
                     if (showBackups && !empty) {
-                        val list = PastebinBucket.backups[id] ?: emptyList()
+                        val list = StorageManager.getBackups(id)
                         val firstThree = (0..2).map { idx -> list.getOrNull(idx) }
                         appendLine("""<tr class="backup-row"><td colspan="4"><div class="backup-strip">""")
                         firstThree.forEach { b ->

@@ -21,16 +21,13 @@ import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.parseUserID
 import site.tiedan.MiraiCompilerFramework.pendingCommand
 import site.tiedan.MiraiCompilerFramework.requestUserConfirmation
-import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.uploadTempImage
 import site.tiedan.command.CommandPastebin.isCollaborator
 import site.tiedan.config.MailConfig
 import site.tiedan.config.PastebinConfig
-import site.tiedan.data.ExtraData
-import site.tiedan.data.PastebinBucket
+import site.tiedan.core.StorageManager
 import site.tiedan.data.PastebinData
-import site.tiedan.format.JsonProcessor
 import site.tiedan.format.MarkdownImageGenerator
 import site.tiedan.module.MailService
 import site.tiedan.utils.FuzzySearch
@@ -108,8 +105,8 @@ object CommandBucket : RawCommand(
                 "list", "列表"-> {   // 查看存储库列表
                     val option = args.getOrNull(1)?.content ?: "图片"
                     if (option == "文字" || option == "text") {
-                        val bucketList = PastebinBucket.bucket.entries.joinToString("\n") { (id, data) ->
-                            if (isBucketEmpty(id)) "$id. [空槽位]" else "$id. ${data["name"]}"
+                        val bucketList = StorageManager.listBucketSlots().entries.joinToString("\n") { (id, bucket) ->
+                            if (bucket == null) "$id. [空槽位]" else "$id. ${bucket.name}"
                         }
                         sendQuoteReply(" ·bucket存储库列表：\n$bucketList")
                     } else {
@@ -131,23 +128,24 @@ object CommandBucket : RawCommand(
 
                 "info", "信息"-> {   // 查看存储库信息
                     val id = checkBucketNameOrID(args[1].content, "查看") ?: return
-                    val data = PastebinBucket.bucket[id].orEmpty()
+                    val bucket = StorageManager.getBucket(id)
+                        ?: return sendQuoteReply("[错误] 存储库数据读取失败：槽位 $id 状态异常，请联系管理员")
                     val info = buildString {
                         appendLine("存储库ID：$id")
-                        appendLine("名称：${data["name"]}")
-                        appendLine("所有者：${data["owner"]}(${data["userID"]})")
-                        appendLine("关联项目(${projectsCount(id)})：${data["projects"]}")
-                        val lock = if (data["encrypt"] == "true") " 🔐" else ""
-                        appendLine("存储大小：${data["content"]?.length}$lock")
-                        val backups = PastebinBucket.backups[id].orEmpty()
+                        appendLine("名称：${bucket.name}")
+                        appendLine("所有者：${bucket.owner}(${bucket.userID})")
+                        appendLine("关联项目(${bucket.projects.size})：${bucket.projects.joinToString(" ")}")
+                        val lock = if (bucket.encrypt) " 🔐" else ""
+                        appendLine("存储大小：${bucket.content.length}$lock")
+                        val backups = StorageManager.getBackups(id)
                         appendLine("备份信息：")
                         backups.forEach { backup ->
                             appendLine(
                                 "- " + (backup?.let { "${formatTime(it.time)} ${it.name}" } ?: "空备份")
                             )
                         }
-                        if(data["desc"]?.isNotEmpty() == true) {
-                            appendLine("------- [简介] -------\n${data["desc"]}")
+                        if (bucket.desc.isNotEmpty()) {
+                            appendLine("------- [简介] -------\n${bucket.desc}")
                         }
                     }
                     sendQuoteReply(info)
@@ -159,14 +157,15 @@ object CommandBucket : RawCommand(
                     val password = args.getOrNull(2)?.content
                     checkPassword(id, password, userID, isAdmin) ?: return  // 验证密码
 
-                    val bucket = PastebinBucket.bucket[id].orEmpty()
-                    if (bucket["encrypt"] == "true") {
+                    val bucket = StorageManager.getBucket(id)
+                        ?: return sendQuoteReply("[错误] 存储库数据读取失败：槽位 $id 状态异常，请联系管理员")
+                    if (bucket.encrypt) {
                         sendQuoteReply("🔐 此存储库启用了数据加密，为保证数据安全，查询功能被禁用")
                         return
                     }
 
                     val requestMail = args.getOrNull(3)?.content == "邮件" || args.getOrNull(3)?.content == "mail"
-                    if (MailConfig.enable && requestMail && bucket.isNotEmpty()) {
+                    if (MailConfig.enable && requestMail) {
                         val mail = args.getOrNull(4)?.content
                         if (mail == null && platform != "qq") {
                             sendQuoteReply(
@@ -180,20 +179,20 @@ object CommandBucket : RawCommand(
                             return
                         }
 
-                        val allBackupData = PastebinBucket.backups[id]
-                            ?.mapIndexed { index, backup ->
+                        val allBackupData = StorageManager.getBackups(id)
+                            .mapIndexed { index, backup ->
                                 "【备份${index + 1}数据】\n" + (
                                         backup?.let { "${formatTime(it.time)} ${it.name}\n【备份内容】\n${it.content}" }
                                             ?: "空备份"
                                         )
                             }
-                            ?.joinToString("\n\n")
+                            .joinToString("\n\n")
                         var output = "【查询存储库】$id\n" +
-                                "【名称】${bucket["name"]}\n" +
-                                "【存储库大小】${bucket["content"]?.length}\n" +
-                                "【关联项目】${bucket["projects"]}\n" +
+                                "【名称】${bucket.name}\n" +
+                                "【存储库大小】${bucket.content.length}\n" +
+                                "【关联项目】${bucket.projects.joinToString(" ")}\n" +
                                 "\n" +
-                                "【存储库内容】\n${bucket["content"]}\n" +
+                                "【存储库内容】\n${bucket.content}\n" +
                                 "\n\n" +
                                 allBackupData
                         logger.info("请求使用邮件发送结果：${bucketInfo(id)}")
@@ -210,30 +209,29 @@ object CommandBucket : RawCommand(
                     }
 
                     val backupID = args.getOrNull(3)?.content?.toIntOrNull() ?: 0
-                    val backup = (backupID - 1).takeIf { backupID > 0 }?.let { PastebinBucket.backups[id]?.get(it) }
+                    val backup = (backupID - 1).takeIf { backupID > 0 }?.let { StorageManager.getBackup(id, it) }
                     try {
                         val forward = buildForwardMessage(subject!!) {
                             displayStrategy = object : ForwardMessage.DisplayStrategy {
                                 override fun generateTitle(forward: RawForwardMessage): String = "存储库查询"
                                 override fun generateBrief(forward: RawForwardMessage): String = "[存储数据]"
                                 override fun generatePreview(forward: RawForwardMessage): List<String> =
-                                    listOf("查询ID：$id", "查询名称：${bucket["name"]}") +
+                                    listOf("查询ID：$id", "查询名称：${bucket.name}") +
                                     if (backupID != 0) listOf("查询备份：$backupID") else emptyList()
 
                                 override fun generateSummary(forward: RawForwardMessage): String =
-                                    if (bucket.isEmpty()) "查询失败：存储库不存在"
-                                    else if (backupID != 0 && backup == null) "查询失败：备份ID不存在"
+                                    if (backupID != 0 && backup == null) "查询失败：备份ID不存在"
                                     else "查询成功"
                             }
                             subject!!.bot named "存储库查询" says
                                     "【查询ID】$id\n" +
-                                    "【查询名称】${bucket["name"]}\n" +
-                                    "【存储库大小】${bucket["content"]?.length}\n" +
-                                    "【关联项目】${bucket["projects"]}"
+                                    "【查询名称】${bucket.name}\n" +
+                                    "【存储库大小】${bucket.content.length}\n" +
+                                    "【关联项目】${bucket.projects.joinToString(" ")}"
                             if (backupID == 0) {
                                 subject!!.bot named "存储库查询" says
-                                        if (bucket["content"].isNullOrEmpty()) "[警告] 查询成功，但查询的存储数据为空"
-                                        else bucket["content"] as String
+                                        if (bucket.content.isEmpty()) "[警告] 查询成功，但查询的存储数据为空"
+                                        else bucket.content
                             } else {
                                 if (backup != null) {
                                     subject!!.bot named "存储库备份查询" says
@@ -250,7 +248,7 @@ object CommandBucket : RawCommand(
                         }
                         sendMessage(forward)
                     } catch (_: MessageTooLargeException) {
-                        val length = "数据长度：${bucket["content"]?.length}"
+                        val length = "数据长度：${bucket.content.length}"
                         sendQuoteReply("[内容过长] $length。如需查看完整内容请使用指令\n" +
                                 "${commandPrefix}pb storage $name mail\n将结果发送邮件至您的邮箱")
                     } catch (e: Exception) {
@@ -274,22 +272,13 @@ object CommandBucket : RawCommand(
                         sendQuoteReply("创建失败：存储库名称不能使用 YAML 保留字（null、Null、NULL、~），请更换名称")
                         return
                     }
-                    if (nameToID(name) != null) {
+                    if (bucketNameToId(name) != null) {
                         sendQuoteReply("创建失败：名称 $name 已存在")
                         return
                     }
-                    val id = generateSequence(1L) { it + 1 }.first { isBucketEmpty(it) }
-                    PastebinBucket.bucket[id] = mutableMapOf(
-                        "name" to name,
-                        "password" to Security.hashPassword(password),
-                        "owner" to userName,
-                        "userID" to userID,
-                        "projects" to "",
-                        "desc" to "",
-                        "content" to "",
-                    )
-                    PastebinBucket.backups[id] = mutableListOf(null, null, null)
-                    PastebinBucket.save()
+                    val id = StorageManager.nextFreeBucketId()
+                    StorageManager.createBucket(id, name, Security.hashPassword(password), userName, userID)
+                    StorageManager.saveBucket()
                     sendQuoteReply(
                         "🗄 创建新存储库成功！\n" +
                         "存储库ID：$id\n" +
@@ -305,7 +294,7 @@ object CommandBucket : RawCommand(
                     var option = args[2].content
                     var content = args.drop(3).joinToString(separator = " ")
                     var additionalOutput = ""
-                    val ownerID = PastebinBucket.bucket[id]?.get("userID")
+                    val ownerID = StorageManager.getBucket(id)?.userID
                     val isOwner = userID == ownerID
                     if (!isOwner && !isAdmin) {
                         sendQuoteReply("无权修改此存储库，如需修改请联系所有者：$ownerID")
@@ -349,7 +338,7 @@ object CommandBucket : RawCommand(
                             }
                             val newPassword = content
                             content = "***"
-                            PastebinBucket.bucket[id]?.set("password", Security.hashPassword(newPassword))
+                            StorageManager.setBucketField(id, "password", Security.hashPassword(newPassword))
                         }
                         "userID"-> {
                             val id = parseUserID(content)
@@ -374,8 +363,8 @@ object CommandBucket : RawCommand(
                                 "如您确认无误，请再次执行转移指令以完成操作"
                             ) ?: return
 
-                            PastebinBucket.bucket[id]?.set("owner", targetName)
-                            PastebinBucket.bucket[id]?.set("userID", content)
+                            StorageManager.setBucketField(id, "owner", targetName)
+                            StorageManager.setBucketField(id, "userID", content)
                         }
                         "backup"-> {
                             val paras = content.split(" ")
@@ -387,14 +376,14 @@ object CommandBucket : RawCommand(
                             if (YamlSafeValue.isNullLiteral(newName)) {
                                 return sendQuoteReply("修改失败：备份名称不能使用 YAML 保留字（null、Null、NULL、~），请更换名称")
                             }
-                            val backup = PastebinBucket.backups[id]?.get(num)
+                            val backup = StorageManager.getBackup(id, num)
                                 ?: return sendQuoteReply("修改失败：备份编号 ${num + 1} 尚未初始化")
 
                             content = "$newName（备份ID ${num + 1}）"
-                            backup.apply { name = newName }
+                            StorageManager.setBackup(id, num, backup.copy(name = newName))
                         }
                         "encrypt"-> {
-                            if (PastebinBucket.bucket[id]?.get("encrypt") == "true") {
+                            if (StorageManager.getBucket(id)?.encrypt == true) {
                                 return sendQuoteReply("修改失败：加密功能开启后不支持关闭")
                             }
                             if (content !in arrayListOf("enable","on","true","开启")) {
@@ -411,23 +400,13 @@ object CommandBucket : RawCommand(
                                 "如您确认无误，请再次执行修改指令以完成操作"
                             ) ?: return
 
-                            PastebinBucket.bucket[id]?.set("encrypt", "true")
-                            val currentStorage = PastebinBucket.bucket[id]?.get("content") ?: ""
-                            val encryptedStorage = Security.encrypt(currentStorage, ExtraData.key)
-                            PastebinBucket.bucket[id]?.set("content", encryptedStorage)
-
-                            PastebinBucket.backups[id]?.forEachIndexed { index, data->
-                                if (data != null) {
-                                    val currentStorage = data.content
-                                    data.content = Security.encrypt(currentStorage, ExtraData.key)
-                                }
-                            }
+                            StorageManager.enableBucketEncryption(id)
                         }
                         else -> {
-                            PastebinBucket.bucket[id]?.set(option, content)
+                            StorageManager.setBucketField(id, option, content)
                         }
                     }
-                    PastebinBucket.save()
+                    StorageManager.saveBucket()
                     if (option == "userID") {
                         sendQuoteReply("${additionalOutput}成功将存储库 ${bucketInfo(id)} 的所有权转移至 $content")
                     } else {
@@ -451,8 +430,8 @@ object CommandBucket : RawCommand(
                     }
 
                     ctx.projectsList.add(ctx.projectName)
-                    PastebinBucket.bucket[ctx.id]!!["projects"] = ctx.projectsList.joinToString(" ")
-                    PastebinBucket.save()
+                    StorageManager.setBucketProjects(ctx.id, ctx.projectsList)
+                    StorageManager.saveBucket()
                     sendQuoteReply(
                         "成功将存储库 ${bucketInfo(ctx.id)} 关联到项目 ${ctx.projectName}" +
                         (if (subject is Group && password != null) "\n\n⚠️ 您正在群聊进行操作，密码存在极高泄露风险，建议尽快修改密码！" else "")
@@ -465,8 +444,8 @@ object CommandBucket : RawCommand(
                         sendQuoteReply("移除失败：存储库 ${ctx.id} 未关联此项目 ${ctx.projectName}")
                         return
                     }
-                    PastebinBucket.bucket[ctx.id]!!["projects"] = ctx.projectsList.joinToString(" ")
-                    PastebinBucket.save()
+                    StorageManager.setBucketProjects(ctx.id, ctx.projectsList)
+                    StorageManager.saveBucket()
                     sendQuoteReply("成功将存储库 ${bucketInfo(ctx.id)} 与项目 ${ctx.projectName} 解除关联")
                 }
 
@@ -482,7 +461,7 @@ object CommandBucket : RawCommand(
                         val password = args.getOrNull(4)?.content
                         checkPassword(id, password, userID, isAdmin) ?: return  // 验证密码
 
-                        val backup = PastebinBucket.backups[id]?.get(num - 1)
+                        val backup = StorageManager.getBackup(id, num - 1)
                         if (backup == null) {
                             return sendQuoteReply("删除失败：槽位 $num 中没有备份")
                         }
@@ -502,8 +481,8 @@ object CommandBucket : RawCommand(
                             "如您确认备份不再需要，请再次执行删除指令以完成操作"
                         ) ?: return
 
-                        PastebinBucket.backups[id]?.set(num - 1, null)
-                        PastebinBucket.save()
+                        StorageManager.setBackup(id, num - 1, null)
+                        StorageManager.saveBucket()
 
                         return sendQuoteReply("成功删除存储库 ${bucketInfo(id)} 的备份槽位 $num！")
                     }
@@ -516,23 +495,23 @@ object CommandBucket : RawCommand(
                         ?.takeIf { it in 1..3 }
                         ?: return sendQuoteReply("编号无效：备份编号仅支持 1-3")
 
-                    val bucketContent = PastebinBucket.bucket[id]?.get("content")
+                    val bucketContent = StorageManager.getBucketRawContent(id)
                     if (bucketContent.isNullOrEmpty()) {
                         sendQuoteReply("备份失败：存储库 ${bucketInfo(id)} 当前数据为空")
                         return
                     }
-                    var backup = PastebinBucket.backups[id]?.get(num - 1)
+                    var backup = StorageManager.getBackup(id, num - 1)
                     if (backup == null) {
-                        val newBackup = PastebinBucket.BackupInfo(
+                        val newBackup = StorageManager.Backup(
                             name = "备份$num",
                             time = System.currentTimeMillis(),
                             content = bucketContent,
                         )
-                        PastebinBucket.backups[id]?.set(num - 1, newBackup)
+                        StorageManager.setBackup(id, num - 1, newBackup)
                         sendQuoteReply(
                             "✅ 在槽位 $num 创建新备份成功！\n" +
                             "存储库ID：$id\n" +
-                            "存储库名称：${bucketIDToName(id)}\n" +
+                            "存储库名称：${bucketIdToName(id)}\n" +
                             "\n" +
                             "备份名称：${newBackup.name}\n" +
                             "备份时间：${formatTime(newBackup.time)}\n" +
@@ -558,12 +537,12 @@ object CommandBucket : RawCommand(
                             "如您确认旧备份不再需要，请再次执行备份指令以完成操作"
                         ) ?: return
 
-                        backup.time = System.currentTimeMillis()
-                        backup.content = bucketContent
+                        backup = backup.copy(time = System.currentTimeMillis(), content = bucketContent)
+                        StorageManager.setBackup(id, num - 1, backup)
                         sendQuoteReply(
                             "✅ 成功更新槽位 $num 的备份！\n" +
                             "存储库ID：$id\n" +
-                            "存储库名称：${bucketIDToName(id)}\n" +
+                            "存储库名称：${bucketIdToName(id)}\n" +
                             "\n" +
                             "备份名称：${backup.name}\n" +
                             "备份时间：${formatTime(backup.time)}\n" +
@@ -571,7 +550,7 @@ object CommandBucket : RawCommand(
                             (if (subject is Group && password != null) "\n\n⚠️ 您正在群聊进行操作，密码存在极高泄露风险，建议尽快修改密码！" else "")
                         )
                     }
-                    PastebinBucket.save()
+                    StorageManager.saveBucket()
                 }
 
                 "rollback", "回滚"-> {   // 从备份回滚数据
@@ -584,7 +563,7 @@ object CommandBucket : RawCommand(
                         ?.takeIf { it in 1..3 }
                         ?: return sendQuoteReply("编号无效：备份编号仅支持 1-3")
 
-                    val backup = PastebinBucket.backups[id]?.get(num - 1)
+                    val backup = StorageManager.getBackup(id, num - 1)
                         ?: return sendQuoteReply("回滚失败：备份编号 $num 没有任何数据")
 
                     requestUserConfirmation(userID, args.content,
@@ -603,8 +582,8 @@ object CommandBucket : RawCommand(
                         "如您确认无误，请再次执行回滚指令以完成操作"
                     ) ?: return
 
-                    PastebinBucket.bucket[id]?.set("content", backup.content)
-                    PastebinBucket.save()
+                    StorageManager.setBucketRawContent(id, backup.content)
+                    StorageManager.saveBucket()
                     sendQuoteReply(
                         "[ROLLBACK] 成功将存储库 ${bucketInfo(id)} 回滚至槽位 $num 的备份：${backup.name}（${formatTime(backup.time)}）！" +
                         (if (subject is Group && password != null) "\n\n⚠️ 您正在群聊进行操作，密码存在极高泄露风险，建议尽快修改密码！" else "")
@@ -613,7 +592,7 @@ object CommandBucket : RawCommand(
 
                 "delete", "删除"-> {   // 永久删除存储库
                     val id = checkBucketNameOrID(args[1].content, "删除") ?: return
-                    val ownerID = PastebinBucket.bucket[id]?.get("userID")
+                    val ownerID = StorageManager.getBucket(id)?.userID
                     val isOwner = userID == ownerID
                     val forceDelete = args.getOrNull(2)?.content == "force"
                     if (!isOwner) {
@@ -626,7 +605,7 @@ object CommandBucket : RawCommand(
                             return
                         }
                     }
-                    val projects = PastebinBucket.bucket[id]?.get("projects") ?: ""
+                    val projects = StorageManager.getBucket(id)?.projects?.joinToString(" ") ?: ""
 
                     requestUserConfirmation(userID, args.content,
                         " +++🛑 高危操作警告 🛑+++\n" +
@@ -638,9 +617,8 @@ object CommandBucket : RawCommand(
                         "如您确认无误，请再次执行删除指令以完成操作"
                     ) ?: return
 
-                    PastebinBucket.bucket[id]?.clear()
-                    PastebinBucket.backups[id]?.clear()
-                    PastebinBucket.save()
+                    StorageManager.deleteBucket(id)
+                    StorageManager.saveBucket()
                     sendQuoteReply("删除存储库 $id 成功" + (if (projects.isNotEmpty()) "，项目已解除关联" else ""))
                 }
 
@@ -657,8 +635,8 @@ object CommandBucket : RawCommand(
     }
 
     suspend fun CommandSender.checkBucketNameOrID(content: String, optionName: String): Long? {
-        val id = nameToID(content) ?: content.toLongOrNull() ?: -1
-        if (PastebinBucket.bucket.contains(id).not()) {
+        val id = bucketNameToId(content) ?: content.toLongOrNull() ?: -1
+        if (!StorageManager.bucketSlotExists(id)) {
             sendQuoteReply("名称或ID不存在：$content\n请使用「${commandPrefix}bk list」来查看存储库列表")
             return null
         }
@@ -670,10 +648,10 @@ object CommandBucket : RawCommand(
     }
 
     suspend fun CommandSender.checkPassword(id: Long, password: String?, userID: String, isAdmin: Boolean): Boolean? {
-        val data = PastebinBucket.bucket[id] ?: return null
-        val storedHashed = data["password"] ?: return null
+        val bucket = StorageManager.getBucket(id) ?: return null
+        val storedHashed = bucket.password.takeIf { it.isNotEmpty() } ?: return null
 
-        val isOwner = userID == data["userID"]
+        val isOwner = userID == bucket.userID
         val passwordCorrect = password != null && Security.verifyPassword(password, storedHashed)
 
         // 关闭了管理员的访问权限，必须要求密码
@@ -714,66 +692,35 @@ object CommandBucket : RawCommand(
             return null
         }
         val id = checkBucketNameOrID(args[2].content, "操作") ?: return null
-        val projects = PastebinBucket.bucket[id]?.get("projects") ?: ""
+        val projects = StorageManager.getBucket(id)?.projects?.joinToString(" ") ?: ""
         val projectsList = projects.split(" ").filter { it.isNotEmpty() }.toMutableList()
         return ProjectContext(id, projectName, projectsList)
     }
 
 
-    fun linkedBucketID(projectName: String): List<Long> {
-        return PastebinBucket.bucket
-            .filter { (_, innerMap) ->
-                val projects = innerMap["projects"] ?: return@filter false
-                projects.split(" ").any { it == projectName }
-            }
-            .keys
-            .toList()
-    }
+    fun linkedBucketId(projectName: String): List<Long> =
+        StorageManager.linkedBucketIds(projectName)
 
-    fun bucketIdsToBucketData(ids: List<Long>): List<JsonProcessor.BucketData> {
-        return ids.map { id ->
-            val bk = PastebinBucket.bucket[id]
-            val storage = YamlSafeValue.unescape(bk?.get("content") ?: "")
-            JsonProcessor.BucketData(
-                id = id,
-                name = bk?.get("name"),
-                content = if (bk?.get("encrypt") == "true") {
-                    Security.decrypt(storage, ExtraData.key)
-                } else storage
-            )
-        }
-    }
+    fun bucketIdsToNames(ids: List<Long>): String =
+        ids.joinToString(" ") { bucketIdToName(it) ?: "【ID${it}名称错误】" }
 
-    fun bucketIDsToNames(ids: List<Long>): String {
-        return ids.map { id ->
-            bucketIDToName(id) ?: "【ID${id}名称错误】"
-        }.joinToString(" ")
-    }
-
-    fun removeProjectFromBucket(name: String) {
-        for ((_, innerMap) in PastebinBucket.bucket) {
-            val projects = innerMap["projects"] ?: continue
-            val projectList = projects.split(" ").toMutableList()
-            projectList.removeAll { it == name }
-            innerMap["projects"] = projectList.joinToString(" ")
-        }
-    }
-
+    fun removeProjectFromBucket(name: String) =
+        StorageManager.removeProjectFromBuckets(name)
 
     fun bucketInfo(id: Long): String =
-        "${bucketIDToName(id)}($id)"
+        "${bucketIdToName(id)}($id)"
 
     fun projectsCount(id: Long): Int =
-        PastebinBucket.bucket[id]?.get("projects")?.split(" ")?.filter { it.isNotBlank() }?.size ?: 0
+        StorageManager.getBucket(id)?.projects?.size ?: 0
 
     fun isBucketEmpty(id: Long): Boolean =
-        PastebinBucket.bucket[id]?.isEmpty() != false
+        StorageManager.isBucketEmpty(id)
 
-    fun bucketIDToName(id: Long): String? =
-        PastebinBucket.bucket[id]?.get("name")
+    fun bucketIdToName(id: Long): String? =
+        StorageManager.bucketIdToName(id)
 
-    fun nameToID(name: String): Long? =
-        PastebinBucket.bucket.entries.find { it.value["name"] == name }?.key
+    fun bucketNameToId(name: String): Long? =
+        StorageManager.findBucketByName(name)?.id
 
     fun formatTime(timestamp: Long): String {
         val instant = Instant.ofEpochMilli(timestamp)

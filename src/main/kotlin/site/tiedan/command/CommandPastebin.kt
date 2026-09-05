@@ -25,17 +25,14 @@ import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.trimToMaxLength
 import site.tiedan.MiraiCompilerFramework.uploadTempImage
-import site.tiedan.command.CommandBucket.bucketIDsToNames
-import site.tiedan.command.CommandBucket.linkedBucketID
 import site.tiedan.command.CommandBucket.removeProjectFromBucket
 import site.tiedan.config.MailConfig
 import site.tiedan.config.PastebinConfig
 import site.tiedan.config.PlatformConfig
-import site.tiedan.data.*
 import site.tiedan.data.CodeCache
 import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
-import site.tiedan.data.PastebinStorage
+import site.tiedan.core.StorageManager
 import site.tiedan.format.MarkdownImageGenerator
 import site.tiedan.module.MailService
 import site.tiedan.module.Statistics
@@ -45,7 +42,6 @@ import site.tiedan.utils.PastebinUrlHelper
 import site.tiedan.utils.PastebinUrlHelper.checkUrl
 import site.tiedan.utils.PastebinUrlHelper.discontinuedUrls
 import site.tiedan.utils.PastebinUrlHelper.supportedUrls
-import site.tiedan.utils.YamlSafeValue
 import java.io.File
 import java.net.ConnectException
 import kotlin.math.ceil
@@ -403,7 +399,7 @@ object CommandPastebin : RawCommand(
                                             mutableListOf(
                                                 "项目总数：${PastebinData.pastebin.size}",
                                                 "缓存数量：${CodeCache.CodeCache.size}",
-                                                "存储数量：${PastebinStorage.storage.size}"
+                                                "存储数量：${StorageManager.projectCount()}"
                                             )
 
                                         override fun generateSummary(forward: RawForwardMessage): String =
@@ -482,7 +478,7 @@ object CommandPastebin : RawCommand(
                             data["width"]?.let { w -> appendLine("图片宽度：$w") }
                         }
                         if (data["storage"] == "true") {
-                            val linkedBuckets = bucketIDsToNames(linkedBucketID(name))
+                            val linkedBuckets = CommandBucket.bucketIdsToNames(CommandBucket.linkedBucketId(name))
                             val storageInfo =
                                 if (linkedBuckets.isEmpty()) "存储功能：已开启"
                                 else "关联存储库：$linkedBuckets"
@@ -706,10 +702,8 @@ object CommandPastebin : RawCommand(
                             if (PastebinData.groupOnly.remove(name)) {
                                 PastebinData.groupOnly.add(content)
                             }
-                            // 转移存储数据
-                            PastebinStorage.storage.remove(name)?.let {
-                                PastebinStorage.storage[content] = it
-                            }
+                            // 转移存储数据（含其他平台）
+                            StorageManager.renameProjectStorage(name, content)
                             // 转移缓存数据
                             CodeCache.CodeCache.remove(name)?.let {
                                 CodeCache.CodeCache[content] = it
@@ -879,11 +873,11 @@ object CommandPastebin : RawCommand(
                                     in arrayListOf("disable","off","false","关闭")-> {
                                         content = "$format（关闭存储）"
                                         PastebinData.pastebin[name]?.remove("storage")
-                                        PastebinStorage.storage.remove(name)
+                                        StorageManager.removeProjectStorage(name)
                                     }
                                     in arrayListOf("clear","清空")-> {
                                         content = "$format（清空存储）"
-                                        PastebinStorage.storage.remove(name)
+                                        StorageManager.removeProjectStorage(name)
                                     }
                                 }
                             }
@@ -901,11 +895,11 @@ object CommandPastebin : RawCommand(
                                         content += "（关闭图片base64）"
                                         PastebinData.pastebin[name]?.remove("base64")
                                     }
-                                    PastebinStorage.storage.remove(name)
+                                    StorageManager.removeProjectStorage(name)
                                 }
                                 in arrayListOf("clear","清空")-> {
                                     content = "清空"
-                                    PastebinStorage.storage.remove(name)
+                                    StorageManager.removeProjectStorage(name)
                                 }
                                 else-> {
                                     sendQuoteReply("无效的配置项：请设置 开启/关闭/清空 存储功能")
@@ -926,7 +920,7 @@ object CommandPastebin : RawCommand(
                                 in arrayListOf("disable","off","false","关闭")-> {
                                     content = "关闭"
                                     PastebinData.pastebin[name]?.remove("base64")
-                                    PastebinStorage.storage.remove(name)
+                                    StorageManager.removeProjectStorage(name)
                                 }
                                 else-> {
                                     sendQuoteReply("无效的配置项：请设置 开启/关闭 输入图片转base64")
@@ -959,7 +953,7 @@ object CommandPastebin : RawCommand(
                         sendQuoteReply("${additionalOutput}成功将 $name 的 $option 参数修改为 $content")
                     }
                     PastebinData.save()
-                    PastebinStorage.save()
+                    StorageManager.saveStorage()
                     CodeCache.save()
                     ExtraData.save()
                 }
@@ -1017,7 +1011,7 @@ object CommandPastebin : RawCommand(
                     }
 
                     val storageMode = PastebinData.pastebin[name]?.get("storage") == "true"
-                    val linkedBuckets = bucketIDsToNames(linkedBucketID(name))
+                    val linkedBuckets = CommandBucket.bucketIdsToNames(CommandBucket.linkedBucketId(name))
                     requestUserConfirmation(userID, args.content,
                         " +++🛑 高危操作警告 🛑+++\n" +
                         "您正在删除项目 $name，删除前请确保您已知晓：\n" +
@@ -1036,14 +1030,14 @@ object CommandPastebin : RawCommand(
                     PastebinData.censorList.remove(name)
                     PastebinData.pastebin.remove(name)
                     PastebinData.save()
-                    PastebinStorage.storage.remove(name)
-                    PastebinStorage.save()
                     CodeCache.CodeCache.remove(name)
                     CodeCache.save()
                     ExtraData.statistics.remove(name)
                     ExtraData.save()
+                    StorageManager.removeProjectStorage(name)
+                    StorageManager.saveStorage()
                     removeProjectFromBucket(name)
-                    PastebinBucket.save()
+                    StorageManager.saveBucket()
                     sendQuoteReply("删除项目 $name 成功！")
                 }
 
@@ -1064,7 +1058,7 @@ object CommandPastebin : RawCommand(
                         )
                         return
                     }
-                    val storage = PastebinStorage.storage[name]?.mapValues { YamlSafeValue.unescape(it.value) }
+                    val storage = StorageManager.getProjectStorage(name)
 
                     val ownerID = PastebinData.pastebin[name]?.get("userID")
                     val isOwner = userID == ownerID

@@ -3,14 +3,12 @@ package site.tiedan.module
 import site.tiedan.MiraiCompilerFramework.imageFolder
 import site.tiedan.MiraiCompilerFramework.roundTo2
 import site.tiedan.MiraiCompilerFramework.save
-import site.tiedan.command.CommandBucket.projectsCount
 import site.tiedan.command.CommandPastebin.containsCollaborator
 import site.tiedan.data.CodeCache
 import site.tiedan.data.ExtraData
 import site.tiedan.data.ImageData
-import site.tiedan.data.PastebinBucket
 import site.tiedan.data.PastebinData
-import site.tiedan.data.PastebinStorage
+import site.tiedan.core.StorageManager
 import java.io.File
 import kotlin.math.log10
 import kotlin.math.pow
@@ -80,22 +78,19 @@ object Statistics {
 
         var totalGlobalStorage = 0L
         var totalUserStorage = 0L
-        for ((_, value) in PastebinStorage.storage) {
+        for ((_, value) in StorageManager.allProjectStorage()) {
             totalGlobalStorage += value[0]?.length?.toLong() ?: 0L
             totalUserStorage += getUserStorageSize(value)
         }
-        val totalBucketNum = PastebinBucket.bucket.values.count { it.isNotEmpty() }
+        val totalBucketNum = StorageManager.bucketCount()
         var totalLinkedProjects = 0L
         var totalBucketSize = 0L
-        for ((key, value) in PastebinBucket.bucket) {
-            totalLinkedProjects += projectsCount(key)
-            totalBucketSize += value["content"]?.length?.toLong() ?: 0L
+        for ((_, bucket) in StorageManager.listBucketSlots()) {
+            if (bucket == null) continue
+            totalLinkedProjects += bucket.projects.size
+            totalBucketSize += bucket.content.length.toLong()
         }
-        val totalBackupSize =
-            PastebinBucket.backups.values
-                .flatten()
-                .filterNotNull()
-                .sumOf { it.content.length }
+        val totalBackupSize = StorageManager.totalBackupSize()
         val imageCount = ImageData.images.size
         val totalSize = getFolderSize(File(imageFolder))
         var totalCodeCache = 0L
@@ -118,7 +113,7 @@ object Statistics {
                 appendLine(" ⏱️ 总用时：${formatTime(totalDlTime)}")
                 appendLine(" ⚡ 平均用时：${"%.2f".format(avg)}秒")
             }
-            appendLine("💾 存储总数：${PastebinStorage.storage.size}")
+            appendLine("💾 存储总数：${StorageManager.projectCount()}")
             appendLine("  - 全局总大小：$totalGlobalStorage")
             appendLine("  - 用户总大小：$totalUserStorage")
             appendLine("🗄 存储库总数：$totalBucketNum")
@@ -143,7 +138,7 @@ object Statistics {
         val mdTime = stat?.get("mdTime")
         val download = stat?.get("download")?.toLong()
         val dlTime = stat?.get("dlTime")
-        val storage = PastebinStorage.storage[name]
+        val storage = StorageManager.getProjectStorage(name)
 
         return buildString {
             appendLine("📈 总执行次数：$run")
@@ -292,7 +287,7 @@ object Statistics {
         }
     }
 
-    private fun getUserStorageSize(storage: MutableMap<Long, String>): Long {
+    private fun getUserStorageSize(storage: Map<Long, String>): Long {
         var userTotal = 0L
         for ((key, value) in storage.entries) {
             if (key != 0L) {
