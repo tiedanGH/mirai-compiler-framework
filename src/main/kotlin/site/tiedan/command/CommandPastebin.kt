@@ -36,6 +36,7 @@ import site.tiedan.core.StorageManager
 import site.tiedan.format.MarkdownImageGenerator
 import site.tiedan.module.MailService
 import site.tiedan.module.Statistics
+import site.tiedan.module.StatusReport
 import site.tiedan.utils.FuzzySearch
 import site.tiedan.utils.HttpUtil
 import site.tiedan.utils.PastebinUrlHelper
@@ -67,6 +68,7 @@ object CommandPastebin : RawCommand(
         Command("pb list [查询模式]", "pb 列表 [查询模式]", "查看项目列表", 1),
         Command("pb info <名称>", "pb 信息 <名称>", "查看信息&运行示例", 1),
         Command("pb thread", "pb 进程", "查询运行和等待中的进程", 1),
+        Command("pb status", "pb 状态", "查看框架运行状态", 1),
         Command("run <名称> [stdin]", "pb 运行 <名称> [输入]", "运行代码项目", 1),
 
         Command("pb add <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]", "pb 添加 <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]", "添加Pastebin项目", 2),
@@ -267,6 +269,10 @@ object CommandPastebin : RawCommand(
                         Statistics.summarizeStatistics(null)
                     }
                     sendQuoteReply(statistics)
+                }
+
+                "status", "状态"-> {   // 查看框架运行状态
+                    sendQuoteReply(StatusReport.generate())
                 }
 
                 "list", "列表"-> {   // 查看完整列表

@@ -4,6 +4,7 @@ import net.mamoe.mirai.utils.info
 import site.tiedan.MiraiCompilerFramework.baseDataFolder
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.data.Database
+import site.tiedan.utils.FileSizeUtil
 import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -27,6 +28,38 @@ object BackupManager {
 
     /** 存储数据完整性标记文件名（用于区分首次启动与存储数据丢失） */
     private const val STORAGE_MARKER_FILE = ".storage_initialized"
+
+    /**
+     * 备份状态快照
+     */
+    data class BackupStatus(
+        val lastDaily: String?,
+        val dailyCount: Int,
+        val lastShutdown: String?,
+        val shutdownCount: Int,
+        val totalSize: Long,
+    )
+
+    /**
+     * 读取当前备份状态
+     */
+    fun status(): BackupStatus {
+        val bakDir = File(baseDataFolder, "backup")
+        val shutdownDir = File(bakDir, "shutdown")
+
+        val dailyDirs = bakDir.listFiles { file -> file.isDirectory && file.name != "shutdown" }
+            ?.map { it.name }?.sorted().orEmpty()
+        val shutdownDirs = shutdownDir.listFiles { file -> file.isDirectory }
+            ?.map { it.name }?.sorted().orEmpty()
+
+        return BackupStatus(
+            lastDaily = dailyDirs.lastOrNull(),
+            dailyCount = dailyDirs.size,
+            lastShutdown = shutdownDirs.lastOrNull()?.replace('_', ' ')?.replace('.', ':'),
+            shutdownCount = shutdownDirs.size,
+            totalSize = FileSizeUtil.folderSize(bakDir),
+        )
+    }
 
     /**
      * 每日定时备份全部 yml 数据文件，保留最近 [DAILY_BACKUP_KEEP] 天

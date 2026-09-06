@@ -10,9 +10,9 @@ import site.tiedan.data.ImageData
 import site.tiedan.data.PastebinData
 import site.tiedan.data.dao.StatisticsDao
 import site.tiedan.core.StorageManager
+import site.tiedan.utils.FileSizeUtil.folderSize
+import site.tiedan.utils.FileSizeUtil.formatSize
 import java.io.File
-import kotlin.math.log10
-import kotlin.math.pow
 
 /**
  * # 数据统计
@@ -97,7 +97,7 @@ object Statistics {
         val totalBucketSize = StorageManager.totalBucketSize()
         val totalBackupSize = StorageManager.totalBackupSize()
         val imageCount = ImageData.images.size
-        val totalSize = getFolderSize(File(imageFolder))
+        val totalSize = folderSize(File(imageFolder))
         val totalCodeCache = CodeCacheManager.totalSize()
 
         return buildString {
@@ -260,23 +260,6 @@ object Statistics {
     fun imageStatistics(userID: String): String {
         val imageCount = ImageData.images.values.count { it["userID"] == userID }
         return if (imageCount > 0) "🖼️ 上传图片：$imageCount\n" else ""
-    }
-
-    private fun getFolderSize(folder: File?): Long {
-        if (folder == null || !folder.exists()) return 0L
-        var size = 0L
-        val files = folder.listFiles() ?: return 0L
-        for (f in files) {
-            size += if (f.isFile) f.length() else getFolderSize(f)
-        }
-        return size
-    }
-
-    private fun formatSize(size: Long): String {
-        if (size <= 0) return "0 B"
-        val units = arrayOf("B", "KB", "MB", "GB", "TB")
-        val digitGroups = (log10(size.toDouble()) / log10(1024.0)).toInt()
-        return String.format("%.2f %s", size / 1024.0.pow(digitGroups.toDouble()), units[digitGroups])
     }
 
     private fun formatTime(time: Double): String {

@@ -88,7 +88,12 @@ object MiraiCompilerFramework : KotlinPlugin(
 
     data class Command(val usage: String, val usageCN: String, val desc: String, val type: Int)
 
+    /** 插件启用时刻，用于统计运行时长 */
+    var enabledAt: Long = 0L
+        private set
+
     override fun onEnable() {
+        enabledAt = System.currentTimeMillis()
         CommandGlot.register()
         CommandPastebin.register()
         CommandBucket.register()

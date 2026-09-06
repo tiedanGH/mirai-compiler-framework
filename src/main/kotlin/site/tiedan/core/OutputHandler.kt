@@ -44,11 +44,16 @@ import java.time.LocalTime
 object OutputHandler {
 
     // 输出进程池（配置修改重启生效）
-    private val OutputPool by lazy { Semaphore(PastebinConfig.output_limit.coerceAtLeast(1)) }
+    private val outputLimit: Int by lazy { PastebinConfig.output_limit.coerceAtLeast(1) }
+    private val OutputPool by lazy { Semaphore(outputLimit) }
 
-     fun isFull(): Boolean = OutputPool.availablePermits == 0
-     suspend fun acquire() = OutputPool.acquire()
-     fun release() = OutputPool.release()
+    /** 最大并发输出进程数 */
+    val limit: Int get() = outputLimit
+
+    fun activeCount(): Int = outputLimit - OutputPool.availablePermits
+    fun isFull(): Boolean = OutputPool.availablePermits == 0
+    suspend fun acquire() = OutputPool.acquire()
+    fun release() = OutputPool.release()
 
     /**
      * ## 处理程序输出格式

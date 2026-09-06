@@ -7,6 +7,7 @@ import site.tiedan.data.dao.MetaDao
 import site.tiedan.data.dao.Schema
 import java.io.File
 import java.sql.Connection
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -19,6 +20,9 @@ import kotlin.concurrent.withLock
 object Database {
 
     const val FILE_NAME = "storage.db"
+
+    /** 完整性自检结果的缓存时长 */
+    private const val CHECK_CACHE_MS = 5 * 60 * 1000L
 
     private val lock = ReentrantLock()
 
@@ -36,7 +40,7 @@ object Database {
     val isInitialized: Boolean get() = connection != null
 
     /**
-     * 初始哈数据库并建表
+     * 初始化数据库并建表
      * @return 底层 SQLite 版本号
      */
     fun initialize(dbFile: File): String = lock.withLock {
@@ -85,9 +89,35 @@ object Database {
         connection ?: error("数据库尚未初始化，请检查插件启动流程")
 
     /**
+     * 最近一次数据库操作失败的记录
+     */
+    data class ErrorInfo(val time: Long, val type: String)
+
+    @Volatile
+    var lastError: ErrorInfo? = null
+        private set
+
+    private val errorCount = AtomicLong(0)
+
+    /** 自启动以来的数据库操作失败次数 */
+    val totalErrors: Long get() = errorCount.get()
+
+    private fun recordError(e: Throwable) {
+        errorCount.incrementAndGet()
+        lastError = ErrorInfo(System.currentTimeMillis(), e::class.simpleName ?: "Exception")
+    }
+
+    /**
      * 以自动提交方式执行一段数据库操作
      */
-    fun <T> read(block: (Connection) -> T): T = lock.withLock { block(requireConnection()) }
+    fun <T> read(block: (Connection) -> T): T = lock.withLock {
+        try {
+            block(requireConnection())
+        } catch (e: Throwable) {
+            recordError(e)
+            throw e
+        }
+    }
 
     /**
      * 在一个数据库事务中执行一段操作，异常时整体回滚
@@ -106,6 +136,7 @@ object Database {
                     conn.commit()
                     result
                 } catch (e: Throwable) {
+                    recordError(e)
                     runCatching { conn.rollback() }
                     throw e
                 } finally {
@@ -123,6 +154,35 @@ object Database {
     suspend fun <T> transactionAsync(block: (Connection) -> T): T = withContext(Dispatchers.IO) { transaction(block) }
 
     /* ==================== 完整性与备份 ==================== */
+
+    /** 底层 SQLite 版本号 */
+    fun sqliteVersion(): String = read { sqliteVersion(it) }
+
+    /** 当前表结构版本号 */
+    fun schemaVersion(): Int = read { Schema.readVersion(it) }
+
+    /** 数据库文件大小，未初始化或为内存库时返回 0 */
+    fun fileSize(): Long = file?.takeIf { it.isFile }?.length() ?: 0L
+
+    /**
+     * WAL 文件大小
+     * - 持续增大说明 checkpoint 没能执行（通常是有连接长期持有读事务），属于故障征兆
+     */
+    fun walSize(): Long = file?.let { File("${it.absolutePath}-wal") }?.takeIf { it.isFile }?.length() ?: 0L
+
+    @Volatile
+    private var cachedCheck: Pair<Long, String>? = null
+
+    /**
+     * 完整性自检结果（正常时为 `ok`）
+     */
+    fun cachedQuickCheck(): String {
+        val now = System.currentTimeMillis()
+        cachedCheck?.let { (time, result) -> if (now - time < CHECK_CACHE_MS) return result }
+        val result = runCatching { quickCheck() }.getOrElse { "检查失败：${it::class.simpleName}" }
+        cachedCheck = now to result
+        return result
+    }
 
     /** 数据初始化标记是否已置位 */
     fun isDataInitialized(): Boolean = read { MetaDao.isInitialized(it) }
