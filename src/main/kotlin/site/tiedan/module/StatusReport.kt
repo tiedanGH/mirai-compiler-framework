@@ -61,6 +61,9 @@ object StatusReport {
             )
             appendLine()
 
+            append(DataAudit.format(DataAudit.scan()))
+            appendLine()
+
             appendLine("🗂 备份记录")
             appendLine(" · 每日备份：${backup.lastDaily ?: "暂无"}（${backup.dailyCount}份）")
             appendLine(" · 关机备份：${backup.lastShutdown ?: "暂无"}（${backup.shutdownCount}份）")

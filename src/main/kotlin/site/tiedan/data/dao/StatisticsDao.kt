@@ -77,6 +77,14 @@ object StatisticsDao {
             ps.executeQuery().use { rs -> if (rs.next()) rs.getDouble(1) else 0.0 }
         }
 
+    /** 全部有统计记录的项目名 */
+    fun listProjects(conn: Connection): List<String> =
+        conn.createStatement().use { st ->
+            st.executeQuery("SELECT project FROM statistics").use { rs ->
+                buildList { while (rs.next()) add(rs.getString(1)) }
+            }
+        }
+
     /** 一次性读取全部项目的热度指数，用于排序与渲染 */
     fun allScores(conn: Connection): Map<String, Double> = allOf(conn, "score")
 

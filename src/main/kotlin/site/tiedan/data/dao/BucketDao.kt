@@ -273,6 +273,14 @@ object BucketDao {
             ps.executeQuery().use { rs -> buildList { while (rs.next()) add(rs.getLong(1)) } }
         }
 
+    /** 全部被存储库关联过的项目名 */
+    fun listLinkedProjects(conn: Connection): List<String> =
+        conn.createStatement().use { st ->
+            st.executeQuery("SELECT DISTINCT project FROM bucket_project").use { rs ->
+                buildList { while (rs.next()) add(rs.getString(1)) }
+            }
+        }
+
     /** 将项目从全部存储库的关联列表中移除 */
     fun removeProjectFromAll(conn: Connection, project: String) {
         conn.prepareStatement("DELETE FROM bucket_project WHERE project = ?").use { ps ->

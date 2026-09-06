@@ -58,6 +58,14 @@ object CodeCacheDao {
         }
     }
 
+    /** 全部已缓存的项目名 */
+    fun listProjects(conn: Connection): List<String> =
+        conn.createStatement().use { st ->
+            st.executeQuery("SELECT project FROM code_cache").use { rs ->
+                buildList { while (rs.next()) add(rs.getString(1)) }
+            }
+        }
+
     /** 已缓存的项目数量 */
     fun count(conn: Connection): Int =
         conn.createStatement().use { st ->

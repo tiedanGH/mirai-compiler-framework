@@ -12,7 +12,7 @@ import site.tiedan.MiraiCompilerFramework.sendQuoteReply
  */
 object StorageLockGuard {
 
-    private val timeoutSeconds = StorageManager.LOCK_WAIT_TIMEOUT_MS / 1000
+    private const val TIMEOUT_SECONDS = StorageManager.LOCK_WAIT_TIMEOUT_MS / 1000
 
     /** 锁定项目及其关联的全部存储库 */
     suspend fun CommandSender.lockProject(name: String): StorageManager.StorageLock? =
@@ -45,7 +45,7 @@ object StorageLockGuard {
         }
         val lock = acquire()
         if (lock == null) {
-            sendQuoteReply("[操作超时] $target 已被占用超过 $timeoutSeconds 秒，本次操作已取消，请稍后重试")
+            sendQuoteReply("[操作超时] $target 已被占用超过 $TIMEOUT_SECONDS 秒，本次操作已取消，请稍后重试")
         }
         return lock
     }

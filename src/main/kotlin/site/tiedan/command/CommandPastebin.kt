@@ -1004,7 +1004,6 @@ object CommandPastebin : RawCommand(
                         sendQuoteReply("删除失败：名称 $name 不存在")
                         return
                     }
-                    storageLock = lockProject(name) ?: return
 
                     val ownerID = PastebinData.pastebin[name]?.get("userID")
                     val isOwner = userID == ownerID
@@ -1034,6 +1033,7 @@ object CommandPastebin : RawCommand(
                         "如您确认无误，请再次执行删除指令以完成操作"
                     ) ?: return
 
+                    storageLock = lockProject(name) ?: return
                     PastebinData.alias.entries.removeIf { it.value == name }
                     PastebinData.hiddenUrl.remove(name)
                     PastebinData.groupOnly.remove(name)

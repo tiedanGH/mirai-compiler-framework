@@ -290,7 +290,6 @@ object CommandBucket : RawCommand(
 
                 "set", "修改"-> {   // 修改存储库属性
                     val id = checkBucketNameOrID(args[1].content, "修改") ?: return
-                    storageLock = lockBucket(id) ?: return
                     var option = args[2].content
                     var content = args.drop(3).joinToString(separator = " ")
                     var additionalOutput = ""
@@ -327,6 +326,8 @@ object CommandBucket : RawCommand(
                         sendQuoteReply("修改失败：修改后的值为空！")
                         return
                     }
+                    // 全部校验通过后才上锁
+                    storageLock = lockBucket(id) ?: return
                     when (option) {
                         "password"-> {
                             if (subject is Group) {
@@ -412,11 +413,12 @@ object CommandBucket : RawCommand(
 
                 "add", "添加"-> {   // 将存储库添加至项目
                     val ctx = prepareProjectContext(args, userID) ?: return
-                    storageLock = lockProjectAndBucket(ctx.projectName, ctx.id) ?: return
-                    ctx.refreshProjects()
 
                     val password = args.getOrNull(3)?.content
                     checkPassword(ctx.id, password, userID, isAdmin) ?: return  // 验证密码
+
+                    storageLock = lockProjectAndBucket(ctx.projectName, ctx.id) ?: return
+                    ctx.refreshProjects()   // 关联列表是取锁前读的，等锁期间可能已被改动
 
                     if (PastebinData.pastebin[ctx.projectName]?.get("storage") != "true") {
                         sendQuoteReply("添加失败：项目 ${ctx.projectName} 未开启存储功能")
@@ -449,7 +451,6 @@ object CommandBucket : RawCommand(
 
                 "backup", "备份"-> {   // 备份存储库数据
                     val id = checkBucketNameOrID(args[1].content, "备份") ?: return
-                    storageLock = lockBucket(id) ?: return
 
                     // 删除备份指令
                     if (args.getOrNull(2)?.content == "del") {
@@ -460,6 +461,7 @@ object CommandBucket : RawCommand(
                         val password = args.getOrNull(4)?.content
                         checkPassword(id, password, userID, isAdmin) ?: return  // 验证密码
 
+                        storageLock = lockBucket(id) ?: return
                         val backup = StorageManager.getBackup(id, num - 1)
                         if (backup == null) {
                             return sendQuoteReply("删除失败：槽位 $num 中没有备份")
@@ -493,6 +495,7 @@ object CommandBucket : RawCommand(
                         ?.takeIf { it in 1..3 }
                         ?: return sendQuoteReply("编号无效：备份编号仅支持 1-3")
 
+                    storageLock = lockBucket(id) ?: return
                     val bucketContent = StorageManager.getBucketRawContent(id)
                     if (bucketContent.isNullOrEmpty()) {
                         sendQuoteReply("备份失败：存储库 ${bucketInfo(id)} 当前数据为空")
@@ -552,7 +555,6 @@ object CommandBucket : RawCommand(
 
                 "rollback", "回滚"-> {   // 从备份回滚数据
                     val id = checkBucketNameOrID(args[1].content, "回滚") ?: return
-                    storageLock = lockBucket(id) ?: return
 
                     val password = args.getOrNull(3)?.content
                     checkPassword(id, password, userID, isAdmin) ?: return  // 验证密码
@@ -561,6 +563,7 @@ object CommandBucket : RawCommand(
                         ?.takeIf { it in 1..3 }
                         ?: return sendQuoteReply("编号无效：备份编号仅支持 1-3")
 
+                    storageLock = lockBucket(id) ?: return
                     val backup = StorageManager.getBackup(id, num - 1)
                         ?: return sendQuoteReply("回滚失败：备份编号 $num 没有任何数据")
 
@@ -589,7 +592,6 @@ object CommandBucket : RawCommand(
 
                 "delete", "删除"-> {   // 永久删除存储库
                     val id = checkBucketNameOrID(args[1].content, "删除") ?: return
-                    storageLock = lockBucket(id) ?: return
                     val ownerID = StorageManager.getBucket(id)?.userID
                     val isOwner = userID == ownerID
                     val forceDelete = args.getOrNull(2)?.content == "force"
@@ -603,6 +605,7 @@ object CommandBucket : RawCommand(
                             return
                         }
                     }
+                    storageLock = lockBucket(id) ?: return
                     val projects = StorageManager.getBucket(id)?.projects?.joinToString(" ") ?: ""
 
                     requestUserConfirmation(userID, args.content,
