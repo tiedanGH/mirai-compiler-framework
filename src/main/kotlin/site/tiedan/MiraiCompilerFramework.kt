@@ -1,5 +1,6 @@
 package site.tiedan
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import net.mamoe.mirai.Bot
@@ -179,10 +180,18 @@ object MiraiCompilerFramework : KotlinPlugin(
     private fun startTimer() {
         launch {
             while (true) {
-                val delayTime = Timer.calculateNextDelay()
-                logger.info { "已重新加载协程，距离下次定时任务剩余 ${delayTime / 1000} 秒" }
-                delay(delayTime)
-                Timer.executeScheduledTasks()
+                // 循环体兜底：任何异常都不得让定时协程结束
+                try {
+                    val delayTime = Timer.calculateNextDelay()
+                    logger.info { "已重新加载协程，距离下次定时任务剩余 ${delayTime / 1000} 秒" }
+                    delay(delayTime)
+                    Timer.executeScheduledTasks()
+                } catch (e: CancellationException) {
+                    throw e     // 插件关闭，正常退出
+                } catch (e: Exception) {
+                    logger.error("定时任务调度异常，1 小时后重试", e)
+                    delay(60 * 60 * 1000L)
+                }
             }
         }
     }

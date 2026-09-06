@@ -165,9 +165,23 @@ object PastebinCodeExecutor {
                 }
                 StorageManager.lock()
                 storageLocked = true
-                val global = StorageManager.getGlobalData(name)
-                val storage = StorageManager.getStorageData(name, numID, platform)
-                val bucket = StorageManager.getBucketData(name)
+                // 读存储失败必须中止执行
+                val storageInput = try {
+                    Triple(
+                        StorageManager.getGlobalData(name),
+                        StorageManager.getStorageData(name, numID, platform),
+                        StorageManager.getBucketData(name),
+                    )
+                } catch (e: Exception) {
+                    logger.error("读取项目 $name 的存储数据失败", e)
+                    sendQuoteReply(
+                        "[数据库错误] 读取存储数据失败\n" +
+                        "⚠️ 已取消项目执行，请稍后重试或联系管理员\n" +
+                        "报错类别：${e::class.simpleName}"
+                    )
+                    return
+                }
+                val (global, storage, bucket) = storageInput
 
                 val jsonInput = JsonProcessor.processEncode(global, storage, bucket, numID, userID, nickname, avatar, from, platform, imageData)
                 input = "$jsonInput\n$userInput"
@@ -280,7 +294,18 @@ object PastebinCodeExecutor {
                     sendQuoteReply("【存储错误】拒绝访问：名称 $name 不存在或未开启存储，保存数据失败！")
                     return
                 }
-                val ret = StorageManager.savePastebinStorage(name, numID, platform, outputGlobal, outputStorage, outputBucket)
+                // 与「输出失败」区分：此处代码已执行、消息已发出，但存储写入失败
+                val ret = try {
+                    StorageManager.savePastebinStorage(name, numID, platform, outputGlobal, outputStorage, outputBucket)
+                } catch (e: Exception) {
+                    logger.error("保存项目 $name 的存储数据失败", e)
+                    sendQuoteReply(
+                        "[数据库错误] 存储数据写入失败\n" +
+                        "⚠️ 代码和输出成功执行，但写入数据库失败，本次存储数据已丢失，请联系管理员" +
+                        "报错类别：${e::class.simpleName}"
+                    )
+                    return
+                }
                 if (ret != null) sendQuoteReply("【存储错误】$ret")
             }
         } catch (e: Exception) {

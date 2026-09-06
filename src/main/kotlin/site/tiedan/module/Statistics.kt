@@ -1,6 +1,7 @@
 package site.tiedan.module
 
 import site.tiedan.MiraiCompilerFramework.imageFolder
+import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.roundTo2
 import site.tiedan.command.CommandPastebin.containsCollaborator
 import site.tiedan.core.CodeCacheManager
@@ -24,23 +25,30 @@ import kotlin.math.pow
 object Statistics {
 
     /**
+     * 计数失败不得影响主流程
+     */
+    private fun count(name: String, type: String, block: () -> Unit) {
+        runCatching(block).onFailure { logger.warning("项目 $name 的$type 统计写入失败，不影响本次执行", it) }
+    }
+
+    /**
      * 统计运行次数和热度
      */
-    fun countRun(name: String) {
+    fun countRun(name: String) = count(name, "运行次数") {
         Database.transaction { StatisticsDao.countRun(it, name) }
     }
 
     /**
      * 统计调用 markdown 次数和用时
      */
-    fun countMarkdown(name: String, mdTime: Double) {
+    fun countMarkdown(name: String, mdTime: Double) = count(name, "markdown 调用") {
         Database.transaction { StatisticsDao.countMarkdown(it, name, mdTime) }
     }
 
     /**
      * 统计下载次数和用时
      */
-    fun countDownload(name: String, dlTime: Double) {
+    fun countDownload(name: String, dlTime: Double) = count(name, "image 下载") {
         Database.transaction { StatisticsDao.countDownload(it, name, dlTime) }
     }
 

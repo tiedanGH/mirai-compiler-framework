@@ -8,10 +8,18 @@ import java.util.*
 
 object Timer {
 
+    /**
+     * 执行全部每日定时任务
+     * - 每个子任务单独兜底：任何一个失败都不得中断其余任务，更不得让调用方的定时循环退出
+     */
     fun executeScheduledTasks() {
-        BackupManager.dailyBackup()
-        executeClearBlackList()
-        dailyDecayScore()
+        runTask("每日数据备份") { BackupManager.dailyBackup() }
+        runTask("清除代码执行黑名单") { executeClearBlackList() }
+        runTask("热度指数衰减") { dailyDecayScore() }
+    }
+
+    private fun runTask(name: String, task: () -> Unit) {
+        runCatching(task).onFailure { logger.error("定时任务【$name】执行失败", it) }
     }
 
     fun calculateNextDelay(): Long {
