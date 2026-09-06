@@ -36,6 +36,7 @@ import site.tiedan.core.StorageLockGuard.lockProject
 import site.tiedan.core.StorageManager
 import site.tiedan.format.MarkdownImageGenerator
 import site.tiedan.module.MailService
+import site.tiedan.module.DataAudit
 import site.tiedan.module.Statistics
 import site.tiedan.module.StatusReport
 import site.tiedan.utils.FuzzySearch
@@ -86,6 +87,7 @@ object CommandPastebin : RawCommand(
         Command("pb handle <名称> <同意/拒绝> [备注]", "pb 处理 <名称> <同意/拒绝> [备注]", "处理添加和修改申请", 4),
         Command("pb black [ID]", "pb 黑名单 [平台ID]", "黑名单处理", 4),
         Command("pb reload", "pb 重载", "重载本地数据", 4),
+        Command("pb status clean", "pb 状态 clean", "清除孤儿数据", 4),
     )
 
     override suspend fun CommandSender.onCommand(args: MessageChain) {
@@ -276,7 +278,31 @@ object CommandPastebin : RawCommand(
                 }
 
                 "status", "状态"-> {   // 查看框架运行状态
-                    sendQuoteReply(StatusReport.generate())
+                    if (args.getOrNull(1)?.content != "clean") {
+                        sendQuoteReply(StatusReport.generate())
+                        return
+                    }
+                    // 清除孤儿数据：不可逆，判据依赖 yml
+                    if (!isAdmin) throw PermissionDeniedException()
+                    val result = DataAudit.scan()
+                    if (result.clean) {
+                        sendQuoteReply("🔍 数据自检：✅ 未发现孤儿数据，无需清理")
+                        return
+                    }
+                    requestUserConfirmation(userID, args.content,
+                        " +++⚠️ 不可逆操作警告 ⚠️+++\n" +
+                        "您正在清除下列孤儿数据，共 ${result.total} 项：\n" +
+                        DataAudit.format(result) + "\n" +
+                        "\n" +
+                        "- 这些数据是项目被误删或误改名后*唯一残留*的线索，清理可能会*误删正常数据*\n" +
+                        "- 请先确认上方名称确实为废弃项目，必要时先进行备份\n" +
+                        "\n" +
+                        "如您确认无误，请再次执行本指令以完成清理"
+                    ) ?: return
+
+                    val removed = DataAudit.clean(result)
+                    logger.warning("管理员 $userID 清除了 $removed 项孤儿数据")
+                    sendQuoteReply("✅ 已清除 $removed 项孤儿数据")
                 }
 
                 "list", "列表"-> {   // 查看完整列表

@@ -47,6 +47,7 @@ object StatusReport {
                 appendLine(" · 连接：❌ 未初始化，存储相关功能全部不可用")
             }
             appendLine(" · 累计错误：${formatErrors()}")
+            appendLine(DataAudit.format(DataAudit.scan()))
             appendLine()
 
             appendLine("⚙️ 运行中")
@@ -59,9 +60,6 @@ object StatusReport {
                 if (lockedProjects == 0 && lockedBuckets == 0) "空闲"
                 else "${lockedProjects}项目 / ${lockedBuckets}存储库"
             )
-            appendLine()
-
-            append(DataAudit.format(DataAudit.scan()))
             appendLine()
 
             appendLine("🗂 备份记录")

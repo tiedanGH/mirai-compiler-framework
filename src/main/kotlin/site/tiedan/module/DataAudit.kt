@@ -17,6 +17,11 @@ import site.tiedan.data.dao.StorageDao
  */
 object DataAudit {
 
+    private const val LABEL_STORAGE = "存储"
+    private const val LABEL_CACHE = "代码缓存"
+    private const val LABEL_STATISTICS = "项目统计"
+    private const val LABEL_BUCKET_LINK = "存储库关联"
+
     /** 单项孤儿数据 */
     data class OrphanGroup(val label: String, val projects: List<String>)
 
@@ -33,10 +38,10 @@ object DataAudit {
         return Database.read { conn ->
             Result(
                 listOf(
-                    OrphanGroup("存储", StorageDao.listProjects(conn).filterNot { it in known }),
-                    OrphanGroup("缓存", CodeCacheDao.listProjects(conn).filterNot { it in known }),
-                    OrphanGroup("统计", StatisticsDao.listProjects(conn).filterNot { it in known }),
-                    OrphanGroup("存储库关联", BucketDao.listLinkedProjects(conn).filterNot { it in known }),
+                    OrphanGroup(LABEL_STORAGE, StorageDao.listProjects(conn).filterNot { it in known }),
+                    OrphanGroup(LABEL_CACHE, CodeCacheDao.listProjects(conn).filterNot { it in known }),
+                    OrphanGroup(LABEL_STATISTICS, StatisticsDao.listProjects(conn).filterNot { it in known }),
+                    OrphanGroup(LABEL_BUCKET_LINK, BucketDao.listLinkedProjects(conn).filterNot { it in known }),
                 )
             )
         }
@@ -46,19 +51,39 @@ object DataAudit {
      * 渲染为 `#pb status` 中的自检段落
      */
     fun format(result: Result, maxNames: Int = 10): String = buildString {
-        appendLine("🔍 数据自检")
         if (result.clean) {
-            appendLine(" · 全部数据均对应现存项目，未发现孤儿数据")
+            append("🔍 数据自检：✅")
             return@buildString
         }
-        for (group in result.groups) {
-            if (group.projects.isEmpty()) {
-                appendLine(" · ${group.label}：✅")
-                continue
-            }
+        appendLine("🔍 数据自检：⚠️ ${result.total} 项孤儿数据")
+        val groups = result.groups.filter { it.projects.isNotEmpty() }
+        for ((index, group) in groups.withIndex()) {
             val shown = group.projects.take(maxNames).joinToString("、")
-            val more = if (group.projects.size > maxNames) "等 ${group.projects.size} 项" else ""
-            appendLine(" · ${group.label}：⚠️ $shown$more")
+            val more = if (group.projects.size > maxNames) "…等 ${group.projects.size} 项" else ""
+            val line = " · ${group.label}：$shown$more"
+            if (index < groups.lastIndex) appendLine(line) else append(line)
         }
+    }
+
+    /**
+     * 清除全部孤儿数据
+     * - 这是**不可逆**操作，且判据依赖 yml，必须由管理员显式确认后调用。
+     *
+     * @return 实际删除的条目数量
+     */
+    fun clean(result: Result): Int = Database.transaction { conn ->
+        var removed = 0
+        for (group in result.groups) {
+            for (project in group.projects) {
+                when (group.label) {
+                    LABEL_STORAGE -> StorageDao.removeProject(conn, project)
+                    LABEL_CACHE -> CodeCacheDao.remove(conn, project)
+                    LABEL_STATISTICS -> StatisticsDao.remove(conn, project)
+                    LABEL_BUCKET_LINK -> BucketDao.removeProjectFromAll(conn, project)
+                }
+                removed++
+            }
+        }
+        removed
     }
 }
