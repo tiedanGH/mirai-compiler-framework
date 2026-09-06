@@ -22,8 +22,10 @@ dependencies {
     implementation("org.apache.tika:tika-core:3.3.1")
     implementation("xyz.cssxsh.baidu:baidu-aip:3.3.2")
     implementation("at.favre.lib:bcrypt:0.10.2")
+    implementation("org.xerial:sqlite-jdbc:3.53.4.0")
 
     testImplementation("org.junit.jupiter:junit-jupiter:6.1.0")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.0")
 }
 
 mirai {
