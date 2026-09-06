@@ -95,12 +95,17 @@ object MiraiCompilerFramework : KotlinPlugin(
         CommandRun.register()
 
         reloadConfig()
+
+        // 打开存储数据库（项目存储、存储库、代码缓存、项目统计），必须先于任何数据访问
+        val sqliteVersion = Database.initialize(File("$baseDataFolder/${Database.FILE_NAME}"))
+        logger.info { "存储数据库已就绪（SQLite $sqliteVersion）" }
+
         reloadData()
 
-        // 存储数据完整性检查：检测 PastebinStorage 存储数据是否异常丢失
+        // 存储数据完整性检查：检测存储数据是否异常丢失
         if (!BackupManager.checkStorageIntegrity()) {
             logger.error("============================================================")
-            logger.error("【严重错误】检测到存储数据文件 PastebinStorage.yml 异常丢失或被重置为默认值！")
+            logger.error("【严重错误】检测到存储数据库 ${Database.FILE_NAME} 异常丢失或被清空！")
             logger.error("为避免框架继续运行后用默认数据覆盖已有备份，已主动停止 Mirai。")
             logger.error("请从下列备份目录恢复数据后再重新启动：")
             logger.error("  · 定时备份：${baseDataFolder}/backup/<日期>/")
@@ -136,8 +141,9 @@ object MiraiCompilerFramework : KotlinPlugin(
         CommandImage.unregister()
         CommandRun.unregister()
 
-        // 关闭时额外备份一次数据
+        // 关闭时额外备份一次数据（生成数据库快照需要活连接，必须先于 Database.close）
         BackupManager.backupOnShutdown()
+        Database.close()
     }
 
     fun reloadConfig() {
@@ -152,11 +158,7 @@ object MiraiCompilerFramework : KotlinPlugin(
         GlotCache.reload()
         PastebinData.reload()
         ExtraData.reload()
-        PastebinStorage.reload()
-        PastebinPlatformStorage.reload()
-        PastebinBucket.reload()
         ImageData.reload()
-        CodeCache.reload()
         KookAvatarCache.reload()
     }
 

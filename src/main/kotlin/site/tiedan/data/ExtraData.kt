@@ -16,7 +16,4 @@ internal object ExtraData : AutoSavePluginData("ExtraData") {
     @ValueDescription("接收主动私信时间段")
     var private_allowTime: MutableMap<String, Pair<Int, Int>> by value()
 
-    @ValueDescription("数据统计")
-    var statistics: MutableMap<String, MutableMap<String, Double>> by value()
-
 }

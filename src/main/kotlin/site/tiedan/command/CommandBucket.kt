@@ -32,7 +32,6 @@ import site.tiedan.format.MarkdownImageGenerator
 import site.tiedan.module.MailService
 import site.tiedan.utils.FuzzySearch
 import site.tiedan.utils.Security
-import site.tiedan.utils.YamlSafeValue
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -268,17 +267,12 @@ object CommandBucket : RawCommand(
                         sendQuoteReply("创建失败：存储库名称不能为纯数字")
                         return
                     }
-                    if (YamlSafeValue.isNullLiteral(name)) {
-                        sendQuoteReply("创建失败：存储库名称不能使用 YAML 保留字（null、Null、NULL、~），请更换名称")
-                        return
-                    }
                     if (bucketNameToId(name) != null) {
                         sendQuoteReply("创建失败：名称 $name 已存在")
                         return
                     }
                     val id = StorageManager.nextFreeBucketId()
                     StorageManager.createBucket(id, name, Security.hashPassword(password), userName, userID)
-                    StorageManager.saveBucket()
                     sendQuoteReply(
                         "🗄 创建新存储库成功！\n" +
                         "存储库ID：$id\n" +
@@ -327,10 +321,6 @@ object CommandBucket : RawCommand(
                         sendQuoteReply("修改失败：修改后的值为空！")
                         return
                     }
-                    if (YamlSafeValue.isNullLiteral(content)) {
-                        sendQuoteReply("修改失败：值不能使用 YAML 保留字（null、Null、NULL、~），请更换内容")
-                        return
-                    }
                     when (option) {
                         "password"-> {
                             if (subject is Group) {
@@ -338,10 +328,9 @@ object CommandBucket : RawCommand(
                             }
                             val newPassword = content
                             content = "***"
-                            StorageManager.setBucketField(id, "password", Security.hashPassword(newPassword))
+                            StorageManager.setBucketPassword(id, Security.hashPassword(newPassword))
                         }
                         "userID"-> {
-                            // 不可命名为 id：会遮蔽外层的存储库编号，导致写到错误的槽位
                             val targetID = parseUserID(content)
                             if (targetID == null) {
                                 sendQuoteReply("转移失败：输入的 userID 格式不正确，应为纯数字或带平台前缀 kook_123")
@@ -364,8 +353,7 @@ object CommandBucket : RawCommand(
                                 "如您确认无误，请再次执行转移指令以完成操作"
                             ) ?: return
 
-                            StorageManager.setBucketField(id, "owner", targetName)
-                            StorageManager.setBucketField(id, "userID", content)
+                            StorageManager.setBucketOwner(id, targetName, content)
                         }
                         "backup"-> {
                             val paras = content.split(" ")
@@ -374,9 +362,6 @@ object CommandBucket : RawCommand(
                                 ?: return sendQuoteReply("备份编号无效：备份编号仅支持 1-3")
                             val newName = paras.getOrNull(1)
                                 ?: return sendQuoteReply("修改失败：请输入修改后的新备份名称")
-                            if (YamlSafeValue.isNullLiteral(newName)) {
-                                return sendQuoteReply("修改失败：备份名称不能使用 YAML 保留字（null、Null、NULL、~），请更换名称")
-                            }
                             val backup = StorageManager.getBackup(id, num)
                                 ?: return sendQuoteReply("修改失败：备份编号 ${num + 1} 尚未初始化")
 
@@ -403,11 +388,15 @@ object CommandBucket : RawCommand(
 
                             StorageManager.enableBucketEncryption(id)
                         }
+                        "name" -> StorageManager.setBucketName(id, content)
+
+                        "desc" -> StorageManager.setBucketDesc(id, content)
+
                         else -> {
-                            StorageManager.setBucketField(id, option, content)
+                            sendQuoteReply("[错误] 未处理的配置项：$option，请联系管理员")
+                            return
                         }
                     }
-                    StorageManager.saveBucket()
                     if (option == "userID") {
                         sendQuoteReply("${additionalOutput}成功将存储库 ${bucketInfo(id)} 的所有权转移至 $content")
                     } else {
@@ -432,7 +421,6 @@ object CommandBucket : RawCommand(
 
                     ctx.projectsList.add(ctx.projectName)
                     StorageManager.setBucketProjects(ctx.id, ctx.projectsList)
-                    StorageManager.saveBucket()
                     sendQuoteReply(
                         "成功将存储库 ${bucketInfo(ctx.id)} 关联到项目 ${ctx.projectName}" +
                         (if (subject is Group && password != null) "\n\n⚠️ 您正在群聊进行操作，密码存在极高泄露风险，建议尽快修改密码！" else "")
@@ -446,7 +434,6 @@ object CommandBucket : RawCommand(
                         return
                     }
                     StorageManager.setBucketProjects(ctx.id, ctx.projectsList)
-                    StorageManager.saveBucket()
                     sendQuoteReply("成功将存储库 ${bucketInfo(ctx.id)} 与项目 ${ctx.projectName} 解除关联")
                 }
 
@@ -483,7 +470,6 @@ object CommandBucket : RawCommand(
                         ) ?: return
 
                         StorageManager.setBackup(id, num - 1, null)
-                        StorageManager.saveBucket()
 
                         return sendQuoteReply("成功删除存储库 ${bucketInfo(id)} 的备份槽位 $num！")
                     }
@@ -551,7 +537,6 @@ object CommandBucket : RawCommand(
                             (if (subject is Group && password != null) "\n\n⚠️ 您正在群聊进行操作，密码存在极高泄露风险，建议尽快修改密码！" else "")
                         )
                     }
-                    StorageManager.saveBucket()
                 }
 
                 "rollback", "回滚"-> {   // 从备份回滚数据
@@ -584,7 +569,6 @@ object CommandBucket : RawCommand(
                     ) ?: return
 
                     StorageManager.setBucketRawContent(id, backup.content)
-                    StorageManager.saveBucket()
                     sendQuoteReply(
                         "[ROLLBACK] 成功将存储库 ${bucketInfo(id)} 回滚至槽位 $num 的备份：${backup.name}（${formatTime(backup.time)}）！" +
                         (if (subject is Group && password != null) "\n\n⚠️ 您正在群聊进行操作，密码存在极高泄露风险，建议尽快修改密码！" else "")
@@ -619,7 +603,6 @@ object CommandBucket : RawCommand(
                     ) ?: return
 
                     StorageManager.deleteBucket(id)
-                    StorageManager.saveBucket()
                     sendQuoteReply("删除存储库 $id 成功" + (if (projects.isNotEmpty()) "，项目已解除关联" else ""))
                 }
 

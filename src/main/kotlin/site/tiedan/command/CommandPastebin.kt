@@ -949,9 +949,6 @@ object CommandPastebin : RawCommand(
                         sendQuoteReply("${additionalOutput}成功将 $name 的 $option 参数修改为 $content")
                     }
                     PastebinData.save()
-                    StorageManager.saveStorage()
-                    CodeCacheManager.save()
-                    ExtraData.save()
                 }
 
                 "collab", "collaborators", "协作", "协作者" -> {   // 批量编辑自己全部项目的协作者
@@ -1027,13 +1024,9 @@ object CommandPastebin : RawCommand(
                     PastebinData.pastebin.remove(name)
                     PastebinData.save()
                     CodeCacheManager.remove(name)
-                    CodeCacheManager.save()
                     Statistics.removeProject(name)
-                    ExtraData.save()
                     StorageManager.removeProjectStorage(name)
-                    StorageManager.saveStorage()
                     removeProjectFromBucket(name)
-                    StorageManager.saveBucket()
                     sendQuoteReply("删除项目 $name 成功！")
                 }
 
@@ -1060,7 +1053,7 @@ object CommandPastebin : RawCommand(
                     val isOwner = userID == ownerID
                     val isCollaborator = isCollaborator(name, userID)
                     if (!isOwner && !isAdmin && !isCollaborator) {
-                        sendQuoteReply("【查询名称】$name\n【用户数量】${storage?.size?.minus(1)}\n无权查看数据内容，仅所有者可查看存储数据详细内容")
+                        sendQuoteReply("【查询名称】$name\n【用户数量】${storage?.users?.size}\n无权查看数据内容，仅所有者可查看存储数据详细内容")
                         return
                     }
 
@@ -1079,16 +1072,17 @@ object CommandPastebin : RawCommand(
                             return
                         }
 
-                        var output = "【查询名称】$name\n【用户数量】${storage.size - 1}\n\n"
-                        for (id in storage.keys) {
-                            output += if (id == 0L) {
-                                "【全局存储[global]】\n${storage[id]}\n\n"
-                            } else {
-                                "【用户存储[$id]】\n${storage[id]}\n\n"
-                            }
+                        var output = "【查询名称】$name\n【用户数量】${storage.users.size}\n\n"
+                        output += "【全局存储[global]】\n${storage.global}\n\n"
+                        for (user in storage.users) {
+                            output += "【用户存储[${user.platformID}]】\n${user.content}\n\n"
                         }
                         logger.info("请求使用邮件发送结果：$name")
                         MailService.sendStorageMail(this, output, userID, name, mail)
+                        return
+                    }
+                    if (requestMail && !MailConfig.enable) {
+                        sendQuoteReply("[错误] 邮件功能未启用，无法通过邮件发送存储数据")
                         return
                     }
 
@@ -1100,11 +1094,11 @@ object CommandPastebin : RawCommand(
                         return
                     }
 
-                    val id = try {
-                        if (args[2].content == "global" || args[2].content == "全局") 0
-                        else args[2].content.toLong()
-                    } catch (_: Exception) {
-                        -1
+                    val queryID = args.getOrNull(2)?.content
+                    val queryContent: String? = when (queryID) {
+                        null -> null
+                        "global", "全局" -> storage?.global
+                        else -> storage?.users?.firstOrNull { it.platformID == queryID }?.content
                     }
                     try {
                         val forward = buildForwardMessage(subject!!) {
@@ -1112,41 +1106,38 @@ object CommandPastebin : RawCommand(
                                 override fun generateTitle(forward: RawForwardMessage): String = "存储数据查询"
                                 override fun generateBrief(forward: RawForwardMessage): String = "[存储数据]"
                                 override fun generatePreview(forward: RawForwardMessage): List<String> =
-                                    if (id == -1L) listOf("查询名称：$name", "用户数量：${storage?.size?.minus(1)}")
-                                    else listOf("查询名称：$name", "查询ID：$id")
+                                    if (queryID == null) listOf("查询名称：$name", "用户数量：${storage?.users?.size}")
+                                    else listOf("查询名称：$name", "查询ID：$queryID")
 
                                 override fun generateSummary(forward: RawForwardMessage): String =
                                     if (storage == null) "查询失败：名称不存在"
-                                    else if (id != -1L && storage[id] == null) "查询失败：ID不存在"
+                                    else if (queryID != null && queryContent == null) "查询失败：ID不存在"
                                     else "查询成功"
                             }
-                            if (id == -1L) {
-                                subject!!.bot named "存储查询" says "【查询名称】$name\n【用户数量】${storage?.size?.minus(1)}"
+                            if (queryID == null) {
+                                subject!!.bot named "存储查询" says "【查询名称】$name\n【用户数量】${storage?.users?.size}"
                                 if (storage != null) {
-                                    for (qq in storage.keys) {
-                                        val content = if (storage[qq]!!.length <= 10000) storage[qq]
-                                        else "[内容过长] 数据长度：${storage[qq]?.length}，如需查看完整内容请使用指令\n\n${commandPrefix}pb storage $name mail\n\n将结果发送邮件至您的邮箱"
-                                        if (qq == 0L)
-                                            subject!!.bot named "全局存储" says "【全局存储[global]】\n$content"
-                                        else
-                                            subject!!.bot named "用户存储" says "【用户存储[$qq]】\n$content"
+                                    subject!!.bot named "全局存储" says
+                                            "【全局存储[global]】\n${truncateStorage(storage.global, name)}"
+                                    for (user in storage.users) {
+                                        subject!!.bot named "用户存储" says
+                                                "【用户存储[${user.platformID}]】\n${truncateStorage(user.content, name)}"
                                     }
                                 } else {
                                     subject!!.bot named "查询失败" says "[错误] 查询失败：存储数据中不存在此名称"
                                 }
                             } else {
-                                subject!!.bot named "存储查询" says "【查询名称】$name\n【查询ID】$id"
-                                val idStorage = storage?.get(id)
+                                subject!!.bot named "存储查询" says "【查询名称】$name\n【查询ID】$queryID"
                                 subject!!.bot named "存储查询" says
-                                        if (idStorage == null) "[错误] 查询失败：存储数据中不存在此名称或userID"
-                                        else if (idStorage.isEmpty()) "[警告] 查询成功，但查询的存储数据为空"
-                                        else idStorage
+                                        if (queryContent == null) "[错误] 查询失败：存储数据中不存在此名称或userID"
+                                        else if (queryContent.isEmpty()) "[警告] 查询成功，但查询的存储数据为空"
+                                        else queryContent
                             }
                         }
                         sendMessage(forward)
                     } catch (_: MessageTooLargeException) {
-                        val length = if (id == -1L) "汇总存储查询总长度超出限制，用户数量：${storage?.size?.minus(1)}，请尝试添加编号查询指定内容"
-                                else "数据长度：${storage?.get(id)?.length}"
+                        val length = if (queryID == null) "汇总存储查询总长度超出限制，用户数量：${storage?.users?.size}，请尝试添加编号查询指定内容"
+                                else "数据长度：${queryContent?.length}"
                         sendQuoteReply("[内容过长] $length。如需查看完整内容请使用指令\n" +
                                 "${commandPrefix}pb storage $name mail\n将结果发送邮件至您的邮箱")
                     } catch (e: Exception) {
@@ -1289,6 +1280,14 @@ object CommandPastebin : RawCommand(
             sendQuoteReply("[指令执行未知错误]\n请联系管理员查看后台：${e::class.simpleName}(${e.message})")
         }
     }
+
+    /**
+     * 转发消息中单条存储数据过长时替换为提示，引导改用邮件查询
+     */
+    private fun truncateStorage(content: String, name: String): String =
+        if (content.length <= 10000) content
+        else "[内容过长] 数据长度：${content.length}，如需查看完整内容请使用指令\n\n" +
+            "${commandPrefix}pb storage $name mail\n\n将结果发送邮件至您的邮箱"
 
     /**
      * ## 协作者相关操作

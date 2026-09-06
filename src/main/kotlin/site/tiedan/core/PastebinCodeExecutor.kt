@@ -122,7 +122,6 @@ object PastebinCodeExecutor {
                         val cache = PastebinUrlHelper.get(url)
                         if (cache.isNotBlank()) {
                             CodeCacheManager.put(name, cache)
-                            CodeCacheManager.save()
                             sendMessage("【$name】已保存至缓存，下次执行时将从缓存中获取代码")
                             cache
                         } else {

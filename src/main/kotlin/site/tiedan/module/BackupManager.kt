@@ -3,8 +3,7 @@ package site.tiedan.module
 import net.mamoe.mirai.utils.info
 import site.tiedan.MiraiCompilerFramework.baseDataFolder
 import site.tiedan.MiraiCompilerFramework.logger
-import site.tiedan.MiraiCompilerFramework.save
-import site.tiedan.data.PastebinStorage
+import site.tiedan.data.Database
 import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -80,7 +79,7 @@ object BackupManager {
     }
 
     /**
-     * 复制 baseDataFolder 下的所有 yml 文件到目标目录
+     * 备份 baseDataFolder 下的全部数据到目标目录
      */
     private fun copyYmlFilesTo(targetDir: File) {
         val baseDir = File(baseDataFolder)
@@ -91,12 +90,28 @@ object BackupManager {
         }?.forEach { ymlFile ->
             ymlFile.copyTo(File(targetDir, ymlFile.name), overwrite = true)
         }
+        snapshotDatabase(targetDir)
     }
 
     /**
-     * 存储数据完整性检查（仅针对 PastebinStorage 数据）
-     * - 标记文件（不随存储数据yml丢失）用于证明插件曾成功初始化过存储数据
-     * - [PastebinStorage.initialized]（存储数据yml内的参数）在存储数据被重置为默认值时会重新变回 false
+     * 生成存储数据库快照
+     */
+    private fun snapshotDatabase(targetDir: File) {
+        if (!Database.isInitialized) {
+            logger.warning("存储数据库未初始化，本次备份不含存储数据")
+            return
+        }
+        runCatching {
+            Database.snapshotTo(File(targetDir, Database.FILE_NAME))
+        }.onFailure {
+            logger.error("存储数据库快照失败，本次备份不含存储数据", it)
+        }
+    }
+
+    /**
+     * 存储数据完整性检查
+     * - 标记文件（不随数据库文件丢失）用于证明插件曾成功初始化过存储数据
+     * - 数据库内的 `meta.initialized` 在数据库被重建为空库时会重新变回 false
      *
      * @return true 存储数据正常；false 检测到存储数据异常丢失
      */
@@ -104,23 +119,22 @@ object BackupManager {
         val markerFile = File("$baseDataFolder/$STORAGE_MARKER_FILE")
         val markerExists = markerFile.exists()
 
-        // 参数正常：存储数据非默认值
-        if (PastebinStorage.initialized) {
+        // 标记正常：数据库已初始化过
+        if (Database.isDataInitialized()) {
             if (!markerExists) writeStorageMarkerFile(markerFile)   // 标记文件缺失则补建
             return true
         }
 
-        // PastebinStorage.initialized == false
+        // meta.initialized == false
         if (!markerExists) {
-            // 首次启动：初始化参数并创建标记文件
-            PastebinStorage.initialized = true
-            PastebinStorage.save()
+            // 首次启动：置位标记并创建标记文件
+            Database.markDataInitialized()
             writeStorageMarkerFile(markerFile)
             logger.info { "首次启动：已创建存储数据完整性标记" }
             return true
         }
 
-        // 标记文件存在但参数为默认值 -> 存储数据异常丢失
+        // 标记文件存在但数据库未初始化 -> 存储数据异常丢失
         return false
     }
 
@@ -128,7 +142,7 @@ object BackupManager {
         runCatching {
             markerFile.parentFile?.mkdirs()
             markerFile.writeText(
-                "此文件用于检测存储数据文件 PastebinStorage.yml 是否异常丢失，请勿删除或修改。\n" +
+                "此文件用于检测存储数据库 ${Database.FILE_NAME} 是否异常丢失，请勿删除或修改。\n" +
                 "如需手动清空存储数据，请连同此文件一起删除后再启动。\n" +
                 "创建时间：${LocalDateTime.now()}\n"
             )

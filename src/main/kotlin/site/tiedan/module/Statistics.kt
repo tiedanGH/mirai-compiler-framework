@@ -2,12 +2,12 @@ package site.tiedan.module
 
 import site.tiedan.MiraiCompilerFramework.imageFolder
 import site.tiedan.MiraiCompilerFramework.roundTo2
-import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.command.CommandPastebin.containsCollaborator
 import site.tiedan.core.CodeCacheManager
-import site.tiedan.data.ExtraData
+import site.tiedan.data.Database
 import site.tiedan.data.ImageData
 import site.tiedan.data.PastebinData
+import site.tiedan.data.dao.StatisticsDao
 import site.tiedan.core.StorageManager
 import java.io.File
 import kotlin.math.log10
@@ -27,94 +27,66 @@ object Statistics {
      * 统计运行次数和热度
      */
     fun countRun(name: String) {
-        createIfNotExist(name)
-        val current = ExtraData.statistics[name]?.get("run") ?: 0.0
-        val currentScore = ExtraData.statistics[name]?.get("score") ?: 0.0
-        ExtraData.statistics[name]?.set("run", current + 1)
-        ExtraData.statistics[name]?.set("score", (currentScore + 1).roundTo2())
-        ExtraData.save()
+        Database.transaction { StatisticsDao.countRun(it, name) }
     }
 
     /**
      * 统计调用 markdown 次数和用时
      */
     fun countMarkdown(name: String, mdTime: Double) {
-        createIfNotExist(name)
-        val current = ExtraData.statistics[name]?.get("markdown") ?: 0.0
-        val currentTime = ExtraData.statistics[name]?.get("mdTime") ?: 0.0
-        ExtraData.statistics[name]?.set("markdown", current + 1)
-        ExtraData.statistics[name]?.set("mdTime", (currentTime + mdTime).roundTo2())
-        ExtraData.save()
+        Database.transaction { StatisticsDao.countMarkdown(it, name, mdTime) }
     }
 
     /**
      * 统计下载次数和用时
      */
     fun countDownload(name: String, dlTime: Double) {
-        createIfNotExist(name)
-        val current = ExtraData.statistics[name]?.get("download") ?: 0.0
-        val currentTime = ExtraData.statistics[name]?.get("dlTime") ?: 0.0
-        ExtraData.statistics[name]?.set("download", current + 1)
-        ExtraData.statistics[name]?.set("dlTime", (currentTime + dlTime).roundTo2())
-        ExtraData.save()
+        Database.transaction { StatisticsDao.countDownload(it, name, dlTime) }
     }
 
     /** 获取项目的热度指数 */
-    fun getScore(name: String): Double = ExtraData.statistics[name]?.get("score") ?: 0.0
+    fun getScore(name: String): Double = Database.read { StatisticsDao.getScore(it, name) }
 
     /** 获取项目的运行次数 */
-    fun getRun(name: String): Double = ExtraData.statistics[name]?.get("run") ?: 0.0
+    fun getRun(name: String): Double = Database.read { StatisticsDao.getRun(it, name) }
+
+    /** 一次性获取全部项目的热度指数 */
+    fun allScores(): Map<String, Double> = Database.read { StatisticsDao.allScores(it) }
+
+    /** 一次性获取全部项目的运行次数，用途同 [allScores] */
+    fun allRuns(): Map<String, Double> = Database.read { StatisticsDao.allRuns(it) }
 
     /** 项目改名时迁移统计数据 */
     fun renameProject(from: String, to: String) {
-        ExtraData.statistics.remove(from)?.let { ExtraData.statistics[to] = it }
+        Database.transaction { StatisticsDao.rename(it, from, to) }
     }
 
     /** 删除项目的统计数据 */
     fun removeProject(name: String) {
-        ExtraData.statistics.remove(name)
+        Database.transaction { StatisticsDao.remove(it, name) }
     }
 
     /** 按比例衰减全部项目的热度指数 */
     fun decayAllScores(factor: Double) {
-        for (entry in ExtraData.statistics.values) {
-            val rawScore = entry["score"] ?: 0.0
-            entry["score"] = (rawScore * factor).roundTo2()
-        }
-        ExtraData.save()
+        Database.transaction { StatisticsDao.decayAllScores(it, factor) }
     }
 
     /**
      * 获取全部统计数据
      */
     fun getAllStatistics(): String {
-        var totalRun = 0L
-        var totalMarkdown = 0L
-        var totalMdTime = 0.0
-        var totalDownload = 0L
-        var totalDlTime = 0.0
-        for (entry in ExtraData.statistics.values) {
-            totalRun += entry["run"]?.toLong() ?: 0L
-            totalMarkdown += entry["markdown"]?.toLong() ?: 0L
-            totalMdTime += entry["mdTime"] ?: 0.0
-            totalDownload += entry["download"]?.toLong() ?: 0L
-            totalDlTime += entry["dlTime"] ?: 0.0
-        }
+        val totals = Database.read { StatisticsDao.totals(it) }
+        val totalRun = totals.run
+        val totalMarkdown = totals.markdown
+        val totalMdTime = totals.mdTime
+        val totalDownload = totals.download
+        val totalDlTime = totals.dlTime
 
-        var totalGlobalStorage = 0L
-        var totalUserStorage = 0L
-        for ((_, value) in StorageManager.allProjectStorage()) {
-            totalGlobalStorage += value[0]?.length?.toLong() ?: 0L
-            totalUserStorage += getUserStorageSize(value)
-        }
+        val totalGlobalStorage = StorageManager.totalGlobalStorageSize()
+        val totalUserStorage = StorageManager.totalUserStorageSize()
         val totalBucketNum = StorageManager.bucketCount()
-        var totalLinkedProjects = 0L
-        var totalBucketSize = 0L
-        for ((_, bucket) in StorageManager.listBucketSlots()) {
-            if (bucket == null) continue
-            totalLinkedProjects += bucket.projects.size
-            totalBucketSize += bucket.content.length.toLong()
-        }
+        val totalLinkedProjects = StorageManager.totalLinkedProjects()
+        val totalBucketSize = StorageManager.totalBucketSize()
         val totalBackupSize = StorageManager.totalBackupSize()
         val imageCount = ImageData.images.size
         val totalSize = getFolderSize(File(imageFolder))
@@ -153,13 +125,13 @@ object Statistics {
      * 获取项目统计数据
      */
     fun getStatistic(name: String): String {
-        val stat = ExtraData.statistics[name]
-        val run = stat?.get("run")?.toLong() ?: 0L
-        val score = stat?.get("score") ?: 0.0
-        val markdown = stat?.get("markdown")?.toLong()
-        val mdTime = stat?.get("mdTime")
-        val download = stat?.get("download")?.toLong()
-        val dlTime = stat?.get("dlTime")
+        val stat = Database.read { StatisticsDao.get(it, name) }
+        val run = stat?.run?.toLong() ?: 0L
+        val score = stat?.score ?: 0.0
+        val markdown = stat?.markdown?.toLong()
+        val mdTime = stat?.mdTime
+        val download = stat?.download?.toLong()
+        val dlTime = stat?.dlTime
         val storage = StorageManager.getProjectStorage(name)
 
         return buildString {
@@ -189,13 +161,13 @@ object Statistics {
                 }
             }
             if (storage != null) {
-                var lengthTotal = storage[0]?.length ?: 0
+                var lengthTotal = storage.global.length
                 appendLine()
-                appendLine("·全局存储大小：${storage[0]?.length}")
-                appendLine("·用户存储数量：${storage.size - 1}")
-                if (storage.size > 1) {
-                    val userTotal = getUserStorageSize(storage)
-                    val avg = userTotal.toDouble() / (storage.size - 1)
+                appendLine("·全局存储大小：${storage.global.length}")
+                appendLine("·用户存储数量：${storage.users.size}")
+                if (storage.users.isNotEmpty()) {
+                    val userTotal = storage.users.sumOf { it.content.length.toLong() }
+                    val avg = userTotal.toDouble() / storage.users.size
                     lengthTotal += avg.toInt()
                     appendLine("·用户存储大小：$userTotal")
                     appendLine("·用户存储平均：${"%.2f".format(avg)}")
@@ -251,9 +223,10 @@ object Statistics {
                         key to language
                     }
                 }.toMap()
+            val scores = allScores()
             languageMap.entries
                 .sortedByDescending { (key, _) ->
-                    getScore(key)
+                    scores[key] ?: 0.0
                 }
                 .take(10)
                 .joinToString(separator = "、") { (key, language) ->
@@ -309,19 +282,4 @@ object Statistics {
         }
     }
 
-    private fun getUserStorageSize(storage: Map<Long, String>): Long {
-        var userTotal = 0L
-        for ((key, value) in storage.entries) {
-            if (key != 0L) {
-                userTotal += value.length
-            }
-        }
-        return userTotal
-    }
-
-    private fun createIfNotExist(name: String) {
-        if (!ExtraData.statistics.containsKey(name)) {
-            ExtraData.statistics[name] = mutableMapOf()
-        }
-    }
 }

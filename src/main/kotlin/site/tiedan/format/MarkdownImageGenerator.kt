@@ -208,12 +208,14 @@ object MarkdownImageGenerator {
             val pageIndex = (page - 1).coerceAtLeast(0)
             baseEntries.drop(pageIndex * projectsPerPage).take(projectsPerPage)
         } ?: baseEntries
+        val scores = Statistics.allScores()
         val entriesList: List<Map.Entry<String, MutableMap<String, String>>> = when (sortMode) {
-            "run" -> filteredEntries
-                .sortedByDescending { entry -> Statistics.getRun(entry.key) }
-                .toList()
+            "run" -> {
+                val runs = Statistics.allRuns()
+                filteredEntries.sortedByDescending { entry -> runs[entry.key] ?: 0.0 }.toList()
+            }
             "score" -> filteredEntries
-                .sortedByDescending { entry -> Statistics.getScore(entry.key) }
+                .sortedByDescending { entry -> scores[entry.key] ?: 0.0 }
                 .toList()
             else -> filteredEntries.toList()
         }
@@ -286,7 +288,7 @@ object MarkdownImageGenerator {
                         appendLine("<tr><th class='name-col'>名称</th><th class='lang-col'>语言</th><th class='author-col'>作者</th></tr>")
                         appendLine("</thead><tbody>")
                         entriesList.subList(start, end).forEach { (key, value) ->
-                            val score = Statistics.getScore(key)
+                            val score = scores[key] ?: 0.0
                             val (style, fire) = when {
                                 score >= 1000 -> " hot-1" to " <img src='${Image_Path}fire1.png' width='16' height='16' alt='f1'>"
                                 score >= 300  -> " hot-2" to " <img src='${Image_Path}fire2.png' width='16' height='16' alt='f2'>"

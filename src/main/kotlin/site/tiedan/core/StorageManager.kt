@@ -2,24 +2,27 @@ package site.tiedan.core
 
 import kotlinx.coroutines.sync.Mutex
 import site.tiedan.MiraiCompilerFramework.logger
-import site.tiedan.MiraiCompilerFramework.save
+import site.tiedan.data.Database
 import site.tiedan.data.ExtraData
-import site.tiedan.data.PastebinBucket
-import site.tiedan.data.PastebinPlatformStorage
-import site.tiedan.data.PastebinStorage
+import site.tiedan.data.dao.BucketDao
+import site.tiedan.data.dao.StorageDao
 import site.tiedan.format.JsonProcessor.BucketData
 import site.tiedan.utils.Security
-import site.tiedan.utils.YamlSafeValue
-import kotlin.collections.set
+import java.sql.Connection
 
 /**
  * # 数据存储管理器
  * - 获取数据 [getGlobalData] [getStorageData] [getBucketData]
  * - 保存数据 [savePastebinStorage] [saveBucketData]
  *
+ * 数据存放在 SQLite（[Database]），每次写入即刻落盘。
+ *
  * @author tiedanGH
  */
 object StorageManager {
+
+    /** QQ 平台标识，QQ 平台 `platformID` 无前缀 */
+    private const val PLATFORM_QQ = "qq"
 
     private val StorageLock = Mutex()
 
@@ -30,34 +33,32 @@ object StorageManager {
     /**
      * 获取 global 存储数据
      */
-    fun getGlobalData(name: String): String {
-        return YamlSafeValue.unescape(PastebinStorage.storage[name]?.get(0L) ?: "")
-    }
+    fun getGlobalData(name: String): String =
+        Database.read { StorageDao.getGlobal(it, name) ?: "" }
 
     /**
      * 获取 storage 存储数据
      */
-    fun getStorageData(name: String, userID: Long, platform: String): String {
-        return YamlSafeValue.unescape(when (platform) {
-            "qq" -> PastebinStorage.storage[name]?.get(userID) ?: ""
-
-            else -> PastebinPlatformStorage.storage[platform]?.get(name)?.get(userID) ?: ""
-        })
-    }
+    fun getStorageData(name: String, userID: Long, platform: String): String =
+        Database.read { StorageDao.getUser(it, name, platform, userID) ?: "" }
 
     /**
      * 获取 bucket 存储数据
      */
-    fun getBucketData(name: String): List<BucketData> {
-        return bucketIdsToBucketData(linkedBucketIds(name))
+    fun getBucketData(name: String): List<BucketData> = Database.read { conn ->
+        BucketDao.linkedIds(conn, name).map { id -> toBucketData(conn, id) }
     }
 
     /**
      * 将存储库编号转换为存储库数据
      */
-    fun bucketIdsToBucketData(ids: List<Long>): List<BucketData> = ids.map { id ->
-        val bucket = getBucket(id)
-        BucketData(
+    fun bucketIdsToBucketData(ids: List<Long>): List<BucketData> = Database.read { conn ->
+        ids.map { id -> toBucketData(conn, id) }
+    }
+
+    private fun toBucketData(conn: Connection, id: Long): BucketData {
+        val bucket = BucketDao.get(conn, id)
+        return BucketData(
             id = id,
             name = bucket?.name,
             content = bucket?.let {
@@ -72,47 +73,61 @@ object StorageManager {
     /**
      * 存在存储数据的项目数量
      */
-    fun projectCount(): Int = PastebinStorage.storage.size
+    fun projectCount(): Int = Database.read { StorageDao.projectCount(it) }
 
     /**
-     * 获取指定项目的全部存储数据（key 为 0 时表示 global）
+     * 单个用户的存储数据
+     */
+    data class UserStorage(val platform: String, val userId: Long, val content: String) {
+        /** QQ 为纯数字，其他平台带平台前缀 */
+        val platformID: String = if (platform == PLATFORM_QQ) "$userId" else "${platform}_$userId"
+    }
+
+    /**
+     * 项目的全部存储数据
+     * - 不同平台的用户号可能重复，不能压成 `Map<Long, String>`
+     */
+    data class ProjectStorage(val global: String, val users: List<UserStorage>)
+
+    /**
+     * 获取指定项目的全部存储数据（含全部平台）
      * @return 项目不存在时返回 null
      */
-    fun getProjectStorage(name: String): Map<Long, String>? =
-        PastebinStorage.storage[name]?.mapValues { YamlSafeValue.unescape(it.value) }
+    fun getProjectStorage(name: String): ProjectStorage? = Database.read { conn ->
+        if (!StorageDao.projectExists(conn, name)) {
+            null
+        } else {
+            ProjectStorage(
+                global = StorageDao.getGlobal(conn, name) ?: "",
+                users = StorageDao.listProject(conn, name)
+                    .filterNot { it.platform == StorageDao.GLOBAL_PLATFORM }
+                    .map { UserStorage(it.platform, it.userId, it.content) },
+            )
+        }
+    }
 
     /**
-     * 获取全部项目的存储数据
+     * 全部项目的 global 数据总大小
      */
-    fun allProjectStorage(): Map<String, Map<Long, String>> =
-        PastebinStorage.storage.mapValues { (_, data) -> data.mapValues { YamlSafeValue.unescape(it.value) } }
+    fun totalGlobalStorageSize(): Long = Database.read { StorageDao.totalGlobalLength(it) }
+
+    /**
+     * 全部项目的用户存储数据总大小（含全部平台）
+     */
+    fun totalUserStorageSize(): Long = Database.read { StorageDao.totalUserLength(it) }
 
     /**
      * 项目改名时迁移存储数据
      */
     fun renameProjectStorage(from: String, to: String) {
-        PastebinStorage.storage.remove(from)?.let { PastebinStorage.storage[to] = it }
-        for ((_, nameMap) in PastebinPlatformStorage.storage) {
-            nameMap.remove(from)?.let { nameMap[to] = it }
-        }
+        Database.transaction { StorageDao.renameProject(it, from, to) }
     }
 
     /**
      * 删除指定项目的全部存储数据
      */
     fun removeProjectStorage(name: String) {
-        PastebinStorage.storage.remove(name)
-        for ((_, nameMap) in PastebinPlatformStorage.storage) {
-            nameMap.remove(name)
-        }
-    }
-
-    /**
-     * 持久化全部存储数据
-     */
-    fun saveStorage() {
-        PastebinStorage.save()
-        PastebinPlatformStorage.save()
+        Database.transaction { StorageDao.removeProject(it, name) }
     }
 
 
@@ -133,105 +148,120 @@ object StorageManager {
         val encrypt: Boolean,
     )
 
-    private fun toBucket(id: Long, data: Map<String, String>): Bucket = Bucket(
-        id = id,
-        name = data["name"] ?: "",
-        password = data["password"] ?: "",
-        owner = data["owner"] ?: "",
-        userID = data["userID"] ?: "",
-        projects = data["projects"]?.split(" ")?.filter { it.isNotBlank() } ?: emptyList(),
-        desc = data["desc"] ?: "",
-        content = YamlSafeValue.unescape(data["content"] ?: ""),
-        encrypt = data["encrypt"] == "true",
+    private fun toBucket(row: BucketDao.BucketRow): Bucket = Bucket(
+        id = row.id,
+        name = row.name,
+        password = row.password,
+        owner = row.owner,
+        userID = row.userID,
+        projects = row.projects,
+        desc = row.description,
+        content = row.content,
+        encrypt = row.encrypt,
     )
 
     /** 槽位是否存在（空置槽位也算存在） */
-    fun bucketSlotExists(id: Long): Boolean = PastebinBucket.bucket.contains(id)
+    fun bucketSlotExists(id: Long): Boolean = Database.read { BucketDao.exists(it, id) }
 
     /** 槽位是否为空置状态 */
-    fun isBucketEmpty(id: Long): Boolean = PastebinBucket.bucket[id]?.isEmpty() != false
+    fun isBucketEmpty(id: Long): Boolean = Database.read { BucketDao.isEmpty(it, id) }
 
     /** 获取存储库，空置槽位返回 null */
-    fun getBucket(id: Long): Bucket? =
-        PastebinBucket.bucket[id]?.takeIf { it.isNotEmpty() }?.let { toBucket(id, it) }
+    fun getBucket(id: Long): Bucket? = Database.read { BucketDao.get(it, id)?.let(::toBucket) }
 
     /** 全部槽位，空置槽位的值为 null（编号顺序） */
-    fun listBucketSlots(): Map<Long, Bucket?> =
-        PastebinBucket.bucket.mapValues { (id, data) -> if (data.isEmpty()) null else toBucket(id, data) }
+    fun listBucketSlots(): Map<Long, Bucket?> = Database.read { conn ->
+        BucketDao.listSlots(conn).mapValues { (_, row) -> row?.let(::toBucket) }
+    }
 
     /** 按名称查找存储库 */
     fun findBucketByName(name: String): Bucket? =
-        PastebinBucket.bucket.entries.firstOrNull { it.value["name"] == name }?.let { toBucket(it.key, it.value) }
+        Database.read { BucketDao.findByName(it, name)?.let(::toBucket) }
 
     /** 非空存储库数量 */
-    fun bucketCount(): Int = PastebinBucket.bucket.values.count { it.isNotEmpty() }
+    fun bucketCount(): Int = Database.read { BucketDao.count(it) }
+
+    /** 全部存储库关联的项目条目总数 */
+    fun totalLinkedProjects(): Long = Database.read { BucketDao.totalLinkedProjects(it) }
+
+    /** 全部存储库主存储数据的总大小 */
+    fun totalBucketSize(): Long = Database.read { BucketDao.totalContentLength(it) }
 
     /** 分配下一个可用槽位编号 */
-    fun nextFreeBucketId(): Long = generateSequence(1L) { it + 1 }.first { isBucketEmpty(it) }
+    fun nextFreeBucketId(): Long = Database.read { BucketDao.nextFreeId(it) }
 
     /** 查询关联了指定项目的全部存储库编号 */
     fun linkedBucketIds(projectName: String): List<Long> =
-        PastebinBucket.bucket
-            .filter { (_, data) -> data["projects"]?.split(" ")?.any { it == projectName } == true }
-            .keys.toList()
+        Database.read { BucketDao.linkedIds(it, projectName) }
 
     /** 存储库编号转名称 */
-    fun bucketIdToName(id: Long): String? = PastebinBucket.bucket[id]?.get("name")
+    fun bucketIdToName(id: Long): String? = Database.read { BucketDao.idToName(it, id) }
 
     /** 获取存储库主存储数据 */
-    fun getBucketRawContent(id: Long): String? = PastebinBucket.bucket[id]?.get("content")
+    fun getBucketRawContent(id: Long): String? = Database.read { BucketDao.getRawContent(it, id) }
 
     /** 直接写入存储库主存储数据 */
     fun setBucketRawContent(id: Long, raw: String) {
-        PastebinBucket.bucket[id]?.set("content", raw)
+        Database.transaction { BucketDao.setRawContent(it, id, raw) }
     }
 
     /** 创建存储库 */
     fun createBucket(id: Long, name: String, passwordHash: String, owner: String, userID: String) {
-        PastebinBucket.bucket[id] = mutableMapOf(
-            "name" to name,
-            "password" to passwordHash,
-            "owner" to owner,
-            "userID" to userID,
-            "projects" to "",
-            "desc" to "",
-            "content" to "",
-        )
-        PastebinBucket.backups[id] = mutableListOf(null, null, null)
+        Database.transaction { BucketDao.create(it, id, name, passwordHash, owner, userID) }
     }
 
-    /** 修改存储库的单个属性 */
-    fun setBucketField(id: Long, field: String, value: String) {
-        PastebinBucket.bucket[id]?.set(field, value)
+    /** 修改存储库名称 */
+    fun setBucketName(id: Long, name: String) {
+        Database.transaction { BucketDao.setName(it, id, name) }
+    }
+
+    /** 修改存储库密码 */
+    fun setBucketPassword(id: Long, passwordHash: String) {
+        Database.transaction { BucketDao.setPassword(it, id, passwordHash) }
+    }
+
+    /** 修改存储库简介 */
+    fun setBucketDesc(id: Long, desc: String) {
+        Database.transaction { BucketDao.setDescription(it, id, desc) }
+    }
+
+    /** 转移存储库所有权 */
+    fun setBucketOwner(id: Long, owner: String, userID: String) {
+        Database.transaction { conn ->
+            BucketDao.setOwner(conn, id, owner)
+            BucketDao.setUserID(conn, id, userID)
+        }
     }
 
     /** 更新存储库关联的项目列表 */
     fun setBucketProjects(id: Long, projects: List<String>) {
-        PastebinBucket.bucket[id]?.set("projects", projects.joinToString(" "))
+        Database.transaction { BucketDao.setProjects(it, id, projects) }
     }
 
     /** 启用数据加密：加密主存储数据与全部备份 */
     fun enableBucketEncryption(id: Long) {
-        val data = PastebinBucket.bucket[id] ?: return
-        data["encrypt"] = "true"
-        data["content"] = Security.encrypt(YamlSafeValue.unescape(data["content"] ?: ""), ExtraData.key)
-        PastebinBucket.backups[id]?.forEach { backup ->
-            backup?.content = Security.encrypt(backup.content, ExtraData.key)
+        Database.transaction { conn ->
+            val bucket = BucketDao.get(conn, id) ?: return@transaction
+            BucketDao.setEncrypt(conn, id, true)
+            BucketDao.setRawContent(conn, id, Security.encrypt(bucket.content, ExtraData.key))
+            BucketDao.getBackups(conn, id).forEachIndexed { slot, backup ->
+                if (backup != null) {
+                    BucketDao.setBackup(conn, id, slot, backup.copy(
+                        content = Security.encrypt(backup.content, ExtraData.key)
+                    ))
+                }
+            }
         }
     }
 
     /** 删除存储库，保留空置槽位 */
     fun deleteBucket(id: Long) {
-        PastebinBucket.bucket[id]?.clear()
-        PastebinBucket.backups[id]?.clear()
+        Database.transaction { BucketDao.delete(it, id) }
     }
 
     /** 将项目从全部存储库的关联列表中移除 */
     fun removeProjectFromBuckets(name: String) {
-        for ((_, data) in PastebinBucket.bucket) {
-            val projects = data["projects"] ?: continue
-            data["projects"] = projects.split(" ").filter { it.isNotBlank() && it != name }.joinToString(" ")
-        }
+        Database.transaction { BucketDao.removeProjectFromAll(it, name) }
     }
 
     /**
@@ -239,31 +269,27 @@ object StorageManager {
      */
     data class Backup(val name: String, val time: Long, val content: String)
 
-    private fun toBackup(info: PastebinBucket.BackupInfo) = Backup(info.name, info.time, info.content)
+    private fun toBackup(row: BucketDao.BackupRow) = Backup(row.name, row.time, row.content)
 
     /** 获取全部备份槽位（长度为 3，空槽位为 null） */
     fun getBackups(id: Long): List<Backup?> =
-        PastebinBucket.backups[id].orEmpty().map { it?.let(::toBackup) }
+        Database.read { conn -> BucketDao.getBackups(conn, id).map { it?.let(::toBackup) } }
 
     /** 获取指定槽位的备份 */
     fun getBackup(id: Long, slot: Int): Backup? =
-        PastebinBucket.backups[id]?.getOrNull(slot)?.let(::toBackup)
+        Database.read { BucketDao.getBackup(it, id, slot)?.let(::toBackup) }
 
     /** 写入指定槽位的备份，null 表示删除 */
     fun setBackup(id: Long, slot: Int, backup: Backup?) {
-        PastebinBucket.backups[id]?.set(slot, backup?.let {
-            PastebinBucket.BackupInfo(it.name, it.time, it.content)
-        })
+        Database.transaction { conn ->
+            BucketDao.setBackup(conn, id, slot, backup?.let {
+                BucketDao.BackupRow(it.name, it.time, it.content)
+            })
+        }
     }
 
     /** 全部存储库的备份数据总大小 */
-    fun totalBackupSize(): Int =
-        PastebinBucket.backups.values.flatten().filterNotNull().sumOf { it.content.length }
-
-    /** 持久化存储库数据 */
-    fun saveBucket() {
-        PastebinBucket.save()
-    }
+    fun totalBackupSize(): Long = Database.read { BucketDao.totalBackupLength(it) }
 
 
     /**
@@ -279,55 +305,38 @@ object StorageManager {
     ): String? {
         if (global == null && storage == null && bucket == null) return null
 
-        val isQQ = platform == "qq"
-        val platformInfo = if (isQQ) "" else "($platform)"
+        val platformInfo = if (platform == PLATFORM_QQ) "" else "($platform)"
 
         logger.info (
             "保存存储数据: global{${global?.length}} storage$platformInfo{${storage?.length}} " +
             "bucket{${bucket?.joinToString(" ") { "[${it.id}](${it.content?.length})" }}}"
         )
 
-        // global
-        val globalMap = (PastebinStorage.storage[name] ?: mutableMapOf(0L to "")).toMutableMap()
-        global?.let { globalMap[0L] = YamlSafeValue.escape(it) }
-
-        if (isQQ) {
-            // QQ - storage
-            storage?.let {
-                if (it.isEmpty()) globalMap.remove(userID) else globalMap[userID] = YamlSafeValue.escape(it)
+        return Database.transaction { conn ->
+            // global
+            when {
+                global != null -> StorageDao.setGlobal(conn, name, global)
+                // 项目必须存在 global 数据
+                StorageDao.getGlobal(conn, name) == null -> StorageDao.setGlobal(conn, name, "")
             }
-            PastebinStorage.storage[name] = globalMap
-
-            PastebinStorage.save()
-        } else {
-            // 其他平台
-            PastebinStorage.storage[name] = globalMap
-            PastebinStorage.save()
 
             // storage
-            val platformMap = (PastebinPlatformStorage.storage[platform] ?: mutableMapOf()).toMutableMap()
-            val nameMap = (platformMap[name] ?: mutableMapOf()).toMutableMap()
-
             storage?.let {
-                if (it.isEmpty()) nameMap.remove(userID) else nameMap[userID] = YamlSafeValue.escape(it)
+                if (it.isEmpty()) StorageDao.removeUser(conn, name, platform, userID)
+                else StorageDao.setUser(conn, name, platform, userID, it)
             }
 
-            platformMap[name] = nameMap
-            PastebinPlatformStorage.storage[platform] = platformMap
-
-            PastebinPlatformStorage.save()
+            saveBucketData(conn, name, bucket)
         }
-
-        return saveBucketData(name, bucket)
     }
 
     /**
      * 保存 bucket 数据
      */
-    private fun saveBucketData(name: String, bucket: List<BucketData>?): String? {
+    private fun saveBucketData(conn: Connection, name: String, bucket: List<BucketData>?): String? {
         if (bucket == null) return null
 
-        val bucketIds = linkedBucketIds(name)
+        val bucketIds = BucketDao.linkedIds(conn, name)
         val seenBucketIDs = mutableSetOf<Long>()
         val ret = StringBuilder()
 
@@ -344,18 +353,17 @@ object StorageManager {
                     ret.append("\n[(${index + 1})重复写入] 检测到对存储库 $outputId 的重复保存，单次输出仅支持写入同一存储库一次")
 
                 data.content != null -> {
-                    val content = if (getBucket(outputId)?.encrypt == true) {
+                    val content = if (BucketDao.get(conn, outputId)?.encrypt == true) {
                         Security.encrypt(data.content, ExtraData.key)
                     } else {
                         data.content
                     }
-                    setBucketRawContent(outputId, YamlSafeValue.escape(content))
+                    BucketDao.setRawContent(conn, outputId, content)
                     seenBucketIDs.add(outputId)
                 }
             }
         }
 
-        saveBucket()
         return ret.takeIf { it.isNotEmpty() }?.toString()
     }
 }

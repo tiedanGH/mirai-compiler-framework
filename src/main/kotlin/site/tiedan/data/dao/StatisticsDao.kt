@@ -77,10 +77,16 @@ object StatisticsDao {
             ps.executeQuery().use { rs -> if (rs.next()) rs.getDouble(1) else 0.0 }
         }
 
-    /** 一次性读取全部项目的热度指数，用于排序 */
-    fun allScores(conn: Connection): Map<String, Double> =
+    /** 一次性读取全部项目的热度指数，用于排序与渲染 */
+    fun allScores(conn: Connection): Map<String, Double> = allOf(conn, "score")
+
+    /** 一次性读取全部项目的运行次数，用于排序 */
+    fun allRuns(conn: Connection): Map<String, Double> = allOf(conn, "run")
+
+    // 列名由代码固定传入，不接受外部输入
+    private fun allOf(conn: Connection, column: String): Map<String, Double> =
         conn.createStatement().use { st ->
-            st.executeQuery("SELECT project, score FROM statistics").use { rs ->
+            st.executeQuery("SELECT project, $column FROM statistics").use { rs ->
                 buildMap { while (rs.next()) put(rs.getString(1), rs.getDouble(2)) }
             }
         }
