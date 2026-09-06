@@ -52,7 +52,13 @@ object StatusReport {
             appendLine("⚙️ 运行中")
             appendLine(" · 执行进程：${THREADS.size} / ${PastebinConfig.thread_limit}")
             appendLine(" · 输出进程：${OutputHandler.activeCount()} / ${OutputHandler.limit}")
-            appendLine(" · 存储锁：${if (StorageManager.isLocked()) "占用中" else "空闲"}")
+            val lockedProjects = StorageManager.lockedProjectCount()
+            val lockedBuckets = StorageManager.lockedBucketCount()
+            appendLine(
+                " · 存储锁：" +
+                if (lockedProjects == 0 && lockedBuckets == 0) "空闲"
+                else "${lockedProjects}项目 / ${lockedBuckets}存储库"
+            )
             appendLine()
 
             appendLine("🗂 备份记录")

@@ -9,6 +9,8 @@ import site.tiedan.data.dao.StorageDao
 import site.tiedan.format.JsonProcessor.BucketData
 import site.tiedan.utils.Security
 import java.sql.Connection
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * # 数据存储管理器
@@ -24,11 +26,60 @@ object StorageManager {
     /** QQ 平台标识，QQ 平台 `platformID` 无前缀 */
     private const val PLATFORM_QQ = "qq"
 
-    private val StorageLock = Mutex()
+    /* ==================== 项目级并发锁 ==================== */
+    private val projectLocks = ConcurrentHashMap<String, Mutex>()
+    private val bucketLocks = ConcurrentHashMap<Long, Mutex>()
 
-    fun isLocked(): Boolean = StorageLock.isLocked
-    suspend fun lock() = StorageLock.lock()
-    fun unlock() = StorageLock.unlock()
+    /**
+     * 项目锁句柄
+     * - 持有句柄本身即是「本次执行占有这些锁」的凭据，调用方无法释放不属于自己的锁
+     */
+    class ProjectLock internal constructor(
+        val project: String,
+        private val held: List<Mutex>,
+    ) {
+        private val released = AtomicBoolean(false)
+
+        /** 释放全部已持有的锁 */
+        fun release() {
+            if (!released.compareAndSet(false, true)) return
+            held.asReversed().forEach { runCatching { it.unlock() } }
+        }
+    }
+
+    /**
+     * 获取项目锁，以及该项目关联的全部存储库的锁
+     * - 加锁顺序固定为**先项目锁、再按存储库编号升序**，任何路径都不得反向，也不得在持有存储库锁时再去获取项目锁，否则会死锁。
+     *
+     * 收益：不同项目完全并行，只有同项目、或共享同一存储库的项目之间才需要排队。
+     */
+    suspend fun acquireProjectLock(name: String): ProjectLock {
+        val held = mutableListOf<Mutex>()
+        val projectMutex = projectLocks.computeIfAbsent(name) { Mutex() }
+        projectMutex.lock()
+        held.add(projectMutex)
+        try {
+            for (id in linkedBucketIds(name).sorted()) {
+                val bucketMutex = bucketLocks.computeIfAbsent(id) { Mutex() }
+                bucketMutex.lock()
+                held.add(bucketMutex)
+            }
+        } catch (e: Throwable) {
+            // 中途失败必须退还已拿到的锁
+            held.asReversed().forEach { runCatching { it.unlock() } }
+            throw e
+        }
+        return ProjectLock(name, held)
+    }
+
+    /** 指定项目当前是否已被占用，用于提示排队 */
+    fun isProjectLocked(name: String): Boolean = projectLocks[name]?.isLocked == true
+
+    /** 当前处于占用状态的项目数量 */
+    fun lockedProjectCount(): Int = projectLocks.values.count { it.isLocked }
+
+    /** 当前处于占用状态的存储库数量 */
+    fun lockedBucketCount(): Int = bucketLocks.values.count { it.isLocked }
 
     /**
      * 获取 global 存储数据

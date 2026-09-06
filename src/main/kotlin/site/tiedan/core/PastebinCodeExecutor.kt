@@ -13,7 +13,6 @@ import site.tiedan.MiraiCompilerFramework.getPlatform
 import site.tiedan.MiraiCompilerFramework.getUserPlatformID
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.parseUserID
-import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.trimToMaxLength
 import site.tiedan.command.CommandRun.Image_Path
@@ -31,7 +30,6 @@ import site.tiedan.module.Statistics
 import site.tiedan.utils.HttpUtil
 import site.tiedan.utils.PastebinUrlHelper
 import java.net.ConnectException
-import kotlin.collections.set
 
 /**
  * # PastebinCodeExecutor
@@ -89,8 +87,8 @@ object PastebinCodeExecutor {
 
         THREADS.add(ThreadInfo(jobId, name, "$nickname($userID)", from, platform))
 
-        // 记录本进程下的锁状态
-        var storageLocked = false
+        // 记录本进程下的锁状态：持有句柄本身即是归属凭据
+        var projectLock: StorageManager.ProjectLock? = null
         var outputAcquired = false
 
         try {
@@ -159,12 +157,12 @@ object PastebinCodeExecutor {
                 val imageData = Base64Processor.encodeImagesToBase64(imageUrls, encodeBase64)
                 val avatar = MiraiCompilerFramework.getAvatarUrl(numID, platform)
 
-                if (StorageManager.isLocked()) {
+                if (StorageManager.isProjectLocked(name)) {
                     logger.debug("(${userID})执行$name [存储]进程执行请求等待中...")
                     if (THREADS.size > 3) sendQuoteReply("当前进程较多（${THREADS.size - 1} 个正在等待），等待时间可能较长")
                 }
-                StorageManager.lock()
-                storageLocked = true
+                // 只锁本项目及其关联存储库，其他项目不受影响
+                projectLock = StorageManager.acquireProjectLock(name)
                 // 读存储失败必须中止执行
                 val storageInput = try {
                     Triple(
@@ -318,7 +316,7 @@ object PastebinCodeExecutor {
         } finally {
             THREADS.removeIf { it.id == jobId }
             if (outputAcquired) OutputHandler.release()
-            if (storageLocked) StorageManager.unlock()
+            projectLock?.release()
         }
     }
 
