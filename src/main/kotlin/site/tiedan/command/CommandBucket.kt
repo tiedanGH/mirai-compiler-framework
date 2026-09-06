@@ -341,12 +341,13 @@ object CommandBucket : RawCommand(
                             StorageManager.setBucketField(id, "password", Security.hashPassword(newPassword))
                         }
                         "userID"-> {
-                            val id = parseUserID(content)
-                            if (id == null) {
+                            // 不可命名为 id：会遮蔽外层的存储库编号，导致写到错误的槽位
+                            val targetID = parseUserID(content)
+                            if (targetID == null) {
                                 sendQuoteReply("转移失败：输入的 userID 格式不正确，应为纯数字或带平台前缀 kook_123")
                                 return
                             }
-                            val targetName = getNickname(id)
+                            val targetName = getNickname(targetID)
                             if (targetName == null) {
                                 sendQuoteReply("转移失败：无法找到目标用户 $content，转移对象必须为机器人好友或本群成员")
                                 return
