@@ -88,7 +88,7 @@ object PastebinCodeExecutor {
         THREADS.add(ThreadInfo(jobId, name, "$nickname($userID)", from, platform))
 
         // 记录本进程下的锁状态：持有句柄本身即是归属凭据
-        var projectLock: StorageManager.ProjectLock? = null
+        var projectLock: StorageManager.StorageLock? = null
         var outputAcquired = false
 
         try {
@@ -148,8 +148,6 @@ object PastebinCodeExecutor {
                 return
             }
 
-            Statistics.countRun(name)   // 数据统计
-
             // 输入存储的数据
             if (storageMode == "true") {
                 // base64图片输入
@@ -163,6 +161,15 @@ object PastebinCodeExecutor {
                 }
                 // 只锁本项目及其关联存储库，其他项目不受影响
                 projectLock = StorageManager.acquireProjectLock(name)
+                // 排队期间项目可能已被改名、删除或关闭存储，此前读到的属性与代码都已过期
+                if (PastebinData.pastebin[name]?.get("storage") != "true") {
+                    sendQuoteReply(
+                        "[执行取消] 请重新执行" +
+                        "项目 $name 在排队期间重要属性或存储功能发生变更\n" +
+                        "为避免程序读到空存储后产生错误结果，本次执行已取消！"
+                    )
+                    return
+                }
                 // 读存储失败必须中止执行
                 val storageInput = try {
                     Triple(
@@ -191,6 +198,13 @@ object PastebinCodeExecutor {
                 )
                 logger.debug("请求用户环境：$nickname($numID) $from $platform")
             }
+
+            // 无存储的项目没有进程锁，这里尽力对不存在项目进行拦截
+            if (PastebinData.pastebin[name] == null) {
+                sendQuoteReply("[执行取消] 项目 $name 已被改名或删除，请联系项目作者")
+                return
+            }
+            Statistics.countRun(name)   // 复查通过后才计数
 
             logger.debug("[DEBUG] input:\n$input")
 

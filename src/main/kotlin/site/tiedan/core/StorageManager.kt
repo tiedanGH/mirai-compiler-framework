@@ -1,6 +1,7 @@
 package site.tiedan.core
 
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.withTimeoutOrNull
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.data.Database
 import site.tiedan.data.ExtraData
@@ -30,14 +31,14 @@ object StorageManager {
     private val projectLocks = ConcurrentHashMap<String, Mutex>()
     private val bucketLocks = ConcurrentHashMap<Long, Mutex>()
 
+    /** 等待存储锁的最长时间 */
+    const val LOCK_WAIT_TIMEOUT_MS = 120_000L
+
     /**
-     * 项目锁句柄
-     * - 持有句柄本身即是「本次执行占有这些锁」的凭据，调用方无法释放不属于自己的锁
+     * 存储锁句柄
+     * - 持有句柄本身即是「本次操作占有这些锁」的凭据，调用方无法释放不属于自己的锁
      */
-    class ProjectLock internal constructor(
-        val project: String,
-        private val held: List<Mutex>,
-    ) {
+    class StorageLock internal constructor(private val held: List<Mutex>) {
         private val released = AtomicBoolean(false)
 
         /** 释放全部已持有的锁 */
@@ -48,18 +49,22 @@ object StorageManager {
     }
 
     /**
-     * 获取项目锁，以及该项目关联的全部存储库的锁
+     * 获取存储锁
      * - 加锁顺序固定为**先项目锁、再按存储库编号升序**，任何路径都不得反向，也不得在持有存储库锁时再去获取项目锁，否则会死锁。
      *
-     * 收益：不同项目完全并行，只有同项目、或共享同一存储库的项目之间才需要排队。
+     * @param project 需要锁定的项目，同时会锁定它关联的全部存储库；为 null 时只锁 [extraBuckets]
+     * @param extraBuckets 额外锁定的存储库，用于关联/解除关联等会改变关联关系的操作
      */
-    suspend fun acquireProjectLock(name: String): ProjectLock {
+    private suspend fun acquire(project: String?, extraBuckets: List<Long>): StorageLock {
         val held = mutableListOf<Mutex>()
-        val projectMutex = projectLocks.computeIfAbsent(name) { Mutex() }
-        projectMutex.lock()
-        held.add(projectMutex)
         try {
-            for (id in linkedBucketIds(name).sorted()) {
+            if (project != null) {
+                val projectMutex = projectLocks.computeIfAbsent(project) { Mutex() }
+                projectMutex.lock()
+                held.add(projectMutex)
+            }
+            val linked = project?.let { linkedBucketIds(it) } ?: emptyList()
+            for (id in (linked + extraBuckets).distinct().sorted()) {
                 val bucketMutex = bucketLocks.computeIfAbsent(id) { Mutex() }
                 bucketMutex.lock()
                 held.add(bucketMutex)
@@ -69,11 +74,39 @@ object StorageManager {
             held.asReversed().forEach { runCatching { it.unlock() } }
             throw e
         }
-        return ProjectLock(name, held)
+        return StorageLock(held)
     }
+
+    /**
+     * 获取项目锁，以及该项目关联的全部存储库的锁
+     * - 收益：不同项目完全并行，只有同项目、或共享同一存储库的项目之间才需要排队。
+     */
+    suspend fun acquireProjectLock(name: String): StorageLock = acquire(name, emptyList())
+
+    /** 获取单个存储库的锁 */
+    suspend fun acquireBucketLock(id: Long): StorageLock = acquire(null, listOf(id))
+
+    /** 获取项目锁与指定存储库的锁，用于改变两者关联关系的操作 */
+    suspend fun acquireProjectAndBucketLock(name: String, bucketId: Long): StorageLock =
+        acquire(name, listOf(bucketId))
+
+    /** [acquireProjectLock] 的限时版本，超时返回 null */
+    suspend fun awaitProjectLock(name: String): StorageLock? =
+        withTimeoutOrNull(LOCK_WAIT_TIMEOUT_MS) { acquireProjectLock(name) }
+
+    /** [acquireBucketLock] 的限时版本，超时返回 null */
+    suspend fun awaitBucketLock(id: Long): StorageLock? =
+        withTimeoutOrNull(LOCK_WAIT_TIMEOUT_MS) { acquireBucketLock(id) }
+
+    /** [acquireProjectAndBucketLock] 的限时版本，超时返回 null */
+    suspend fun awaitProjectAndBucketLock(name: String, bucketId: Long): StorageLock? =
+        withTimeoutOrNull(LOCK_WAIT_TIMEOUT_MS) { acquireProjectAndBucketLock(name, bucketId) }
 
     /** 指定项目当前是否已被占用，用于提示排队 */
     fun isProjectLocked(name: String): Boolean = projectLocks[name]?.isLocked == true
+
+    /** 指定存储库当前是否已被占用（含被关联项目的执行进程占用） */
+    fun isBucketLocked(id: Long): Boolean = bucketLocks[id]?.isLocked == true
 
     /** 当前处于占用状态的项目数量 */
     fun lockedProjectCount(): Int = projectLocks.values.count { it.isLocked }
@@ -179,6 +212,13 @@ object StorageManager {
      */
     fun removeProjectStorage(name: String) {
         Database.transaction { StorageDao.removeProject(it, name) }
+    }
+
+    /**
+     * 项目改名时迁移存储库关联记录
+     */
+    fun renameProjectInBuckets(from: String, to: String) {
+        Database.transaction { BucketDao.renameProjectInAll(it, from, to) }
     }
 
 

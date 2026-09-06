@@ -32,6 +32,7 @@ import site.tiedan.config.PlatformConfig
 import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
 import site.tiedan.core.CodeCacheManager
+import site.tiedan.core.StorageLockGuard.lockProject
 import site.tiedan.core.StorageManager
 import site.tiedan.format.MarkdownImageGenerator
 import site.tiedan.module.MailService
@@ -101,6 +102,9 @@ object CommandPastebin : RawCommand(
             pendingCommand.remove(userID)
             sendQuoteReply("指令不一致，操作已取消")
         }
+
+        // 本次指令持有的存储锁，与执行进程共用同一套锁
+        var storageLock: StorageManager.StorageLock? = null
 
         try {
             when (args[0].content) {
@@ -687,6 +691,10 @@ object CommandPastebin : RawCommand(
                             return
                         }
                     }
+                    // 只有改名会搬动存储数据，其余参数无需等待执行进程
+                    if (option == "name") {
+                        storageLock = lockProject(name) ?: return
+                    }
                     when (option) {
                         "name"-> {
                             val tempMap = linkedMapOf<String, MutableMap<String, String>>()
@@ -710,6 +718,8 @@ object CommandPastebin : RawCommand(
                             }
                             // 转移存储数据（含其他平台）
                             StorageManager.renameProjectStorage(name, content)
+                            // 转移存储库关联
+                            StorageManager.renameProjectInBuckets(name, content)
                             // 转移缓存数据
                             CodeCacheManager.rename(name, content)
                             // 转移统计数据
@@ -994,6 +1004,7 @@ object CommandPastebin : RawCommand(
                         sendQuoteReply("删除失败：名称 $name 不存在")
                         return
                     }
+                    storageLock = lockProject(name) ?: return
 
                     val ownerID = PastebinData.pastebin[name]?.get("userID")
                     val isOwner = userID == ownerID
@@ -1284,6 +1295,8 @@ object CommandPastebin : RawCommand(
         } catch (e: Exception) {
             logger.warning(e)
             sendQuoteReply("[指令执行未知错误]\n请联系管理员查看后台：${e::class.simpleName}(${e.message})")
+        } finally {
+            storageLock?.release()
         }
     }
 

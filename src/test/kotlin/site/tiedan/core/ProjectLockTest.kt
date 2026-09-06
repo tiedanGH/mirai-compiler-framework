@@ -153,6 +153,68 @@ class ProjectLockTest {
     }
 
     @Test
+    @DisplayName("项目执行期间，指令无法拿到它关联存储库的锁")
+    fun bucketLockBlockedByRunningProject() {
+        runBlocking {
+            linkBucket(6L, "执行中项目")
+
+            // 模拟执行进程持有项目锁（连带锁住存储库 6）
+            val running = StorageManager.acquireProjectLock("执行中项目")
+            assertTrue(StorageManager.isBucketLocked(6L), "项目锁应当连带锁住关联存储库")
+
+            val command = withTimeoutOrNull(blockedMs) { StorageManager.acquireBucketLock(6L) }
+            assertNull(command, "bk 指令必须等执行进程写完，否则会互相覆盖")
+
+            running.release()
+            val after = withTimeoutOrNull(freeMs) { StorageManager.acquireBucketLock(6L) }
+            assertNotNull(after, "执行结束后指令应当立刻可操作")
+            after?.release()
+        }
+    }
+
+    @Test
+    @DisplayName("指令持有存储库锁期间，项目无法开始执行")
+    fun runningProjectBlockedByBucketLock() {
+        runBlocking {
+            linkBucket(7L, "待执行项目")
+
+            // 模拟 bk 指令正在改写存储库
+            val command = StorageManager.acquireBucketLock(7L)
+            val running = withTimeoutOrNull(blockedMs) { StorageManager.acquireProjectLock("待执行项目") }
+            assertNull(running, "存储库正被指令改写时，执行进程必须等待")
+
+            command.release()
+            val after = withTimeoutOrNull(freeMs) { StorageManager.acquireProjectLock("待执行项目") }
+            assertNotNull(after, "指令结束后执行进程应当立刻可开始")
+            after?.release()
+        }
+    }
+
+    @Test
+    @DisplayName("关联操作同时锁住项目与目标存储库")
+    fun projectAndBucketLockCoversBoth() {
+        runBlocking {
+            // 目标存储库尚未与该项目关联，仍必须一并锁住
+            Database.transaction { conn ->
+                BucketDao.create(conn, 8L, "库8", "hash", "owner", "1")
+            }
+
+            val link = StorageManager.acquireProjectAndBucketLock("关联操作项目", 8L)
+            assertTrue(StorageManager.isProjectLocked("关联操作项目"))
+            assertTrue(StorageManager.isBucketLocked(8L), "尚未关联的目标存储库也要锁住")
+
+            assertNull(
+                withTimeoutOrNull(blockedMs) { StorageManager.acquireBucketLock(8L) },
+                "关联操作进行中，其他指令不得改写目标存储库"
+            )
+
+            link.release()
+            assertFalse(StorageManager.isProjectLocked("关联操作项目"))
+            assertFalse(StorageManager.isBucketLocked(8L))
+        }
+    }
+
+    @Test
     @DisplayName("未关联存储库的项目不牵连任何存储库")
     fun unlinkedProjectDoesNotTouchBuckets() {
         runBlocking {

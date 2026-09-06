@@ -26,6 +26,8 @@ import site.tiedan.MiraiCompilerFramework.uploadTempImage
 import site.tiedan.command.CommandPastebin.isCollaborator
 import site.tiedan.config.MailConfig
 import site.tiedan.config.PastebinConfig
+import site.tiedan.core.StorageLockGuard.lockBucket
+import site.tiedan.core.StorageLockGuard.lockProjectAndBucket
 import site.tiedan.core.StorageManager
 import site.tiedan.data.PastebinData
 import site.tiedan.format.MarkdownImageGenerator
@@ -77,6 +79,9 @@ object CommandBucket : RawCommand(
             pendingCommand.remove(userID)
             sendQuoteReply("指令不一致，操作已取消")
         }
+
+        // 本次指令持有的存储锁，与执行进程共用同一套锁
+        var storageLock: StorageManager.StorageLock? = null
 
         try {
             when (args[0].content) {
@@ -285,6 +290,7 @@ object CommandBucket : RawCommand(
 
                 "set", "修改"-> {   // 修改存储库属性
                     val id = checkBucketNameOrID(args[1].content, "修改") ?: return
+                    storageLock = lockBucket(id) ?: return
                     var option = args[2].content
                     var content = args.drop(3).joinToString(separator = " ")
                     var additionalOutput = ""
@@ -406,6 +412,8 @@ object CommandBucket : RawCommand(
 
                 "add", "添加"-> {   // 将存储库添加至项目
                     val ctx = prepareProjectContext(args, userID) ?: return
+                    storageLock = lockProjectAndBucket(ctx.projectName, ctx.id) ?: return
+                    ctx.refreshProjects()
 
                     val password = args.getOrNull(3)?.content
                     checkPassword(ctx.id, password, userID, isAdmin) ?: return  // 验证密码
@@ -429,6 +437,8 @@ object CommandBucket : RawCommand(
 
                 "remove", "rm", "移除"-> {   // 将存储库从项目移除
                     val ctx = prepareProjectContext(args, userID) ?: return
+                    storageLock = lockProjectAndBucket(ctx.projectName, ctx.id) ?: return
+                    ctx.refreshProjects()
                     if (ctx.projectsList.remove(ctx.projectName).not()) {
                         sendQuoteReply("移除失败：存储库 ${ctx.id} 未关联此项目 ${ctx.projectName}")
                         return
@@ -439,6 +449,7 @@ object CommandBucket : RawCommand(
 
                 "backup", "备份"-> {   // 备份存储库数据
                     val id = checkBucketNameOrID(args[1].content, "备份") ?: return
+                    storageLock = lockBucket(id) ?: return
 
                     // 删除备份指令
                     if (args.getOrNull(2)?.content == "del") {
@@ -541,6 +552,7 @@ object CommandBucket : RawCommand(
 
                 "rollback", "回滚"-> {   // 从备份回滚数据
                     val id = checkBucketNameOrID(args[1].content, "回滚") ?: return
+                    storageLock = lockBucket(id) ?: return
 
                     val password = args.getOrNull(3)?.content
                     checkPassword(id, password, userID, isAdmin) ?: return  // 验证密码
@@ -577,6 +589,7 @@ object CommandBucket : RawCommand(
 
                 "delete", "删除"-> {   // 永久删除存储库
                     val id = checkBucketNameOrID(args[1].content, "删除") ?: return
+                    storageLock = lockBucket(id) ?: return
                     val ownerID = StorageManager.getBucket(id)?.userID
                     val isOwner = userID == ownerID
                     val forceDelete = args.getOrNull(2)?.content == "force"
@@ -615,6 +628,8 @@ object CommandBucket : RawCommand(
         } catch (e: Exception) {
             logger.warning(e)
             sendQuoteReply("[指令执行未知错误]\n请联系管理员查看后台：${e::class.simpleName}(${e.message})")
+        } finally {
+            storageLock?.release()
         }
     }
 
@@ -650,7 +665,13 @@ object CommandBucket : RawCommand(
         val id: Long,
         val projectName: String,
         val projectsList: MutableList<String>,
-    )
+    ) {
+        /** 重新读取关联项目列表 */
+        fun refreshProjects() {
+            projectsList.clear()
+            projectsList.addAll(StorageManager.getBucket(id)?.projects ?: emptyList())
+        }
+    }
     suspend fun CommandSender.prepareProjectContext(
         args: MessageChain,
         userID: String
