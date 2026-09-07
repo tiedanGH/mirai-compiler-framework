@@ -25,6 +25,8 @@ object CommandGlot : RawCommand(
     description = "查看框架信息和帮助",
     usage = "${commandPrefix}glot help"
 ) {
+    private val VERSION: String get() = MiraiCompilerFramework.description.version.toString()
+
     private val commandList = arrayOf(
         Command("glot help", "glot 帮助", "查看框架信息和帮助", 1),
         Command("glot list", "glot 列表", "列出所有支持的编程语言", 1),
@@ -46,6 +48,7 @@ object CommandGlot : RawCommand(
                         "$CMD_PREFIX <language> <code>\n" +
                         "$CMD_PREFIX <language> <源代码URL> [stdin]\n" +
                         "[引用消息] $CMD_PREFIX <language> [stdin]\n" +
+                        "🏷️ 当前版本：v$VERSION\n" +
                         "📦 仓库地址：\n" +
                         "https://github.com/tiedanGH/mirai-compiler-framework/\n" +
                         "📚 完整指令帮助：\n" +
@@ -59,8 +62,9 @@ object CommandGlot : RawCommand(
                         "$CMD_PREFIX <语言> <代码>\n" +
                         "$CMD_PREFIX <语言> <源代码URL> [输入]\n" +
                         "[引用消息] $CMD_PREFIX <语言> [输入]\n" +
+                        "🏷️ 当前版本：v$VERSION\n" +
                         "📦 仓库地址：\n" +
-                        "https://github.com/tiedanGH/mirai-compiler-framework/" +
+                        "https://github.com/tiedanGH/mirai-compiler-framework/\n" +
                         "📚 完整指令帮助：\n" +
                         commandList.joinToString("") { "${commandPrefix}${it.usageCN}　${it.desc}\n" }
                     )
