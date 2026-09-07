@@ -62,33 +62,73 @@ object CommandPastebin : RawCommand(
     description = "pb代码项目操作指令",
     usage = "${commandPrefix}pb help"
 ){
+
+    private const val TYPE_VIEW = 1
+    private const val TYPE_UPDATE = 2
+    private const val TYPE_ADVANCED = 3
+    private const val TYPE_INFO = 4     /* 默认折叠分类 */
+    private const val TYPE_DANGER = 5
+    private const val TYPE_RELATED = 6
+    private const val TYPE_ADMIN = 7
+    /** 展开全部分组 */
+    private val HELP_ALL = listOf("all", "全部")
+
     private val commandList = arrayOf(
-        Command("pb support", "pb 支持", "支持粘贴代码的网站", 1),
-        Command("pb profile [ID]", "pb 简介 [平台ID]", "查看个人信息", 1),
-        Command("pb private", "pb 私信时段", "允许私信主动消息", 1),
-        Command("pb stats [名称]", "pb 统计 [名称]", "查看统计信息", 1),
-        Command("pb list [查询模式]", "pb 列表 [查询模式]", "查看项目列表", 1),
-        Command("pb info <名称>", "pb 信息 <名称>", "查看信息&运行示例", 1),
-        Command("pb thread", "pb 进程", "查询运行和等待中的进程", 1),
-        Command("pb status", "pb 状态", "查看框架运行状态", 1),
-        Command("run <名称> [stdin]", "pb 运行 <名称> [输入]", "运行代码项目", 1),
+        Command("pb list [查询模式]", "pb 列表 [查询模式]", "查看项目列表", TYPE_VIEW),
+        Command("pb info <名称>", "pb 信息 <名称>", "查看信息&运行示例", TYPE_VIEW),
+        Command("pb support", "pb 支持", "支持粘贴代码的网站", TYPE_VIEW),
+        Command("pb private", "pb 私信时段", "允许私信主动消息", TYPE_VIEW),
+        Command("run <名称> [stdin]", "pb 运行 <名称> [输入]", "运行代码项目", TYPE_VIEW),
 
-        Command("pb add <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]", "pb 添加 <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]", "添加Pastebin项目", 2),
-        Command("pb set <名称> <参数名> <内容>", "pb 修改 <名称> <参数名> <内容>", "修改项目属性", 2),
-        Command("pb collab add/remove <ID>", "pb 协作 添加/移除 <平台ID>", "批量编辑自己全部项目的协作者", 2),
-        Command("pb delete <名称>", "pb 删除 <名称>", "永久删除项目", 2),
+        Command("pb add <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]", "pb 添加 <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]", "添加Pastebin项目", TYPE_UPDATE),
+        Command("pb set <名称> <参数名> <内容>", "pb 修改 <名称> <参数名> <内容>", "修改项目属性", TYPE_UPDATE),
 
-        Command("pb set <名称> format <输出格式> [宽度/存储]", "pb 修改 <名称> 输出格式 <输出格式> [宽度/存储]", "修改输出格式", 3),
-        Command("pb storage <名称> [查询ID/mail] [邮件地址]", "pb 存储 <名称> [查询ID/邮件] [邮件地址]", "查询存储数据", 3),
-        Command("pb export <名称>", "pb 导出 <名称>", "将项目代码缓存导出为临时链接（过期时使用）", 3),
-        Command("bucket help", "存储库 帮助", "跨项目存储库操作指令", 3),
-        Command("image help", "图片 帮助", "本地图片操作指令", 3),
+        Command("pb set <名称> format <输出格式> [宽度/存储]", "pb 修改 <名称> 输出格式 <输出格式> [宽度/存储]", "修改输出格式", TYPE_ADVANCED),
+        Command("pb storage <名称> [查询ID/mail] [邮件地址]", "pb 存储 <名称> [查询ID/邮件] [邮件地址]", "查询存储数据", TYPE_ADVANCED),
+        Command("bucket help", "存储库 帮助", "跨项目存储库操作指令", TYPE_ADVANCED),
 
-        Command("pb handle <名称> <同意/拒绝> [备注]", "pb 处理 <名称> <同意/拒绝> [备注]", "处理添加和修改申请", 4),
-        Command("pb black [ID]", "pb 黑名单 [平台ID]", "黑名单处理", 4),
-        Command("pb reload", "pb 重载", "重载本地数据", 4),
-        Command("pb status clean", "pb 状态 clean", "清除孤儿数据", 4),
+        Command("pb stats [名称]", "pb 统计 [名称]", "查看统计信息", TYPE_INFO),
+        Command("pb profile [ID]", "pb 简介 [平台ID]", "查看个人信息", TYPE_INFO),
+        Command("pb status", "pb 状态", "查看框架运行状态", TYPE_INFO),
+        Command("pb thread", "pb 进程", "查询运行和等待中的进程", TYPE_INFO),
+        Command("pb export <名称>", "pb 导出 <名称>", "将项目代码缓存导出为临时链接（过期时使用）", TYPE_INFO),
+
+        Command("pb collab add/remove <ID>", "pb 协作 添加/移除 <平台ID>", "批量编辑自己全部项目的协作者", TYPE_DANGER),
+        Command("pb delete <名称>", "pb 删除 <名称>", "永久删除项目", TYPE_DANGER),
+
+        Command("glot help", "glot 帮助", "查看框架信息", TYPE_RELATED),
+        Command("image help", "图片 帮助", "本地图片操作指令", TYPE_RELATED),
+
+        Command("pb handle <名称> <同意/拒绝> [备注]", "pb 处理 <名称> <同意/拒绝> [备注]", "处理添加和修改申请", TYPE_ADMIN),
+        Command("pb black [ID]", "pb 黑名单 [平台ID]", "黑名单处理", TYPE_ADMIN),
+        Command("pb reload", "pb 重载", "重载本地数据", TYPE_ADMIN),
+        Command("pb status clean", "pb 状态 clean", "清除孤儿数据", TYPE_ADMIN),
     )
+
+    /** 拼装 pb 指令帮助 */
+    private fun buildHelp(cn: Boolean, showAll: Boolean, isAdmin: Boolean): String {
+        fun group(title: String, type: Int) = title + "\n" +
+            commandList.filter { it.type == type }
+                .joinToString("") { "$commandPrefix${if (cn) it.usageCN else it.usage}　${it.desc}\n" }
+
+        return buildString {
+            append(group("📋 PB查看运行帮助：", TYPE_VIEW))
+            append(group("✏️ PB更新数据帮助：", TYPE_UPDATE))
+            append(group("⚙️ PB高级功能帮助：", TYPE_ADVANCED))
+            if (!showAll) {
+                val usage = if (cn) "pb 帮助 全部" else "pb help all"
+                append("💡 完整指令帮助「$commandPrefix$usage」")
+                return@buildString
+            }
+            append(group("📊 PB信息查询帮助：", TYPE_INFO))
+            append(group("⚠️ PB危险操作帮助：", TYPE_DANGER))
+            append(group("🔗 PB相关指令帮助：", TYPE_RELATED))
+            if (isAdmin) {
+                append("\n")
+                append(group("🛠️ 管理指令帮助：", TYPE_ADMIN))
+            }
+        }
+    }
 
     override suspend fun CommandSender.onCommand(args: MessageChain) {
 
@@ -111,34 +151,9 @@ object CommandPastebin : RawCommand(
         try {
             when (args[0].content) {
 
-                "help"-> {   // 查看pastebin帮助（help）
-                    var reply = "📋 pastebin查看运行帮助：\n" +
-                            commandList.filter { it.type == 1 }.joinToString("") { "${commandPrefix}${it.usage}　${it.desc}\n" } +
-                            "✏️ pastebin更新数据帮助：\n" +
-                            commandList.filter { it.type == 2 }.joinToString("") { "${commandPrefix}${it.usage}　${it.desc}\n" } +
-                            "⚙️ pastebin高级功能帮助：\n" +
-                            commandList.filter { it.type == 3 }.joinToString("") { "${commandPrefix}${it.usage}　${it.desc}\n" }
-                    if (args.getOrNull(1)?.content == "all" && isAdmin) {
-                        reply += "\n" +
-                                "🛠️ pastebin管理指令帮助：\n" +
-                                commandList.filter { it.type == 4 }.joinToString("") { "${commandPrefix}${it.usage}　${it.desc}\n" }
-                    }
-                    sendQuoteReply(reply)
-                }
-
-                "帮助"-> {   // 查看pastebin帮助（帮助）
-                    var reply = "📋 pastebin查看相关帮助：\n" +
-                            commandList.filter { it.type == 1 }.joinToString("") { "${commandPrefix}${it.usageCN}　${it.desc}\n" } +
-                            "✏️ pastebin更新数据帮助：\n" +
-                            commandList.filter { it.type == 2 }.joinToString("") { "${commandPrefix}${it.usageCN}　${it.desc}\n" } +
-                            "⚙️ pastebin高级功能帮助：\n" +
-                            commandList.filter { it.type == 3 }.joinToString("") { "${commandPrefix}${it.usageCN}　${it.desc}\n" }
-                    if (args.getOrNull(1)?.content == "all" && isAdmin) {
-                        reply += "\n" +
-                                "🛠️ pastebin管理指令帮助：\n" +
-                                commandList.filter { it.type == 4 }.joinToString("") { "${commandPrefix}${it.usageCN}　${it.desc}\n" }
-                    }
-                    sendQuoteReply(reply)
+                "help", "帮助"-> {   // 查看pastebin帮助
+                    val showAll = (args.getOrNull(1)?.content ?: "") in HELP_ALL
+                    sendQuoteReply(buildHelp(cn = args[0].content == "帮助", showAll = showAll, isAdmin = isAdmin))
                 }
 
                 "support", "支持"-> {   // 支持粘贴代码的网站

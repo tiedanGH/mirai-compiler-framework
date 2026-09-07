@@ -157,16 +157,15 @@ object PastebinCodeExecutor {
 
                 if (StorageManager.isProjectLocked(name)) {
                     logger.debug("(${userID})执行$name [存储]进程执行请求等待中...")
-                    if (THREADS.size > 3) sendQuoteReply("当前进程较多（${THREADS.size - 1} 个正在等待），等待时间可能较长")
+                    if (THREADS.size > PastebinConfig.thread_limit - 2) sendQuoteReply("当前进程较多（${THREADS.size - 1} 个正在等待），等待时间可能较长")
                 }
                 // 只锁本项目及其关联存储库，其他项目不受影响
                 projectLock = StorageManager.acquireProjectLock(name)
                 // 排队期间项目可能已被改名、删除或关闭存储，此前读到的属性与代码都已过期
                 if (PastebinData.pastebin[name]?.get("storage") != "true") {
                     sendQuoteReply(
-                        "[执行取消] 请重新执行" +
-                        "项目 $name 在排队期间重要属性或存储功能发生变更\n" +
-                        "为避免程序读到空存储后产生错误结果，本次执行已取消！"
+                        "[执行取消] 请重新执行\n" +
+                        "项目 $name 在排队期间名称或存储功能发生变更，为避免产生异常数据，执行已取消"
                     )
                     return
                 }
