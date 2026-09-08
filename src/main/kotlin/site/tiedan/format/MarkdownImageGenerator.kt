@@ -259,6 +259,7 @@ object MarkdownImageGenerator {
                 .inner-table {
                     width: 100%;
                     border-collapse: collapse;
+                    table-layout: fixed;
                 }
                 .inner-table th, .inner-table td {
                     border: 1px solid #ccc;
@@ -274,9 +275,9 @@ object MarkdownImageGenerator {
                 .hot-3 {
                     color: #E98F36
                 }
-                .inner-table th.name-col, .inner-table td.name-col { width: 45%; }
+                .inner-table th.name-col, .inner-table td.name-col { width: 45%; word-break: break-all; }
                 .inner-table th.lang-col, .inner-table td.lang-col { width: 20%; }
-                .inner-table th.author-col, .inner-table td.author-col { width: 35%; }
+                .inner-table th.author-col, .inner-table td.author-col { width: 35%; white-space: nowrap; overflow: hidden; }
             </style>
             """.trimIndent())
             appendLine("<h1>$titleText$sortText</h1><h3>${f.filterText}</h3>")
