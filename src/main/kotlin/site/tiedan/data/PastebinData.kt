@@ -19,7 +19,10 @@ internal object PastebinData : AutoSavePluginData("PastebinData") {
     @ValueDescription("别名")
     var alias: MutableMap<String, String> by value(mutableMapOf())
 
-    @ValueDescription("pastebin代码数据")
+    @ValueDescription("标签库列表")
+    var tagLibrary: MutableSet<String> by value(mutableSetOf())
+
+    @ValueDescription("PB项目数据")
     var pastebin: MutableMap<String, MutableMap<String, String>> by value(mutableMapOf("example" to mutableMapOf("language" to "python", "url" to "https://pastebin.ubuntu.com/", "stdin" to "1")))
 
 }

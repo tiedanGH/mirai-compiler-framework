@@ -38,6 +38,7 @@ import site.tiedan.format.MarkdownImageGenerator
 import site.tiedan.module.MailService
 import site.tiedan.module.DataAudit
 import site.tiedan.module.Statistics
+import site.tiedan.module.TagManager
 import site.tiedan.module.StatusReport
 import site.tiedan.utils.FuzzySearch
 import site.tiedan.utils.HttpUtil
@@ -89,6 +90,7 @@ object CommandPastebin : RawCommand(
 
         Command("pb stats [名称]", "pb 统计 [名称]", "查看统计信息", TYPE_INFO),
         Command("pb profile [ID]", "pb 简介 [平台ID]", "查看个人信息", TYPE_INFO),
+        Command("pb tag", "pb 标签", "查看标签库与用法", TYPE_INFO),
         Command("pb status", "pb 状态", "查看框架运行状态", TYPE_INFO),
         Command("pb thread", "pb 进程", "查询运行和等待中的进程", TYPE_INFO),
         Command("pb export <名称>", "pb 导出 <名称>", "将项目代码缓存导出为临时链接（过期时使用）", TYPE_INFO),
@@ -103,6 +105,7 @@ object CommandPastebin : RawCommand(
         Command("pb black [ID]", "pb 黑名单 [平台ID]", "黑名单处理", TYPE_ADMIN),
         Command("pb reload", "pb 重载", "重载本地数据", TYPE_ADMIN),
         Command("pb status clean", "pb 状态 clean", "清除孤儿数据", TYPE_ADMIN),
+        Command("pb tag add/del <标签>", "pb 标签 添加/移除 <标签>", "批量编辑标签库", TYPE_ADMIN),
     )
 
     /** 拼装 pb 指令帮助 */
@@ -320,6 +323,62 @@ object CommandPastebin : RawCommand(
                     sendQuoteReply("✅ 已清除 $removed 项孤儿数据")
                 }
 
+                "tag", "标签"-> {   // 查看标签库 / 管理员批量编辑标签库
+                    val action = args.getOrNull(1)?.content
+                    val rawTags = args.drop(2).joinToString(" ") { it.content }
+                    when (action) {
+                        "add", "添加", "del", "remove", "删除"-> {
+                            if (!isAdmin) throw PermissionDeniedException()
+                            val tags = TagManager.parse(rawTags)
+                            if (tags.isEmpty()) {
+                                sendQuoteReply("[参数不足] 请提供至少一个标签，多个标签用空格分隔")
+                                return
+                            }
+                            val invalid = TagManager.invalidTags(tags)
+                            if (invalid.isNotEmpty()) {
+                                sendQuoteReply("[参数错误] 标签长度不能超过 ${TagManager.MAX_LENGTH} 字：${invalid.joinToString(" ")}")
+                                return
+                            }
+                            if (action in listOf("add", "添加")) {
+                                val (added, existing) = TagManager.addToLibrary(tags)
+                                sendQuoteReply(buildString {
+                                    append("·🗄 PB标签库添加结果：")
+                                    if (added.isNotEmpty()) append("\n✅ 添加成功：${added.joinToString(" ")}")
+                                    if (existing.isNotEmpty()) append("\n⚠️ 已存在：${existing.joinToString(" ")}")
+                                })
+                            } else {
+                                val (removed, missing, affected) = TagManager.removeFromLibrary(tags)
+                                sendQuoteReply(buildString {
+                                    append("·🗄 PB标签库删除结果：")
+                                    if (removed.isNotEmpty()) {
+                                        append("\n✅ 删除成功：${removed.joinToString(" ")}")
+                                        if (affected > 0) append("\n♻ 已从 $affected 个项目上清理")
+                                    }
+                                    if (missing.isNotEmpty()) append("\n⚠️ 不存在：${missing.joinToString(" ")}")
+                                })
+                            }
+                        }
+
+                        null-> {
+                            if (TagManager.libraryCount() == 0) {
+                                sendQuoteReply("ℹ 标签库中暂无标签，如需添加请联系管理员")
+                                return
+                            }
+                            sendQuoteReply(buildString {
+                                appendLine("·🏷️ 可用标签（${TagManager.libraryCount()}个）：")
+                                appendLine(TagManager.formatTagLines())
+                                appendLine()
+                                appendLine("🔍 筛选项目：${commandPrefix}pb list tag <标签>")
+                                append("✏ 设置标签：${commandPrefix}pb set <名称> tag <标签1> [标签2]...")
+                            })
+                        }
+
+                        else-> {
+                            sendQuoteReply("[参数不匹配] 查看标签库请使用「${commandPrefix}pb tag」")
+                        }
+                    }
+                }
+
                 "list", "列表"-> {   // 查看完整列表
                     val commandPbList = arrayOf(
                         Command("pb list [all]", "pb 列表 [全部]", "图片输出完整列表", 1),
@@ -330,6 +389,7 @@ object CommandPastebin : RawCommand(
 
                         Command("pb list search [项目名] [作者名] [语言] [输出格式]", "pb 列表 搜索 [项目名] [作者名] [语言] [输出格式]", "根据条件搜索项目（输入 null 来跳过某一项）", 3),
                         Command("pb list author <作者名>", "pb 列表 作者 <作者名>", "根据作者关键词筛选", 3),
+                        Command("pb list tag <标签>", "pb 列表 标签 <标签>", "根据标签筛选", 3),
                         Command("pb list lang <语言>", "pb 列表 语言 <语言>", "根据编程语言筛选", 3),
                         Command("pb list format <输出格式>", "pb 列表 格式 <输出格式>", "根据输出格式筛选", 3),
                         Command("pb list page <页数>", "pb 列表 页码 <页数>", "根据页码查询", 3),
@@ -369,6 +429,7 @@ object CommandPastebin : RawCommand(
                         "lang", "language", "语言",
                         "format", "格式",
                         "author", "作者",
+                        "tag", "标签",
                         "search", "搜索",
                         "page", "页码"-> {
                             val sortMode = when (mode) {
@@ -390,6 +451,8 @@ object CommandPastebin : RawCommand(
                                     MarkdownImageGenerator.PastebinListFilter(language = params.getOrNull(0))
                                 in arrayOf("format", "格式") ->
                                     MarkdownImageGenerator.PastebinListFilter(format = params.getOrNull(0))
+                                in arrayOf("tag", "标签") ->
+                                    MarkdownImageGenerator.PastebinListFilter(tag = params.getOrNull(0))
                                 in arrayOf("page", "页码") ->
                                     MarkdownImageGenerator.PastebinListFilter(page = params.getOrNull(0)?.toIntOrNull())
                                 else ->
@@ -512,6 +575,8 @@ object CommandPastebin : RawCommand(
                                 appendLine("协作者: $collaborators")
                         }
                         appendLine("语言：${data["language"]}")
+                        TagManager.projectTags(name).takeIf { it.isNotEmpty() }
+                            ?.let { appendLine("标签：${it.joinToString(" ")}") }
                         append("源代码URL：")
                         appendLine(
                             when {
@@ -660,6 +725,7 @@ object CommandPastebin : RawCommand(
                         "作者" to "author",
                         "语言" to "language",
                         "链接" to "url",
+                        "标签" to "tag",
                         "示例输入" to "stdin",
                         "所有者ID" to "userID",
                         "协作者" to "collaborators",
@@ -682,6 +748,7 @@ object CommandPastebin : RawCommand(
                             "author（作者）\n" +
                             "language（语言）\n" +
                             "url（链接）\n" +
+                            "tag（标签）\n" +
                             "stdin（示例输入）\n" +
                             "userID（所有者ID）\n" +
                             "collab（协作者）\n" +
@@ -798,6 +865,29 @@ object CommandPastebin : RawCommand(
                             }
 
                             PastebinData.pastebin[name]?.set("userID", content)
+                        }
+                        "tag"-> {
+                            if (TagManager.isClearWord(content)) {
+                                TagManager.clearProjectTags(name)
+                                content = "无"
+                            } else {
+                                val tags = TagManager.parse(content)
+                                if (tags.isEmpty()) {
+                                    sendQuoteReply("[参数不足] 请提供至少一个标签，多个标签用空格分隔。清空标签请填「无」")
+                                    return
+                                }
+                                val unknown = TagManager.setProjectTags(name, tags)
+                                if (unknown.isNotEmpty()) {
+                                    sendQuoteReply(buildString {
+                                        append("·🏷️ 标签设置结果：")
+                                        append("\n❌ 无效标签：${unknown.joinToString(" ")}")
+                                        append(TagManager.fuzzyMatchLine(unknown))
+                                        append("\n请使用「${commandPrefix}pb tag」查看可用标签")
+                                    })
+                                    return
+                                }
+                                content = TagManager.projectTags(name).joinToString(" ")
+                            }
                         }
                         "collaborators"-> {
                             when (content.lowercase()) {

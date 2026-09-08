@@ -21,6 +21,7 @@ import site.tiedan.data.ImageData
 import site.tiedan.core.StorageManager
 import site.tiedan.data.PastebinData
 import site.tiedan.module.Statistics
+import site.tiedan.module.TagManager
 import java.io.File
 import java.util.UUID
 import java.lang.management.ManagementFactory
@@ -158,10 +159,11 @@ object MarkdownImageGenerator {
         val author: String? = null,
         val language: String? = null,
         val format: String? = null,
+        val tag: String? = null,
         val page: Int? = null,
     ) {
         val isFilterEnabled: Boolean
-            get() = listOf(project, author, language, format, page).any { it != null }
+            get() = listOf(project, author, language, format, tag, page).any { it != null }
 
         val filterText: String
             get() = listOfNotNull(
@@ -169,6 +171,7 @@ object MarkdownImageGenerator {
                 author?.let { "[作者筛选：$it]" },
                 language?.let { "[语言筛选：$it]" },
                 format?.let { "[输出格式：$it]" },
+                tag?.let { "[标签筛选：$it]" },
                 page?.let { "[页码查询：$it]" }
             ).takeIf { it.isNotEmpty() }
                 ?.joinToString("<br>", prefix = "<br>")
@@ -202,7 +205,10 @@ object MarkdownImageGenerator {
                 val formatMatch = f.format?.let { keyword ->
                     entry.value.getOrDefault("format", "text").contains(keyword, ignoreCase = true) == true
                 } != false
-                projectMatch && authorMatch && languageMatch && formatMatch
+                val tagMatch = f.tag?.let { keyword ->
+                    TagManager.hasTag(entry.value[TagManager.FIELD], keyword)
+                } != false
+                projectMatch && authorMatch && languageMatch && formatMatch && tagMatch
             }
         val filteredEntries = f.page?.let { page ->
             val pageIndex = (page - 1).coerceAtLeast(0)

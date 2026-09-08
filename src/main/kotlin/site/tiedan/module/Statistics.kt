@@ -124,6 +124,8 @@ object Statistics {
             appendLine("  - 备份总大小：$totalBackupSize")
             appendLine("🖼️ 图片总数：$imageCount")
             appendLine("  - 占用空间：${formatSize(totalSize)}")
+            appendLine("🏷️ 标签库总数：${TagManager.libraryCount()}")
+            appendLine("  - 项目使用数：${TagManager.totalUsage()}")
             appendLine("📦 代码缓存总数：${CodeCacheManager.count()}")
             appendLine("  - 缓存总大小：$totalCodeCache")
         }
