@@ -567,6 +567,8 @@ object CommandPastebin : RawCommand(
                         append("名称：$name")
                         alias?.let { append("（$it）") }
                         appendLine()
+                        TagManager.projectTags(name).takeIf { it.isNotEmpty() }
+                            ?.let { appendLine("🏷️ 标签：${it.joinToString(" ")}") }
                         appendLine("作者：${data["author"]}")
                         if (showAll) {
                             appendLine("userID: ${data["userID"]}")
@@ -575,8 +577,6 @@ object CommandPastebin : RawCommand(
                                 appendLine("协作者: $collaborators")
                         }
                         appendLine("语言：${data["language"]}")
-                        TagManager.projectTags(name).takeIf { it.isNotEmpty() }
-                            ?.let { appendLine("标签：${it.joinToString(" ")}") }
                         append("源代码URL：")
                         appendLine(
                             when {
@@ -770,7 +770,7 @@ object CommandPastebin : RawCommand(
                         sendQuoteReply("修改失败：format中仅能包含两个参数（输出格式，图片宽度/配置存储）")
                         return
                     }
-                    if (option != "stdin" && option != "format" && option != "collaborators" && args.size > 4) {
+                    if (option !in arrayOf("stdin", "format", "collaborators", "tag") && args.size > 4) {
                         sendQuoteReply("修改失败：$option 参数中不能包含空格！")
                         return
                     }
