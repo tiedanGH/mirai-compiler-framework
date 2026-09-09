@@ -159,12 +159,15 @@ object StorageManager {
      */
     fun projectCount(): Int = Database.read { StorageDao.projectCount(it) }
 
+    /** 用户存储的平台ID */
+    fun formatPlatformID(platform: String, userId: Long): String =
+        if (platform == PLATFORM_QQ) "$userId" else "${platform}_$userId"
+
     /**
      * 单个用户的存储数据
      */
     data class UserStorage(val platform: String, val userId: Long, val content: String) {
-        /** QQ 为纯数字，其他平台带平台前缀 */
-        val platformID: String = if (platform == PLATFORM_QQ) "$userId" else "${platform}_$userId"
+        val platformID: String = formatPlatformID(platform, userId)
     }
 
     /**

@@ -40,6 +40,7 @@ import site.tiedan.module.DataAudit
 import site.tiedan.module.Statistics
 import site.tiedan.module.TagManager
 import site.tiedan.module.StatusReport
+import site.tiedan.module.StorageRollback
 import site.tiedan.utils.FuzzySearch
 import site.tiedan.utils.HttpUtil
 import site.tiedan.utils.PastebinUrlHelper
@@ -97,6 +98,9 @@ object CommandPastebin : RawCommand(
         Command("pb export <名称>", "pb 导出 <名称>", "将项目代码缓存导出为临时链接（过期时使用）", TYPE_INFO),
 
         Command("pb collab add/remove <ID>", "pb 协作 添加/移除 <平台ID>", "批量编辑自己全部项目的协作者", TYPE_DANGER),
+        Command("pb rollback <名称> list", "pb 回滚 <名称> 列表", "查看可回滚的数据备份", TYPE_DANGER),
+        Command("pb rollback <名称> diff <编号> [目标]", "pb 回滚 <名称> 对比 <编号> [目标]", "对比备份与当前存储数据", TYPE_DANGER),
+        Command("pb rollback <名称> <编号> <目标>", "pb 回滚 <名称> <编号> <目标>", "将项目存储回滚至指定备份", TYPE_DANGER),
         Command("pb delete <名称>", "pb 删除 <名称>", "永久删除项目", TYPE_DANGER),
 
         Command("glot help", "glot 帮助", "查看框架信息", TYPE_RELATED),
@@ -1172,6 +1176,148 @@ object CommandPastebin : RawCommand(
                     }
                 }
 
+                "rollback", "回滚"-> {   // 将项目存储数据回滚至备份
+                    val name = PastebinData.alias[args[1].content] ?: args[1].content
+                    if (PastebinData.pastebin.contains(name).not()) {
+                        val fuzzy = FuzzySearch.fuzzyFind(PastebinData.pastebin, name)
+                        sendQuoteReply(
+                            "未知的名称：$name\n" +
+                            if (fuzzy.isNotEmpty()) {
+                                "🔍 模糊匹配结果->\n" + fuzzy.take(20).joinToString(separator = " ") +
+                                "\n或使用「${commandPrefix}pb list」来查看完整列表"
+                            } else "请使用「${commandPrefix}pb list」来查看完整列表"
+                        )
+                        return
+                    }
+
+                    // 协作者不具备回滚存储权限
+                    val ownerID = PastebinData.pastebin[name]?.get("userID")
+                    if (userID != ownerID && !isAdmin) {
+                        sendQuoteReply("无权操作此项目：仅所有者可回滚存储数据，如需回滚请联系所有者：$ownerID")
+                        return
+                    }
+
+                    val snapshots = StorageRollback.snapshots()
+                    if (snapshots.isEmpty()) {
+                        sendQuoteReply("[回滚失败] 本地暂无包含存储数据库的备份，无法回滚")
+                        return
+                    }
+
+                    val subAction = args.getOrNull(2)?.content
+                    // 可回滚备份列表：只读，无需上锁
+                    if (subAction == null || subAction in listOf("list", "列表")) {
+                        sendQuoteReply(
+                            StorageRollback.formatSnapshotList(name, StorageRollback.listFor(name)) + "\n" +
+                            "🔍 数据对比：${commandPrefix}pb rollback $name diff <编号> [目标]\n" +
+                            "↩️ 执行回滚：${commandPrefix}pb rollback $name <编号> <目标>\n" +
+                            "🎯 目标：all（全部存储）／global（全局）／<用户ID>"
+                        )
+                        return
+                    }
+
+                    val isDiff = subAction in listOf("diff", "对比")
+                    val index = (if (isDiff) args.getOrNull(3)?.content else subAction)
+                        ?.toIntOrNull()?.takeIf { it in 1..snapshots.size }
+                    if (index == null) {
+                        sendQuoteReply(
+                            "[编号无效] 备份编号仅支持 1-${snapshots.size}\n" +
+                            "请使用「${commandPrefix}pb rollback $name list」查看可回滚备份"
+                        )
+                        return
+                    }
+                    val snapshot = snapshots[index - 1]
+
+                    // 只读对比：不上锁，展示的是此刻的数据
+                    if (isDiff) {
+                        val loaded = StorageRollback.load(snapshot, name)
+                        val rawTarget = args.getOrNull(4)?.content ?: "all"
+                        val target = loaded.resolveTarget(rawTarget)
+                            ?: return sendQuoteReply("[目标无效] 用户ID $rawTarget 在备份与当前数据中均不存在")
+                        sendQuoteReply(StorageRollback.formatDiff(loaded.plan(target)))
+                        return
+                    }
+
+                    // 回滚目标必须显式指定，避免误将整个项目回滚
+                    val rawTarget = args.getOrNull(3)?.content
+                    if (rawTarget == null) {
+                        sendQuoteReply(
+                            "[参数不足] 请指定回滚目标：\n" +
+                            "${commandPrefix}pb rollback $name $index all　回滚项目全部存储\n" +
+                            "${commandPrefix}pb rollback $name $index global　仅回滚全局数据\n" +
+                            "${commandPrefix}pb rollback $name $index <用户ID>　仅回滚该用户数据\n" +
+                            "🔍 可先使用「${commandPrefix}pb rollback $name diff $index」查看完整对比"
+                        )
+                        return
+                    }
+
+                    // 与执行进程共用同一把项目锁：回滚期间该项目无法被执行
+                    storageLock = lockProject(name) ?: return
+
+                    // 排队期间项目可能已被改名、删除或转移所有权。
+                    if (PastebinData.pastebin.contains(name).not()) {
+                        clearPendingRollback(userID)
+                        sendQuoteReply("[回滚取消] 项目 $name 在排队期间已被改名或删除，请重新执行指令")
+                        return
+                    }
+                    if (userID != PastebinData.pastebin[name]?.get("userID") && !isAdmin) {
+                        clearPendingRollback(userID)
+                        sendQuoteReply("[回滚取消] 项目 $name 在排队期间被转移所有权，本次操作已取消")
+                        return
+                    }
+
+                    val loaded = StorageRollback.load(snapshot, name)
+                    val target = loaded.resolveTarget(rawTarget)
+                        ?: return sendQuoteReply("[目标无效] 用户ID $rawTarget 在备份与当前数据中均不存在")
+                    val plan = loaded.plan(target)
+                    if (plan.snapshotEmpty && target.isAll) {
+                        clearPendingRollback(userID)
+                        sendQuoteReply(
+                            "[回滚失败] 备份 ${snapshot.label} 中不存在项目 $name 的任何存储数据\n" +
+                            "可能原因：此备份早于项目开启存储，或项目在此备份之后被改名（数据仍留在旧名称下），请联系管理员"
+                        )
+                        return
+                    }
+                    if (plan.changed.isEmpty()) {
+                        clearPendingRollback(userID)
+                        sendQuoteReply("ℹ 无需回滚：${target.label}与备份 ${snapshot.label} 完全一致")
+                        return
+                    }
+
+                    val confirmed = requestUserConfirmation(userID, args.content,
+                        " +++⚠️ 危险操作警告 ⚠️+++\n" +
+                        "您正在回滚项目 $name 的存储数据，请再次确认以下信息：\n" +
+                        "- 目标范围内*当前数据将被备份覆盖*\n" +
+                        "- 覆盖后当前数据*不可恢复*\n" +
+                        "- 备份中不存在的条目会被*删除*\n" +
+                        "- 回滚不影响存储库、代码缓存与统计数据\n" +
+                        "\n" +
+                        StorageRollback.formatDiff(plan) + "\n" +
+                        "\n" +
+                        "如您确认无误，请再次执行回滚指令以完成操作"
+                    )
+                    if (confirmed == null) {
+                        StorageRollback.remember(userID, plan)
+                        return
+                    }
+                    // 二次确认期间锁已交还给执行进程，数据可能已被改写
+                    if (!StorageRollback.matches(userID, plan)) {
+                        clearPendingRollback(userID)
+                        sendQuoteReply(
+                            "[回滚取消] 二次确认期间待回滚数据发生了变化，本次回滚已取消\n" +
+                            "最新对照如下，如仍需回滚请重新执行指令\n\n" +
+                            StorageRollback.formatDiff(plan)
+                        )
+                        return
+                    }
+                    StorageRollback.forget(userID)
+                    val changed = StorageRollback.apply(plan)
+                    logger.warning("$userID 将项目 $name 的${target.label}回滚至备份 ${snapshot.label}（$changed 项变化）")
+                    sendQuoteReply(
+                        "[ROLLBACK] 成功将项目 $name 的${target.label}回滚至备份 ${snapshot.label}（${snapshot.kind}）！\n" +
+                        "共 $changed 项数据发生变化"
+                    )
+                }
+
                 "delete", "remove", "删除", "移除"-> {   // 永久删除项目
                     val name = args[1].content
                     if (PastebinData.pastebin.contains(name).not()) {
@@ -1482,9 +1628,12 @@ object CommandPastebin : RawCommand(
         else "[内容过长] 数据长度：${content.length}，如需查看完整内容请使用指令\n\n" +
             "${commandPrefix}pb storage $name mail\n\n将结果发送邮件至您的邮箱"
 
-    /**
-     * ## 协作者相关操作
-     */
+    private fun clearPendingRollback(userID: String) {
+        pendingCommand.remove(userID)
+        StorageRollback.forget(userID)
+    }
+
+    // 协作者相关操作
     fun isCollaborator(name: String, userID: String): Boolean {
         val raw = PastebinData.pastebin[name]?.get("collaborators") ?: return false
         return raw.containsCollaborator(userID)

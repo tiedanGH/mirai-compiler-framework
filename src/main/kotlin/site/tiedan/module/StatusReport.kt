@@ -39,10 +39,10 @@ object StatusReport {
 
             appendLine("💾 数据库")
             if (Database.isInitialized) {
-                appendLine(" · 连接：✅ 正常（SQLite ${Database.sqliteVersion()}｜表结构 v${Database.schemaVersion()}）")
+                appendLine(" · 连接：✅ 正常（SQLite ${Database.sqliteVersion()}）")
                 val check = Database.cachedQuickCheck()
-                appendLine(" · 完整性：${if (check == "ok") "✅ ok" else "❌ $check"}")
-                appendLine(" · 文件大小：${formatSize(dbSize)}（WAL ${formatSize(walSize)}）")
+                appendLine(" · 完整性：${if (check == "ok") "✅ ok（表结构 v${Database.schemaVersion()}）" else "❌ $check"}")
+                appendLine(" · 大小：${formatSize(dbSize)}（WAL ${formatSize(walSize)}）")
             } else {
                 appendLine(" · 连接：❌ 未初始化，存储相关功能全部不可用")
             }
@@ -62,19 +62,16 @@ object StatusReport {
             )
             appendLine()
 
-            appendLine("🗂 备份记录")
-            appendLine(" · 每日备份：${backup.lastDaily ?: "暂无"}（${backup.dailyCount}份）")
-            appendLine(" · 关机备份：${backup.lastShutdown ?: "暂无"}（${backup.shutdownCount}份）")
-            appendLine()
-
-            // 逐项相加即为总量，多出来的都归入「其他」（yml、辅助文件等）
             val others = (dataSize - dbSize - walSize - imageSize - cacheSize - backup.totalSize).coerceAtLeast(0)
             appendLine("📁 数据目录：${formatSize(dataSize)}")
             appendLine(" · 数据库：${formatSize(dbSize + walSize)}")
             appendLine(" · 图片：${formatSize(imageSize)}")
             appendLine(" · 缓存：${formatSize(cacheSize)}")
             appendLine(" · 备份：${formatSize(backup.totalSize)}")
-            append(" · 其他：${formatSize(others)}")
+            appendLine(" · 其他：${formatSize(others)}")
+            appendLine("🗂 备份记录")
+            appendLine(" · 每日备份：${backup.lastDaily ?: "暂无"}（${backup.dailyCount}份）")
+            append(" · 关机备份：${backup.lastShutdown ?: "暂无"}（${backup.shutdownCount}份）")
         }
     }
 

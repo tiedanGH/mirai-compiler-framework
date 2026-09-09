@@ -2,6 +2,7 @@ package site.tiedan.data
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.sqlite.SQLiteConfig
 import org.sqlite.SQLiteDataSource
 import site.tiedan.data.dao.MetaDao
 import site.tiedan.data.dao.Schema
@@ -224,6 +225,18 @@ object Database {
             st.executeUpdate("VACUUM INTO '${target.absolutePath.replace("'", "''")}'")
         }
         target
+    }
+
+    /**
+     * 以只读方式打开一份备份快照并执行查询
+     */
+    fun <T> readSnapshot(file: File, block: (Connection) -> T): T {
+        require(file.isFile) { "备份快照不存在：${file.name}" }
+        val config = SQLiteConfig()
+        config.setReadOnly(true)
+        val dataSource = SQLiteDataSource(config)
+        dataSource.url = "jdbc:sqlite:${file.absolutePath}"
+        return dataSource.connection.use { block(it) }
     }
 
     /**
