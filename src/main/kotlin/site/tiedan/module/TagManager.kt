@@ -79,13 +79,36 @@ object TagManager {
      * @return 不在标签库中的标签；返回空列表表示设置成功
      */
     fun setProjectTags(name: String, tags: List<String>): List<String> {
-        val unknown = tags.filterNot { tag -> PastebinData.tagLibrary.any { it.equals(tag, ignoreCase = true) } }
+        val unknown = tags.filter { normalize(it) == null }
         if (unknown.isNotEmpty()) return unknown
-        val normalized = tags.map { tag -> PastebinData.tagLibrary.first { it.equals(tag, ignoreCase = true) } }
-        PastebinData.pastebin[name]?.set(FIELD, normalized.joinToString(" "))
+        PastebinData.pastebin[name]?.set(FIELD, tags.mapNotNull { normalize(it) }.joinToString(" "))
         PastebinData.save()
         return emptyList()
     }
+
+    /**
+     * 批量为项目追加同一个标签，项目原有标签不变
+     * @return 新增成功的项目 to 已带有该标签的项目
+     */
+    fun addTagToProjects(tag: String, names: List<String>): Pair<List<String>, List<String>> {
+        val added = mutableListOf<String>()
+        val existing = mutableListOf<String>()
+        for (name in names) {
+            val current = projectTags(name)
+            if (current.any { it.equals(tag, ignoreCase = true) }) {
+                existing += name
+                continue
+            }
+            PastebinData.pastebin[name]?.set(FIELD, (current + tag).joinToString(" "))
+            added += name
+        }
+        if (added.isNotEmpty()) PastebinData.save()
+        return added to existing
+    }
+
+    /** 标签库中与输入等价的标签，不存在时返回 null */
+    fun normalize(tag: String): String? =
+        PastebinData.tagLibrary.firstOrNull { it.equals(tag, ignoreCase = true) }
 
     /** 清空项目标签 */
     fun clearProjectTags(name: String) {

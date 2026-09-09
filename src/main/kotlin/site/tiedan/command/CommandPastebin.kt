@@ -83,6 +83,7 @@ object CommandPastebin : RawCommand(
 
         Command("pb add <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]", "pb 添加 <名称> <作者> <语言> <源代码URL> [示例输入(stdin)]", "添加Pastebin项目", TYPE_UPDATE),
         Command("pb set <名称> <参数名> <内容>", "pb 修改 <名称> <参数名> <内容>", "修改项目属性", TYPE_UPDATE),
+        Command("pb tag mark <标签> <项目1> [项目2]...", "pb 标签 标记 <标签> <项目1> [项目2]...", "批量为项目添加标签", TYPE_UPDATE),
 
         Command("pb set <名称> format <输出格式> [宽度/存储]", "pb 修改 <名称> 输出格式 <输出格式> [宽度/存储]", "修改输出格式", TYPE_ADVANCED),
         Command("pb storage <名称> [查询ID/mail] [邮件地址]", "pb 存储 <名称> [查询ID/邮件] [邮件地址]", "查询存储数据", TYPE_ADVANCED),
@@ -359,6 +360,48 @@ object CommandPastebin : RawCommand(
                             }
                         }
 
+                        "mark", "标记"-> {
+                            val rawTag = args.getOrNull(2)?.content
+                            val names = args.drop(3).map { it.content }.filter { it.isNotEmpty() }
+                            if (rawTag == null || names.isEmpty()) {
+                                sendQuoteReply(
+                                    "[参数不足] 请参考以下指令：\n" +
+                                    "${commandPrefix}pb tag mark <标签> <项目1> [项目2]...\n" +
+                                    "${commandPrefix}pb 标签 标记 <标签> <项目1> [项目2]..."
+                                )
+                                return
+                            }
+                            val tag = TagManager.normalize(rawTag)
+                            if (tag == null) {
+                                sendQuoteReply(buildString {
+                                    append("[无效标签] $rawTag")
+                                    append(TagManager.fuzzyMatchLine(listOf(rawTag)))
+                                    append("\n请使用「${commandPrefix}pb tag」查看可用标签")
+                                })
+                                return
+                            }
+
+                            val authorized = mutableListOf<String>()
+                            val denied = mutableListOf<String>()
+                            val unknown = mutableListOf<String>()
+                            for (name in names.map { PastebinData.alias[it] ?: it }.distinct()) {
+                                val owner = PastebinData.pastebin[name]?.get("userID")
+                                when {
+                                    PastebinData.pastebin.contains(name).not() -> unknown += name
+                                    isAdmin || userID == owner || isCollaborator(name, userID) -> authorized += name
+                                    else -> denied += name
+                                }
+                            }
+                            val (added, existing) = TagManager.addTagToProjects(tag, authorized)
+                            sendQuoteReply(buildString {
+                                append("·🏷️ 标签 $tag 标记结果：")
+                                if (added.isNotEmpty()) append("\n✅ 标记成功：${added.joinToString(" ")}")
+                                if (existing.isNotEmpty()) append("\n⚠️ 已有标签：${existing.joinToString(" ")}")
+                                if (denied.isNotEmpty()) append("\n🚫 无权操作：${denied.joinToString(" ")}")
+                                if (unknown.isNotEmpty()) append("\n❓ 未知项目：${unknown.joinToString(" ")}")
+                            })
+                        }
+
                         null-> {
                             if (TagManager.libraryCount() == 0) {
                                 sendQuoteReply("ℹ 标签库中暂无标签，如需添加请联系管理员")
@@ -369,7 +412,7 @@ object CommandPastebin : RawCommand(
                                 appendLine(TagManager.formatTagLines())
                                 appendLine()
                                 appendLine("🔍 筛选项目：${commandPrefix}pb list tag <标签>")
-                                append("✏ 设置标签：${commandPrefix}pb set <名称> tag <标签1> [标签2]...")
+                                append("📌 批量标记：${commandPrefix}pb tag mark <标签> <项目1> [项目2]...")
                             })
                         }
 
