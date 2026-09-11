@@ -25,6 +25,7 @@ import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
 import site.tiedan.format.Base64Processor
 import site.tiedan.format.JsonProcessor
+import site.tiedan.module.ExecutionLock
 import site.tiedan.module.RequestLimiter
 import site.tiedan.module.Statistics
 import site.tiedan.utils.HttpUtil
@@ -72,8 +73,8 @@ object PastebinCodeExecutor {
         val ownerID = PastebinData.pastebin[name]?.get("userID")
         val isOwner = userID == ownerID
         val isAdmin = PastebinConfig.admins.contains(userID)
-        if (PastebinData.groupOnly.contains(name) && (subject is Group).not() && !isOwner && !isAdmin) {
-            sendQuoteReply("执行失败：此条代码链接被标记为仅限群聊中执行！")
+        if (ExecutionLock.isBlocked(name, subject is Group) && !isOwner && !isAdmin) {
+            sendQuoteReply(ExecutionLock.blockedMessage(name))
             return
         }
         if (PastebinData.censorList.contains(name)) {
@@ -161,12 +162,14 @@ object PastebinCodeExecutor {
                 }
                 // 只锁本项目及其关联存储库，其他项目不受影响
                 projectLock = StorageManager.acquireProjectLock(name)
+                // 排队期间作者可能已锁定项目，需拦截项目执行
+                if (ExecutionLock.isBlocked(name, subject is Group) && !isOwner && !isAdmin) {
+                    sendQuoteReply("[执行取消] 项目被锁定\n${ExecutionLock.blockedMessage(name)}")
+                    return
+                }
                 // 排队期间项目可能已被改名、删除或关闭存储，此前读到的属性与代码都已过期
                 if (PastebinData.pastebin[name]?.get("storage") != "true") {
-                    sendQuoteReply(
-                        "[执行取消] 请重新执行\n" +
-                        "项目 $name 在排队期间名称或存储功能发生变更，为避免产生异常数据，执行已取消"
-                    )
+                    sendQuoteReply("[执行取消] 请重新执行\n项目 $name 在排队期间名称或存储功能发生变更，为避免产生异常数据，执行已取消")
                     return
                 }
                 // 读存储失败必须中止执行

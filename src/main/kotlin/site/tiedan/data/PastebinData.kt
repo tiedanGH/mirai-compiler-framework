@@ -10,9 +10,6 @@ internal object PastebinData : AutoSavePluginData("PastebinData") {
     @ValueDescription("隐藏Url的名称")
     var hiddenUrl: MutableSet<String> by value(mutableSetOf())
 
-    @ValueDescription("仅限群聊运行的名称")
-    var groupOnly: MutableSet<String> by value(mutableSetOf())
-
     @ValueDescription("待审核列表")
     var censorList: MutableSet<String> by value(mutableSetOf())
 

@@ -37,6 +37,7 @@ import site.tiedan.core.StorageManager
 import site.tiedan.format.MarkdownImageGenerator
 import site.tiedan.module.MailService
 import site.tiedan.module.DataAudit
+import site.tiedan.module.ExecutionLock
 import site.tiedan.module.Statistics
 import site.tiedan.module.TagManager
 import site.tiedan.module.StatusReport
@@ -87,9 +88,10 @@ object CommandPastebin : RawCommand(
         Command("pb tag mark <标签> <项目1> [项目2]...", "pb 标签 标记 <标签> <项目1> [项目2]...", "批量为项目添加标签", TYPE_UPDATE),
 
         Command("pb set <名称> format <输出格式> [宽度/存储]", "pb 修改 <名称> 输出格式 <输出格式> [宽度/存储]", "修改输出格式", TYPE_ADVANCED),
-        Command("pb storage <名称> [查询ID/mail] [邮件地址]", "pb 存储 <名称> [查询ID/邮件] [邮件地址]", "查询存储数据", TYPE_ADVANCED),
+        Command("pb set <名称> lock <锁定范围>", "pb 修改 <名称> 锁定 <锁定范围>", "锁定项目执行（私信/群聊/全部）", TYPE_ADVANCED),
         Command("bucket help", "存储库 帮助", "跨项目存储库操作指令", TYPE_ADVANCED),
 
+        Command("pb storage <名称> [查询ID/mail] [邮件地址]", "pb 存储 <名称> [查询ID/邮件] [邮件地址]", "查询存储数据", TYPE_ADVANCED),
         Command("pb stats [名称]", "pb 统计 [名称]", "查看统计信息", TYPE_INFO),
         Command("pb profile [ID]", "pb 简介 [平台ID]", "查看个人信息", TYPE_INFO),
         Command("pb tag", "pb 标签", "查看标签库与用法", TYPE_INFO),
@@ -616,6 +618,7 @@ object CommandPastebin : RawCommand(
                         appendLine()
                         TagManager.projectTags(name).takeIf { it.isNotEmpty() }
                             ?.let { appendLine("🏷️ 标签：${it.joinToString(" ")}") }
+                        ExecutionLock.of(name)?.let { appendLine(it.desc) }
                         appendLine("作者：${data["author"]}")
                         if (showAll) {
                             appendLine("userID: ${data["userID"]}")
@@ -779,7 +782,7 @@ object CommandPastebin : RawCommand(
                         "collab" to "collaborators",
                         // 启用拓展功能
                         "隐藏链接" to "hide",
-                        "仅限群聊" to "groupOnly",
+                        "锁定" to "lock",
                         "辅助文件" to "util",
                         "输出格式" to "format",
                         "数据存储" to "storage",
@@ -801,7 +804,7 @@ object CommandPastebin : RawCommand(
                             "collab（协作者）\n" +
                             "---启用拓展功能---\n" +
                             "hide（隐藏链接）\n" +
-                            "groupOnly（仅限群聊）\n" +
+                            "lock（锁定）\n" +
                             "util（辅助文件）\n" +
                             "format（输出格式）\n" +
                             "storage（数据存储）\n" +
@@ -821,7 +824,7 @@ object CommandPastebin : RawCommand(
                         sendQuoteReply("修改失败：$option 参数中不能包含空格！")
                         return
                     }
-                    if (option != "stdin" && option != "util" && option != "alias" && content.isEmpty()) {
+                    if (option !in arrayOf("stdin", "util", "alias", "lock") && content.isEmpty()) {
                         sendQuoteReply("修改失败：修改后的值为空！")
                         return
                     }
@@ -846,8 +849,8 @@ object CommandPastebin : RawCommand(
                             return
                         }
                     }
-                    // 只有改名会搬动存储数据，其余参数无需等待执行进程
-                    if (option == "name") {
+                    // 改名会搬动存储数据、锁定状态后禁用执行，要等正在执行的进程结束
+                    if (option == "name" || option == "lock") {
                         storageLock = lockProject(name) ?: return
                     }
                     when (option) {
@@ -867,9 +870,6 @@ object CommandPastebin : RawCommand(
                             // 转移标记
                             if (PastebinData.hiddenUrl.remove(name)) {
                                 PastebinData.hiddenUrl.add(content)
-                            }
-                            if (PastebinData.groupOnly.remove(name)) {
-                                PastebinData.groupOnly.add(content)
                             }
                             // 转移存储数据（含其他平台）
                             StorageManager.renameProjectStorage(name, content)
@@ -978,20 +978,24 @@ object CommandPastebin : RawCommand(
                                 }
                             }
                         }
-                        "groupOnly"-> {
-                            when (content) {
-                                in arrayListOf("enable","on","true","开启")-> {
-                                    content = "仅限群聊执行"
-                                    PastebinData.groupOnly.add(name)
-                                }
-                                in arrayListOf("disable","off","false","关闭")-> {
-                                    content = "允许全局执行"
-                                    PastebinData.groupOnly.remove(name)
-                                }
-                                else-> {
-                                    sendQuoteReply("无效的配置项：请设置 开启/关闭 仅限群聊执行功能")
+                        "lock"-> {
+                            if (ExecutionLock.isClearWord(content)) {
+                                ExecutionLock.set(name, null)
+                                content = ExecutionLock.CLEARED_DESC
+                            } else {
+                                val mode = ExecutionLock.parse(content)
+                                if (mode == null) {
+                                    sendQuoteReply(
+                                        "无效的配置项：锁定范围仅支持\n" +
+                                        "private（私信）　禁止私信执行\n" +
+                                        "group（群聊）　禁止群聊执行\n" +
+                                        "all（全部）　禁止全部执行\n" +
+                                        "解除锁定请填「无」或留空"
+                                    )
                                     return
                                 }
+                                ExecutionLock.set(name, mode)
+                                content = mode.desc
                             }
                         }
                         "util"-> {
@@ -1128,8 +1132,8 @@ object CommandPastebin : RawCommand(
                     }
                     if (option == "hide") {
                         sendQuoteReply("${additionalOutput}成功将 $name 的源代码标记为 $content")
-                    } else if (option == "groupOnly") {
-                        sendQuoteReply("${additionalOutput}成功将 $name 标记为 $content")
+                    } else if (option == "lock") {
+                        sendQuoteReply("${additionalOutput}成功修改 $name 的锁定状态：$content")
                     } else if (option == "userID") {
                         sendQuoteReply("${additionalOutput}成功将 $name 的所有权转移至 $content")
                     } else if (option == "url" && PastebinConfig.enable_censor) {
@@ -1304,6 +1308,7 @@ object CommandPastebin : RawCommand(
                         clearPendingRollback(userID)
                         sendQuoteReply(
                             "[回滚取消] 二次确认期间待回滚数据发生了变化，本次回滚已取消\n" +
+                            "💡 可用「${commandPrefix}pb set $name lock all」锁定项目，回滚完成后再解除\n" +
                             "最新对照如下，如仍需回滚请重新执行指令\n\n" +
                             StorageRollback.formatDiff(plan)
                         )
@@ -1356,7 +1361,6 @@ object CommandPastebin : RawCommand(
                     storageLock = lockProject(name) ?: return
                     PastebinData.alias.entries.removeIf { it.value == name }
                     PastebinData.hiddenUrl.remove(name)
-                    PastebinData.groupOnly.remove(name)
                     PastebinData.censorList.remove(name)
                     PastebinData.pastebin.remove(name)
                     PastebinData.save()

@@ -49,7 +49,7 @@ Before reading the content below, you need to first understand the basic functio
   to modify entry parameters.
     + For example: `#pb set test name test2` will change the entry named “test” to “test2”.
 - **Link Hiding:** When `hide` is enabled, the source code link will be hidden when viewing entry info (useful for programs with encryption).
-- **Group Only:** When `groupOnly` is enabled, the entry can only be executed in group chats.
+- **Execution Lock:** Setting `lock` blocks execution by scene: `private` (no private chat), `group` (no group chat), or `all` (no execution at all). Leave it empty to unlock.
 
 ## Util File Help
 - Util files provide commonly used functions for programs. When in use, configure them with the set command.
