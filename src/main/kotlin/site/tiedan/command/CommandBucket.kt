@@ -679,7 +679,7 @@ object CommandBucket : RawCommand(
         args: MessageChain,
         userID: String
     ): ProjectContext? {
-        val projectName = args[1].content
+        val projectName = PastebinData.alias[args[1].content] ?: args[1].content
         if (!PastebinData.pastebin.contains(projectName)) {
             val fuzzy = FuzzySearch.fuzzyFind(PastebinData.pastebin, projectName)
             sendQuoteReply(

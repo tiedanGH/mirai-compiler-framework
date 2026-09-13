@@ -72,13 +72,14 @@ object StorageRollback {
             .mapIndexed { i, snapshot -> snapshot.copy(index = i + 1) }
     }
 
-    /** 关机备份目录名还原为可读时间 */
+    /** 备份目录名还原为可读时间 */
     private fun displayLabel(dirName: String): String =
-        if (dirName.contains('_')) dirName.replace('_', ' ').replace('.', ':') else dirName
+        if (dirName.contains('_')) dirName.replace('_', ' ').replace('.', ':')
+        else "%s %02d:00:00".format(dirName, Timer.DAILY_TASK_HOUR)
 
     private fun parseDirTime(dirName: String): Long? =
         runCatching { LocalDateTime.parse(dirName, SHUTDOWN_DIR_FORMAT) }
-            .recoverCatching { LocalDate.parse(dirName).atStartOfDay() }
+            .recoverCatching { LocalDate.parse(dirName).atTime(Timer.DAILY_TASK_HOUR, 0) }
             .map { it.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() }
             .getOrNull()
 
@@ -289,14 +290,14 @@ object StorageRollback {
      * 可回滚备份列表
      */
     fun formatSnapshotList(project: String, infos: List<SnapshotInfo>): String = buildString {
-        appendLine("·🕰 可回滚备份：$project")
+        appendLine(" · 🕰 可回滚备份：$project")
         for (info in infos) {
-            append(" ${info.snapshot.index}. ${info.snapshot.label}（${info.snapshot.kind}）　")
+            append(" ${info.snapshot.index}. ${info.snapshot.label}（${info.snapshot.kind}）\n")
             appendLine(
                 when {
                     info.error != null -> "❌ 读取失败：${info.error}"
                     info.globalLength == null && info.userCount == 0 -> "⚠️ 无此项目数据"
-                    else -> "global ${info.globalLength ?: 0}｜用户 ${info.userCount}"
+                    else -> "💾 global ${info.globalLength ?: 0}｜用户 ${info.userCount}"
                 }
             )
         }

@@ -745,6 +745,7 @@ object CommandPastebin : RawCommand(
 
                 "set", "修改"-> {   // 修改项目属性
                     val name = args[1].content
+                    if (rejectAlias(name, "修改属性")) return
                     var option = args[2].content
                     var content = args.drop(3).joinToString(separator = " ")
                     var additionalOutput = ""
@@ -1181,7 +1182,8 @@ object CommandPastebin : RawCommand(
                 }
 
                 "rollback", "回滚"-> {   // 将项目存储数据回滚至备份
-                    val name = PastebinData.alias[args[1].content] ?: args[1].content
+                    val name = args[1].content
+                    if (rejectAlias(name, "回滚")) return
                     if (PastebinData.pastebin.contains(name).not()) {
                         val fuzzy = FuzzySearch.fuzzyFind(PastebinData.pastebin, name)
                         sendQuoteReply(
@@ -1210,12 +1212,29 @@ object CommandPastebin : RawCommand(
                     val subAction = args.getOrNull(2)?.content
                     // 可回滚备份列表：只读，无需上锁
                     if (subAction == null || subAction in listOf("list", "列表")) {
-                        sendQuoteReply(
-                            StorageRollback.formatSnapshotList(name, StorageRollback.listFor(name)) + "\n" +
-                            "🔍 数据对比：${commandPrefix}pb rollback $name diff <编号> [目标]\n" +
+                        val infos = StorageRollback.listFor(name)
+                        val usage =
+                            "\n🔍 数据对比：${commandPrefix}pb rollback $name diff <编号> [目标]\n" +
                             "↩️ 执行回滚：${commandPrefix}pb rollback $name <编号> <目标>\n" +
                             "🎯 目标：all（全部存储）／global（全局）／<用户ID>"
+
+                        val markdownResult = MarkdownImageGenerator.processMarkdown(
+                            name = null,
+                            MarkdownImageGenerator.generateRollbackListHtml(infos),
+                            width = "620"
                         )
+                        val image = markdownResult.file?.takeIf { markdownResult.success }
+                            ?.let { subject?.uploadTempImage(it) }
+                        // 渲染或上传失败时退回纯文字列表
+                        if (image == null) {
+                            sendQuoteReply(StorageRollback.formatSnapshotList(name, infos) + usage)
+                            return
+                        }
+                        sendQuoteReply(buildMessageChain {
+                            +PlainText("·🕰 可回滚备份：$name\n")
+                            +image
+                            +PlainText(usage)
+                        })
                         return
                     }
 
@@ -1325,6 +1344,7 @@ object CommandPastebin : RawCommand(
 
                 "delete", "remove", "删除", "移除"-> {   // 永久删除项目
                     val name = args[1].content
+                    if (rejectAlias(name, "删除项目")) return
                     if (PastebinData.pastebin.contains(name).not()) {
                         sendQuoteReply("删除失败：名称 $name 不存在")
                         return
@@ -1635,6 +1655,16 @@ object CommandPastebin : RawCommand(
     private fun clearPendingRollback(userID: String) {
         pendingCommand.remove(userID)
         StorageRollback.forget(userID)
+    }
+
+    /**
+     * 属性变更类操作一律要求项目真名
+     * @return true 表示输入的是别名，中止本次操作
+     */
+    private suspend fun CommandSender.rejectAlias(name: String, action: String): Boolean {
+        val real = PastebinData.alias[name] ?: return false
+        sendQuoteReply("${action}不支持别名，请使用项目完整名称：$real")
+        return true
     }
 
     // 协作者相关操作

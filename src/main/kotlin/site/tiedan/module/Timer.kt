@@ -8,6 +8,9 @@ import java.util.*
 
 object Timer {
 
+    /** 每日定时任务的执行时刻 */
+    const val DAILY_TASK_HOUR = 8
+
     /**
      * 执行全部每日定时任务
      * - 每个子任务单独兜底：任何一个失败都不得中断其余任务，更不得让调用方的定时循环退出
@@ -24,7 +27,7 @@ object Timer {
 
     fun calculateNextDelay(): Long {
         val currentTime = Calendar.getInstance()
-        val nextExecTime = getCalender(8)
+        val nextExecTime = getCalender(DAILY_TASK_HOUR)
         if (currentTime.timeInMillis > nextExecTime.timeInMillis) {
             nextExecTime.add(Calendar.DAY_OF_YEAR, 1)
         }

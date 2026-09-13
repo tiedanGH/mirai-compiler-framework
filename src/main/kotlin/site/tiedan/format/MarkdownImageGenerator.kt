@@ -21,6 +21,7 @@ import site.tiedan.data.ImageData
 import site.tiedan.core.StorageManager
 import site.tiedan.data.PastebinData
 import site.tiedan.module.Statistics
+import site.tiedan.module.StorageRollback
 import site.tiedan.module.TagManager
 import java.io.File
 import java.util.UUID
@@ -556,6 +557,64 @@ object MarkdownImageGenerator {
             if (entriesList.isNotEmpty() && entriesList.size % 8 != 0) appendLine("</tr>")
             appendLine("</table>")
             appendLine("<p style='text-align:center; margin-top:16px;'>共 ${entriesList.size} 张图片</p>")
+        }
+    }
+
+    /**
+     * 可回滚备份列表html
+     */
+    fun generateRollbackListHtml(infos: List<StorageRollback.SnapshotInfo>): String {
+        return buildString {
+            appendLine("""
+            <style>
+              .rb-wrap{color:#222;padding:10px}
+              .rb-table{width:100%;border-collapse:collapse;table-layout:fixed;border:2px solid #000;background:#fff}
+              .rb-table th,.rb-table td{
+                border:1px solid #888;padding:8px 6px;text-align:center;font-size:15px;
+                white-space:nowrap;overflow:hidden;text-overflow:clip
+              }
+              .rb-table th{background:#f5f5f5;font-weight:700;font-size:14px}
+              .col-index{width:10%}
+              .col-time{width:36%}
+              .col-kind{width:12%}
+              .col-global{width:21%}
+              .col-users{width:21%}
+              .rb-index{font-weight:700;font-size:17px}
+              .tag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:600}
+              .tag-daily{background:#dbeafe;color:#1d4ed8}
+              .tag-shutdown{background:#ffe0c7;color:#c2410c}
+              .rb-none{color:#b45309}
+              .rb-error{color:#b91c1c}
+            </style>
+            """.trimIndent())
+            appendLine("<div class='rb-wrap'>")
+            appendLine("<table class='rb-table'>")
+            appendLine(
+                "<thead><tr><th class='col-index'>#</th><th class='col-time'>备份时间</th>" +
+                "<th class='col-kind'>来源</th><th class='col-global'>global</th>" +
+                "<th class='col-users'>用户数</th></tr></thead>"
+            )
+            appendLine("<tbody>")
+            for (info in infos) {
+                val tagClass = if (info.snapshot.kind == StorageRollback.KIND_SHUTDOWN) "tag-shutdown" else "tag-daily"
+                append("<tr>")
+                append("<td class='rb-index'>${info.snapshot.index}</td>")
+                append("<td>${esc(info.snapshot.label)}</td>")
+                append("<td><span class='tag $tagClass'>${esc(info.snapshot.kind)}</span></td>")
+                append(
+                    when {
+                        info.error != null ->
+                            "<td colspan='2' class='rb-error'>读取失败：${esc(info.error)}</td>"
+                        info.globalLength == null && info.userCount == 0 ->
+                            "<td colspan='2' class='rb-none'>无此项目数据</td>"
+                        else ->
+                            "<td>${info.globalLength ?: 0}</td><td>${info.userCount}</td>"
+                    }
+                )
+                appendLine("</tr>")
+            }
+            appendLine("</tbody></table>")
+            appendLine("</div>")
         }
     }
 
