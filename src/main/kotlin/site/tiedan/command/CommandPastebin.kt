@@ -295,7 +295,7 @@ object CommandPastebin : RawCommand(
                         "　【📊数据统计 - ${name}】　\n" +
                         Statistics.getStatistic(name)
                     } else {
-                        "　【📊pastebin数据统计】　\n" +
+                        "　【📊PB框架数据统计】　\n" +
                         Statistics.getAllStatistics() + "\n" +
                         Statistics.summarizeStatistics(null)
                     }

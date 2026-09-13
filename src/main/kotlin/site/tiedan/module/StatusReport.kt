@@ -70,8 +70,8 @@ object StatusReport {
             appendLine(" · 备份：${formatSize(backup.totalSize)}")
             appendLine(" · 其他：${formatSize(others)}")
             appendLine("🗂 备份记录")
-            appendLine(" · 每日备份：${backup.lastDaily ?: "暂无"}（${backup.dailyCount}份）")
-            append(" · 关机备份：${backup.lastShutdown ?: "暂无"}（${backup.shutdownCount}份）")
+            appendLine(" · 每日：${backup.lastDaily ?: "暂无"}（${backup.dailyCount}份）")
+            append(" · 关机：${backup.lastShutdown ?: "暂无"}（${backup.shutdownCount}份）")
         }
     }
 
