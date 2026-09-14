@@ -1,5 +1,6 @@
 package site.tiedan.core
 
+import kotlinx.coroutines.CancellationException
 import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.contact.Group
 import net.mamoe.mirai.message.data.*
@@ -322,13 +323,22 @@ object PastebinCodeExecutor {
                 }
                 if (ret != null) sendQuoteReply("【存储错误】$ret")
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
+            // OutOfMemoryError 这类 Error 不属于 Exception，在此处拦截。
+            if (e is CancellationException) throw e
             logger.warning(e)
-            sendQuoteReply(
-                "[指令运行错误](非代码问题)\n" +
-                "报错类别：${e::class.simpleName}\n" +
-                "报错信息：${trimToMaxLength(e.message.toString(), ERROR_MSG_MAX_LENGTH).first}"
-            )
+            runCatching {
+                sendQuoteReply(
+                    if (e is OutOfMemoryError) {
+                        "[内存不足] 进程占用内存过大\n" +
+                        "⚠️ 数据未必完整写入，请检查存储数据后重试，或联系管理员"
+                    } else {
+                        "[指令运行错误](非代码问题)\n" +
+                        "报错类别：${e::class.simpleName}\n" +
+                        "报错信息：${trimToMaxLength(e.message.toString(), ERROR_MSG_MAX_LENGTH).first}"
+                    }
+                )
+            }.onFailure { logger.error("反馈发送失败", it) }
         } finally {
             THREADS.removeIf { it.id == jobId }
             if (outputAcquired) OutputHandler.release()

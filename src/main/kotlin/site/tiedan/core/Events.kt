@@ -1,5 +1,7 @@
 package site.tiedan.core
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.commandPrefix
 import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.console.command.CommandSender.Companion.toCommandSender
@@ -56,6 +58,19 @@ object Events : SimpleListenerHost() {
 
     override fun handleException(context: CoroutineContext, exception: Throwable) {
         logger.warning({ "Mirai Compiler Framework with ${exception.event}" }, exception.cause)
+
+        // 异常逃到这里说明没有任何一层进行拦截，必须兜底反馈
+        val cause = exception.cause ?: exception
+        if (cause is CancellationException) return
+        val subject = (exception.event as? MessageEvent)?.subject ?: return
+        MiraiCompilerFramework.launch {
+            runCatching {
+                subject.sendMessage(
+                    "[执行异常] 本次请求未能正常完成\n" +
+                    "报错类别：${cause::class.simpleName}"
+                )
+            }.onFailure { logger.error("异常兜底反馈发送失败", it) }
+        }
     }
 
     @Suppress("unused")
@@ -199,11 +214,15 @@ object Events : SimpleListenerHost() {
                         trimToMaxLength(message.toString(), ERROR_MSG_MAX_LENGTH).first
                 )
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
+            if (e is CancellationException) throw e
             when (e) {
                 is ConnectException,
                 is HttpUtil.HttpException ->
                     sendQuoteReply("[API服务异常]\n原因：${e.message}")
+
+                is OutOfMemoryError ->
+                    sendQuoteReply("[内存不足] 本次执行占用内存过大，已被中止")
 
                 else -> {
                     logger.warning("执行失败：${e::class.simpleName}(${e.message})")
