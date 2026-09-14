@@ -1,5 +1,7 @@
 package site.tiedan.command
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import net.mamoe.mirai.console.command.CommandManager.INSTANCE.commandPrefix
 import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.console.command.RawCommand
@@ -713,6 +715,7 @@ object CommandPastebin : RawCommand(
                         )
                         return
                     }
+                    val code = preCheckUrl(url, null) ?: return
                     PastebinData.pastebin[name] =
                         mutableMapOf(
                             "author" to author,
@@ -721,6 +724,9 @@ object CommandPastebin : RawCommand(
                             "url" to url,
                             "stdin" to stdin
                         )
+                    // 能缓存直接落盘，省去首次执行的抓取
+                    val cached = PastebinUrlHelper.enableCache(url)
+                    if (cached) CodeCacheManager.put(name, code)
                     if (PastebinConfig.enable_censor && !isAdmin) {
                         PastebinData.censorList.add(name)
                         sendQuoteReply("您已成功提交审核，此提交并不会发送提醒，管理员会定期查看并审核，您也可以主动联系进行催审")
@@ -737,7 +743,8 @@ object CommandPastebin : RawCommand(
                             } else {
                                 "${url}\n"
                             } +
-                            "示例输入：${stdin}"
+                            "示例输入：${stdin}" +
+                            if (cached) "\n\n📦 代码已预读并保存至缓存" else ""
                         )
                     }
                     PastebinData.save()
@@ -839,6 +846,7 @@ object CommandPastebin : RawCommand(
                             return
                         }
                     }
+                    var fetchedCode: String? = null
                     if (option == "url") {
                         content = PastebinUrlHelper.extractUrl(content)
                         if (!checkUrl(content)) {
@@ -849,6 +857,7 @@ object CommandPastebin : RawCommand(
                             )
                             return
                         }
+                        fetchedCode = preCheckUrl(content, name) ?: return
                     }
                     // 改名会搬动存储数据、锁定状态后禁用执行，要等正在执行的进程结束
                     if (option == "name" || option == "lock") {
@@ -1124,9 +1133,17 @@ object CommandPastebin : RawCommand(
                             }
                         }
                         else -> {
-                            if (option == "url" && CodeCacheManager.contains(name)) {
-                                additionalOutput = "🔗 源代码URL被修改，代码缓存已清除，下次执行时需重新获取代码\n"
-                                CodeCacheManager.remove(name)
+                            if (option == "url") {
+                                val code = fetchedCode
+                                if (code != null && PastebinUrlHelper.enableCache(content)) {
+                                    // 已取到新代码，直接覆盖缓存，无需等待下次执行
+                                    CodeCacheManager.put(name, code)
+                                    additionalOutput = "🔗 源代码URL已修改，新代码成功获取并保存至缓存\n"
+                                } else if (CodeCacheManager.contains(name)) {
+                                    // 新链接不支持缓存，旧缓存必须清除
+                                    CodeCacheManager.remove(name)
+                                    additionalOutput = "🔗 源代码URL已修改，代码缓存已清除\n"
+                                }
                             }
                             PastebinData.pastebin[name]?.set(option, content)
                         }
@@ -1655,6 +1672,46 @@ object CommandPastebin : RawCommand(
     private fun clearPendingRollback(userID: String) {
         pendingCommand.remove(userID)
         StorageRollback.forget(userID)
+    }
+
+    /**
+     * 项目链接预检
+     * - 链接不得与其他项目重复
+     * - 必须能获取到非空内容，避免无效链接
+     *
+     * @param project 正在修改的项目；新增项目时传 null
+     * @return 预检通过返回抓取到的代码；未通过时返回 null
+     */
+    private suspend fun CommandSender.preCheckUrl(url: String, project: String?): String? {
+        val duplicated = PastebinData.pastebin.entries
+            .firstOrNull { (name, data) -> name != project && data["url"] == url }
+        if (duplicated != null) {
+            sendQuoteReply(
+                "[链接重复] 此链接已被项目 ${duplicated.key} 使用，请直接执行已有项目。\n" +
+                "如需新建项目，请修改后重新上传代码"
+            )
+            return null
+        }
+
+        sendMessage("⏳ 正在获取代码，请稍候...")
+        val code = try {
+            withContext(Dispatchers.IO) { PastebinUrlHelper.get(url) }
+        } catch (e: PastebinUrlHelper.ServiceDiscontinuedException) {
+            sendQuoteReply("[链接无效]\n${e.message}")
+            return null
+        } catch (e: Exception) {
+            sendQuoteReply(
+                "[获取代码失败] 请确认此链接可正常访问或重新尝试\n" +
+                "报错类别：${e::class.simpleName}\n" +
+                "报错信息：${trimToMaxLength(e.message.toString(), ERROR_MSG_MAX_LENGTH).first}"
+            )
+            return null
+        }
+        if (code.isBlank()) {
+            sendQuoteReply("[链接无效] 获取到的内容为空，请确认代码已正确上传")
+            return null
+        }
+        return code
     }
 
     /**

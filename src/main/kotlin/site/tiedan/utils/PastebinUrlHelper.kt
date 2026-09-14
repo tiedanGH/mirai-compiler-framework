@@ -84,6 +84,11 @@ object PastebinUrlHelper {
     val allUrls = supportedUrls + discontinuedUrls
 
     /**
+     * 该链接是否支持本地代码缓存（含已停服）
+     */
+    fun enableCache(url: String): Boolean = allUrls.any { url.startsWith(it.url) && it.enableCache }
+
+    /**
      * 检查链接是否合法
      * 已停服的网站（[discontinuedUrls]）不再放行
      */

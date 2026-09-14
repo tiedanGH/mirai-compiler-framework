@@ -113,7 +113,7 @@ object PastebinCodeExecutor {
 
             // 从url或缓存获取代码
             val code: String = try {
-                if (PastebinUrlHelper.allUrls.any { url.startsWith(it.url) && it.enableCache }) {
+                if (PastebinUrlHelper.enableCache(url)) {
                     if (CodeCacheManager.contains(name)) {
                         logger.debug("从 CodeCache: $name 中获取代码")
                         CodeCacheManager.get(name)!!
