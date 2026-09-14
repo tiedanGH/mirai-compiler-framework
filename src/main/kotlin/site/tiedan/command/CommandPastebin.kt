@@ -1379,6 +1379,7 @@ object CommandPastebin : RawCommand(
                     val ownerID = PastebinData.pastebin[name]?.get("userID")
                     val isOwner = userID == ownerID
                     val forceDelete = args.getOrNull(2)?.content == "force"
+                    val skipConfirm = isAdmin && forceDelete && args.getOrNull(3)?.content == "confirm"
                     if (!isOwner) {
                         if (!isAdmin) {
                             sendQuoteReply("无权删除此项目，如需删除请联系所有者：$ownerID。如果您认为此条记录存在不合适的内容或其他问题，请联系指令管理员")
@@ -1390,19 +1391,21 @@ object CommandPastebin : RawCommand(
                         }
                     }
 
-                    val storageMode = PastebinData.pastebin[name]?.get("storage") == "true"
-                    val linkedBuckets = CommandBucket.bucketIdsToNames(CommandBucket.linkedBucketId(name))
-                    requestUserConfirmation(userID, args.content,
-                        " +++🛑 高危操作警告 🛑+++\n" +
-                        "您正在删除项目 $name，删除前请确保您已知晓：\n" +
-                        "- 项目所有有关数据都将*删除*\n" +
-                        "- 删除操作*不可恢复*\n" +
-                        "- 项目的统计数据将被*清空*\n" +
-                        (if (storageMode) "⚠️ 此项目开启了存储功能，删除后所有存储数据将*永久丢失*\n" else "") +
-                        (if (linkedBuckets.isNotEmpty()) "⚠️ 此项目关联了存储库，删除后以下存储库将自动*解除关联*：$linkedBuckets\n" else "") +
-                        "\n" +
-                        "如您确认无误，请再次执行删除指令以完成操作"
-                    ) ?: return
+                    if (!skipConfirm) {
+                        val storageMode = PastebinData.pastebin[name]?.get("storage") == "true"
+                        val linkedBuckets = CommandBucket.bucketIdsToNames(CommandBucket.linkedBucketId(name))
+                        requestUserConfirmation(userID, args.content,
+                            " +++🛑 高危操作警告 🛑+++\n" +
+                            "您正在删除项目 $name，删除前请确保您已知晓：\n" +
+                            "- 项目所有有关数据都将*删除*\n" +
+                            "- 删除操作*不可恢复*\n" +
+                            "- 项目的统计数据将被*清空*\n" +
+                            (if (storageMode) "⚠️ 此项目开启了存储功能，删除后所有存储数据将*永久丢失*\n" else "") +
+                            (if (linkedBuckets.isNotEmpty()) "⚠️ 此项目关联了存储库，删除后以下存储库将自动*解除关联*：$linkedBuckets\n" else "") +
+                            "\n" +
+                            "如您确认无误，请再次执行删除指令以完成操作"
+                        ) ?: return
+                    }
 
                     storageLock = lockProject(name) ?: return
                     PastebinData.alias.entries.removeIf { it.value == name }
@@ -1414,7 +1417,11 @@ object CommandPastebin : RawCommand(
                     Statistics.removeProject(name)
                     StorageManager.removeProjectStorage(name)
                     removeProjectFromBucket(name)
-                    sendQuoteReply("删除项目 $name 成功！")
+                    if (skipConfirm) logger.warning("管理员 $userID 跳过二次确认删除了项目 $name")
+                    sendQuoteReply(
+                        if (skipConfirm) "[管理员操作] 删除项目 $name 成功！"
+                        else "删除项目 $name 成功！"
+                    )
                 }
 
                 "upload", "上传"-> {   // 已迁移至 CommandImage
