@@ -629,15 +629,24 @@ object CommandPastebin : RawCommand(
                                 appendLine("协作者: $collaborators")
                         }
                         appendLine("语言：${data["language"]}")
+                        val url = data["url"].orEmpty()
                         append("源代码URL：")
                         appendLine(
                             when {
                                 PastebinConfig.enable_censor ->
                                     "审核功能已开启，链接无法查看，如有需求请联系管理员"
-                                !PastebinData.hiddenUrl.contains(name) || showAll ->
-                                    "\n${data["url"].orEmpty()}"
-                                else ->
+                                PastebinData.hiddenUrl.contains(name) && !showAll ->
                                     "链接被隐藏"
+                                // 停服网站链接无法访问，引导使用export导出缓存
+                                PastebinUrlHelper.isDiscontinued(url) ->
+                                    if (CodeCacheManager.contains(name)) {
+                                        "\n原网站已停服，请导出缓存\n" +
+                                        "🔗 ${commandPrefix}pb export $name"
+                                    } else {
+                                        "\n原网站已停止服务，且本地无代码缓存，此项目已无法执行"
+                                    }
+                                else ->
+                                    "\n$url"
                             }
                         )
                         data["util"]?.let { appendLine("辅助文件：$it") }

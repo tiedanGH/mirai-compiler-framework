@@ -83,6 +83,9 @@ object PastebinUrlHelper {
      */
     val allUrls = supportedUrls + discontinuedUrls
 
+    /** 链接所属网站是否已停止服务（无法访问） */
+    fun isDiscontinued(url: String): Boolean = discontinuedUrls.any { url.startsWith(it.url) }
+
     /**
      * 该链接是否支持本地代码缓存（含已停服）
      */
