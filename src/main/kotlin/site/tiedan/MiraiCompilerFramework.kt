@@ -304,16 +304,18 @@ object MiraiCompilerFramework : KotlinPlugin(
     }
 
     /**
-     * 从所有Bot实例中查找群聊或好友
+     * 从所有Bot实例中查找群聊或好友（未启用的Bot不参与查找）
      */
+    private fun enabledBots() = Bot.instances.filter { isBotEnabled(it.id) }
+
     fun findGroupFromAllBots(groupId: Long): Group? {
-        return Bot.instances.firstNotNullOfOrNull { bot ->
+        return enabledBots().firstNotNullOfOrNull { bot ->
             bot.getGroup(groupId)
         }
     }
 
     fun findFriendFromAllBots(friendId: Long): Friend? {
-        return Bot.instances.firstNotNullOfOrNull { bot ->
+        return enabledBots().firstNotNullOfOrNull { bot ->
             bot.getFriend(friendId)
         }
     }
