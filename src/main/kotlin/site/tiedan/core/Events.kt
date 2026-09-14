@@ -94,6 +94,9 @@ object Events : SimpleListenerHost() {
         return quickPrefixes.any { content.startsWith(it) }
     }
 
+    /** 名称与输入之间的分隔符 */
+    private val NAME_SEPARATOR = Regex("\\s+")
+
     /**
      * 快捷前缀执行pastebin中的代码
      */
@@ -106,14 +109,11 @@ object Events : SimpleListenerHost() {
         val msg = content.removePrefix(quickPrefix).trim()
         if (msg.isEmpty()) return
 
-        val args = msg.split(Regex("\\s+"))
-        if (args.isEmpty()) return
-
-        val name = PastebinData.alias[args[0]] ?: args[0]
-
+        val parts = NAME_SEPARATOR.split(msg, limit = 2)
+        val name = PastebinData.alias[parts[0]] ?: parts[0]
         if (name !in PastebinData.pastebin) return
 
-        val userInput = args.drop(1).joinToString(" ")
+        val userInput = parts.getOrElse(1) { "" }
         val imageUrls = message.queryImageUrls().toMutableList()
 
         message.findIsInstance<QuoteReply>()
