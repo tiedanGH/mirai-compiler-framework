@@ -114,6 +114,16 @@ object StorageManager {
     /** 当前处于占用状态的存储库数量 */
     fun lockedBucketCount(): Int = bucketLocks.values.count { it.isLocked }
 
+    /** 与指定项目竞争存储锁的全部项目（含自身） */
+    fun rivalProjects(name: String): Set<String> = Database.read { conn ->
+        buildSet {
+            add(name)
+            for (id in BucketDao.linkedIds(conn, name)) {
+                addAll(BucketDao.getProjects(conn, id))
+            }
+        }
+    }
+
     /**
      * 获取 global 存储数据
      */

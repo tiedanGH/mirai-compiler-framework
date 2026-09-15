@@ -38,7 +38,7 @@ object MiraiCompilerFramework : KotlinPlugin(
     JvmPluginDescription(
         id = "site.tiedan.mirai-compiler-framework",
         name = "Mirai Compiler Framework",
-        version = "2.2.0",
+        version = "2.2.1",
     ) {
         author("tiedan")
         info("""基于Glot接口的在线编译器框架""")
@@ -79,12 +79,40 @@ object MiraiCompilerFramework : KotlinPlugin(
     data class ThreadInfo(
         val id: String,
         val name: String,
-        val sender: String,
+        val nickname: String,
+        val userID: String,
         val from: String,
         val platform: String,
         val startTime: Long = System.currentTimeMillis(),
     )
     val THREADS = ConcurrentLinkedQueue<ThreadInfo>()
+
+    /**
+     * 单用户的进程数上限（给全局留出2个余额）
+     */
+    private val userThreadLimit: Int get() = (PastebinConfig.thread_limit - 2).coerceAtLeast(1)
+
+    /**
+     * 触发排队提示的同队列进程数（最低2）
+     */
+    val queueAlertThreshold: Int get() = (PastebinConfig.thread_limit - 3).coerceAtLeast(2)
+
+    /**
+     * 进程数超限检查
+     * @return true 表示已超限，本次执行中止
+     */
+    suspend fun CommandSender.rejectThreadLimit(userID: String): Boolean {
+        if (THREADS.size >= PastebinConfig.thread_limit) {
+            sendQuoteReply("执行失败：当前已经有 ${THREADS.size} 个进程正在执行，请等待几秒后再次尝试")
+            return true
+        }
+        val userThreads = THREADS.count { it.userID == userID }
+        if (userThreads >= userThreadLimit) {
+            sendQuoteReply("执行失败：您当前已有 $userThreads 个进程正在执行或等待，请等待自己的进程执行完成后再次尝试")
+            return true
+        }
+        return false
+    }
 
     data class Command(val usage: String, val usageCN: String, val desc: String, val type: Int)
 

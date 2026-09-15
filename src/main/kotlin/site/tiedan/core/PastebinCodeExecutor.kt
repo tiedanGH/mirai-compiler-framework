@@ -14,6 +14,8 @@ import site.tiedan.MiraiCompilerFramework.getPlatform
 import site.tiedan.MiraiCompilerFramework.getUserPlatformID
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.parseUserID
+import site.tiedan.MiraiCompilerFramework.queueAlertThreshold
+import site.tiedan.MiraiCompilerFramework.rejectThreadLimit
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.trimToMaxLength
 import site.tiedan.command.CommandRun.Image_Path
@@ -67,10 +69,7 @@ object PastebinCodeExecutor {
             if (request.second) return
         }
 
-        if (THREADS.size >= PastebinConfig.thread_limit) {
-            sendQuoteReply("执行失败：当前已经有 ${THREADS.size} 个进程正在执行，请等待几秒后再次尝试")
-            return
-        }
+        if (rejectThreadLimit(userID)) return
         val ownerID = PastebinData.pastebin[name]?.get("userID")
         val isOwner = userID == ownerID
         val isAdmin = PastebinConfig.admins.contains(userID)
@@ -87,7 +86,7 @@ object PastebinCodeExecutor {
         val from = if (subject is Group) "${(subject as Group).name}(${(subject as Group).id})" else "private"
         val platform = getPlatform()
 
-        THREADS.add(ThreadInfo(jobId, name, "$nickname($userID)", from, platform))
+        THREADS.add(ThreadInfo(jobId, name, nickname, userID, from, platform))
 
         // 记录本进程下的锁状态：持有句柄本身即是归属凭据
         var projectLock: StorageManager.StorageLock? = null
@@ -159,7 +158,11 @@ object PastebinCodeExecutor {
 
                 if (StorageManager.isProjectLocked(name)) {
                     logger.debug("(${userID})执行$name [存储]进程执行请求等待中...")
-                    if (THREADS.size > PastebinConfig.thread_limit - 2) sendQuoteReply("当前进程较多（${THREADS.size - 1} 个正在等待），等待时间可能较长")
+                    val rivals = StorageManager.rivalProjects(name)
+                    val queued = THREADS.count { it.name in rivals }
+                    if (queued >= queueAlertThreshold) {
+                        sendQuoteReply("此项目排队较多（${queued - 1} 个正在等待），等待时间可能较长")
+                    }
                 }
                 // 只锁本项目及其关联存储库，其他项目不受影响
                 projectLock = StorageManager.acquireProjectLock(name)

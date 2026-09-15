@@ -695,7 +695,7 @@ object CommandPastebin : RawCommand(
                     val threads = THREADS.withIndex().joinToString("\n") { (index, thread) ->
                         val elapsed = (System.currentTimeMillis() - thread.startTime) / 1000
                         "【#${index + 1}】 ${thread.name}\n" +
-                        "${thread.sender}\n" +
+                        "${thread.nickname}(${thread.userID})\n" +
                         "${thread.from} [${thread.platform}]\n" +
                         "⏱️ 等待时间：${elapsed} 秒"
                     }

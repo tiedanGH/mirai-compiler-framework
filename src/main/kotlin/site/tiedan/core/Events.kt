@@ -32,6 +32,7 @@ import site.tiedan.MiraiCompilerFramework.getPlatform
 import site.tiedan.MiraiCompilerFramework.getUserPlatformID
 import site.tiedan.MiraiCompilerFramework.isBotEnabled
 import site.tiedan.MiraiCompilerFramework.logger
+import site.tiedan.MiraiCompilerFramework.rejectThreadLimit
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.trimToMaxLength
 import site.tiedan.command.CommandRun.queryImageUrls
@@ -152,16 +153,13 @@ object Events : SimpleListenerHost() {
             )
             return
         }
-        if (THREADS.size >= PastebinConfig.thread_limit) {
-            sendQuoteReply("当前已经有 ${THREADS.size} 个进程正在执行，请等待几秒后再次尝试")
-            return
-        }
+        if (rejectThreadLimit(userID)) return
 
         val jobId = "${System.currentTimeMillis()}-${language}-$name(${user?.id})"
         val from = if (subject is Group) "${(subject as Group).name}(${(subject as Group).id})" else "private"
         val platform = getPlatform()
 
-        THREADS.add(ThreadInfo(jobId, "自定义${language}代码", "$name(${user?.id})", from, platform))
+        THREADS.add(ThreadInfo(jobId, "自定义${language}代码", name, userID, from, platform))
 
         try {
             // 检查命令的引用

@@ -3,6 +3,7 @@ package site.tiedan.core
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
@@ -212,6 +213,27 @@ class ProjectLockTest {
             assertFalse(StorageManager.isProjectLocked("关联操作项目"))
             assertFalse(StorageManager.isBucketLocked(8L))
         }
+    }
+
+    @Test
+    @DisplayName("排队统计涵盖共享同一存储库的其他项目")
+    fun rivalProjectsCoverSharedBuckets() {
+        // 甲与乙共享库9，乙与丙共享库10，甲丙之间无共享
+        linkBucket(9L, "队列甲", "队列乙")
+        linkBucket(10L, "队列乙", "队列丙")
+
+        assertEquals(setOf("队列甲", "队列乙"), StorageManager.rivalProjects("队列甲"))
+        assertEquals(setOf("队列甲", "队列乙", "队列丙"), StorageManager.rivalProjects("队列乙"))
+        // 甲丙不共享任何锁，不该被算进同一条队列
+        assertEquals(setOf("队列乙", "队列丙"), StorageManager.rivalProjects("队列丙"))
+    }
+
+    @Test
+    @DisplayName("未关联存储库的项目只与自己排队")
+    fun rivalProjectsOfUnlinkedProject() {
+        linkBucket(11L, "他人项目")
+
+        assertEquals(setOf("孤立项目"), StorageManager.rivalProjects("孤立项目"))
     }
 
     @Test
