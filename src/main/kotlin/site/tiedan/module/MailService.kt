@@ -1,238 +1,194 @@
 package site.tiedan.module
 
-import jakarta.mail.*
+import jakarta.mail.MessagingException
+import jakarta.mail.Transport
+import jakarta.mail.internet.MimeMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.mamoe.mirai.console.command.CommandSender
-import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.cacheFolder
+import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.config.MailConfig
-import site.tiedan.utils.MailContentBuilder
+import site.tiedan.utils.MailTemplate
 import site.tiedan.utils.buildMailContent
 import site.tiedan.utils.buildMailSession
-import java.io.*
+import java.io.File
+import java.io.IOException
+import java.util.UUID
 import kotlin.io.path.inputStream
 
 /**
- * 项目相关的邮件工具类
- * 包含项目特定的邮件发送功能和HTML模板
+ * # 项目相关的邮件发送
+ * 版式统一交给 [MailTemplate]，这里只负责组织内容与投递。
+ *
+ * @author tiedanGH
  */
 object MailService {
 
+    /** 邮箱地址格式 */
+    private val MAIL_ADDRESS = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")
+
+    /** 校验邮箱地址 */
+    fun isValidAddress(mail: String): Boolean = MAIL_ADDRESS.matches(mail)
+
     /**
      * 发送存储数据查询邮件
-     * @param sender 命令发送者
      * @param output 存储数据内容
-     * @param userID 用户ID
      * @param name 查询名称
-     * @param mail 收件邮箱地址
+     * @param mail 收件邮箱地址，为 null 时按 QQ 邮箱推断
      */
     suspend fun sendStorageMail(
         sender: CommandSender,
         output: String,
         userID: String,
         name: String,
-        mail: String?
+        mail: String?,
     ) {
-        // 收信邮件：未提供地址自动使用QQ邮箱
+        val body = MailTemplate.banner("💾 存储数据查询结果") +
+            usageNotice("不能在查询名称、查询ID、存储数据中添加任何违规内容") +
+            MailTemplate.infoTable(
+                title = "📋 查询信息",
+                rows = listOf(
+                    "查询名称" to name,
+                    "数据文件" to "📎 StorageData.txt（请查看附件）",
+                ),
+            ) +
+            MailTemplate.tip("查询结果已导出为文本文件，请下载附件查看完整数据。")
+
+        sendAttachmentMail(
+            sender = sender,
+            userID = userID,
+            mail = mail,
+            label = "存储数据",
+            title = "存储数据查询",
+            body = body,
+            fileName = "StorageData.txt",
+            content = output,
+        )
+    }
+
+    /**
+     * 发送项目代码导出邮件
+     * @param code 项目的缓存代码
+     * @param name 项目名称
+     * @param mail 收件邮箱地址，为 null 时按 QQ 邮箱推断
+     */
+    suspend fun sendExportMail(
+        sender: CommandSender,
+        code: String,
+        userID: String,
+        name: String,
+        language: String,
+        mail: String?,
+    ) {
+        val body = MailTemplate.banner("📤 项目代码导出结果") +
+            usageNotice("导出的代码仅供查阅与备份，请勿用于任何违规用途") +
+            MailTemplate.infoTable(
+                title = "📋 项目信息",
+                rows = listOf(
+                    "项目名称" to name,
+                    "编程语言" to language,
+                    "代码长度" to "${code.length}",
+                    "代码文件" to "📎 SourceCode.txt（请查看附件）",
+                ),
+            ) +
+            MailTemplate.tip("代码取自框架的本地缓存，与源链接的最新内容可能存在差异。")
+
+        sendAttachmentMail(
+            sender = sender,
+            userID = userID,
+            mail = mail,
+            label = "项目代码",
+            title = "项目代码导出",
+            body = body,
+            fileName = "SourceCode.txt",
+            content = code,
+        )
+    }
+
+    /** 各类邮件共用的使用须知，仅中间一条按用途替换 */
+    private fun usageNotice(specific: String): String = MailTemplate.warning(
+        title = "⚠️ 重要提示",
+        intro = "使用本邮件服务即表示您已知晓并遵守以下注意事项：",
+        items = listOf(
+            "不能在短时间内频繁使用此邮件发送服务",
+            specific,
+            "此邮件为自动发送，请不要回复。如遇到问题请直接联系管理员",
+        ),
+    )
+
+    /**
+     * 把内容写成附件发出，并按结果回复指令发送者
+     * @param label 内容的称呼，用于组织回复文案
+     */
+    private suspend fun sendAttachmentMail(
+        sender: CommandSender,
+        userID: String,
+        mail: String?,
+        label: String,
+        title: String,
+        body: String,
+        fileName: String,
+        content: String,
+    ) {
+        // 未提供地址时按 QQ 邮箱推断
         val address = mail ?: "${userID}@qq.com"
 
+        // 每次请求独立命名，避免并发请求互相覆盖附件
+        val tempFile = File("${cacheFolder}mail_${UUID.randomUUID()}.txt")
         try {
             withContext(Dispatchers.IO) {
-                FileOutputStream("${cacheFolder}storage.txt").use { outputStream ->
-                    outputStream.write(output.toByteArray())
-                }
+                tempFile.parentFile?.mkdirs()
+                tempFile.writeText(content)
             }
         } catch (e: IOException) {
             logger.warning(e)
-            sender.sendQuoteReply("[请求使用邮件发送]\n但在尝试导出存储数据文件时发生错误：${e.message}")
+            sender.sendQuoteReply("[请求使用邮件发送]\n但在尝试导出${label}文件时发生错误：${e.message}")
             return
         }
 
         val session = buildMailSession {
-            MailConfig.properties.inputStream().use {
-                load(it)
-            }
+            MailConfig.properties.inputStream().use { load(it) }
         }
-
-        val mail = buildMailContent(session) {
+        val message = buildMailContent(session) {
             to = address
-            title = "存储数据查询"
-
-            htmlWithFooter {
-                append("""
-                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; margin: -20px -20px 20px -20px;">
-                    <h1 style="margin: 0; font-size: 24px;">💾 存储数据查询结果</h1>
-                </div>
-                
-                <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
-                    <h3 style="margin-top: 0; color: #856404;">⚠️ 重要提示</h3>
-                    <p style="margin: 8px 0; color: #856404;"><b>使用本邮件服务即表示您已知晓并遵守以下注意事项：</b></p>
-                    <ol style="margin: 10px 0; padding-left: 20px; color: #856404;">
-                        <li style="margin: 5px 0;">不能在短时间内频繁使用此邮件发送服务</li>
-                        <li style="margin: 5px 0;">不能在查询名称、查询ID、存储数据中添加任何违规内容</li>
-                        <li style="margin: 5px 0;">此邮件为自动发送，请不要回复。如遇到问题请直接联系管理员</li>
-                    </ol>
-                </div>
-                
-                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                    <h3 style="margin-top: 0; color: #333;">📋 查询信息</h3>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr>
-                            <td style="padding: 10px; border-bottom: 1px solid #dee2e6; font-weight: bold; color: #495057; width: 120px;">查询名称</td>
-                            <td style="padding: 10px; border-bottom: 1px solid #dee2e6; color: #212529;">$name</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 10px; font-weight: bold; color: #495057;">数据文件</td>
-                            <td style="padding: 10px; color: #212529;">📎 StorageData.txt（请查看附件）</td>
-                        </tr>
-                    </table>
-                </div>
-                
-                <div style="background-color: #d1ecf1; border-left: 4px solid #17a2b8; padding: 15px; border-radius: 4px;">
-                    <p style="margin: 0; color: #0c5460; font-size: 14px;">
-                        💡 <strong>提示：</strong>查询结果已导出为文本文件，请下载附件查看完整数据。
-                    </p>
-                </div>
-            """.trimIndent())
-            }
-
-            file("StorageData.txt") {
-                File("${cacheFolder}storage.txt")
-            }
+            this.title = title
+            html { append(MailTemplate.page(body)) }
+            file(fileName) { tempFile }
         }
 
+        val prefix = "[请求使用邮件发送]\n${label}导出成功（文件总长度：${content.length}）"
+        when (val error = deliver(message)) {
+            null -> {
+                sender.sendQuoteReply("$prefix，并通过邮件发送，请您登录邮箱查看")
+                tempFile.delete()
+            }
+            // 发送失败时保留本地文件，便于排查
+            is MessagingException ->
+                sender.sendQuoteReply("$prefix，但邮件发送失败。本地文件已保留，请联系管理员。原因:\n${error.message}")
+            else ->
+                sender.sendQuoteReply("$prefix，但发生其他未知错误。本地文件已保留，请联系管理员。原因:\n${error.message}")
+        }
+    }
+
+    /**
+     * 投递邮件
+     * - jakarta.mail 通过 ServiceLoader 查找实现，插件的隔离类加载器下必须临时换成配置类的加载器
+     * @return 成功返回 null，失败返回捕获到的异常
+     */
+    private suspend fun deliver(message: MimeMessage): Exception? = withContext(Dispatchers.IO) {
         val current = Thread.currentThread()
-        val oc = current.contextClassLoader
+        val origin = current.contextClassLoader
         try {
             current.contextClassLoader = MailConfig::class.java.classLoader
-            Transport.send(mail)
-            sender.sendQuoteReply("[请求使用邮件发送]\n存储数据导出成功（文件总长度：${output.length}），并通过邮件发送，请您登录邮箱查看")
-            File("${cacheFolder}storage.txt").delete()  // 仅在邮件发送成功后删除临时文件；发送失败时保留文件，便于后续排查或手动恢复
-        } catch (e: MessagingException) {
-            logger.warning(e)
-            sender.sendQuoteReply("[请求使用邮件发送]\n存储数据导出成功（文件总长度：${output.length}），但邮件发送失败。本地文件已保留，请联系管理员。原因:\n${e.message}")
+            Transport.send(message)
+            null
         } catch (e: Exception) {
             logger.warning(e)
-            sender.sendQuoteReply("[请求使用邮件发送]\n存储数据导出成功（文件总长度：${output.length}），但发生其他未知错误。本地文件已保留，请联系管理员。原因:\n${e.message}")
+            e
         } finally {
-            current.contextClassLoader = oc
+            current.contextClassLoader = origin
         }
-    }
-
-    /**
-     * 构建完整 HTML
-     * @param bodyContent HTML 正文内容
-     * @return 包含页脚的完整 HTML
-     */
-    fun buildHtmlWithFooter(bodyContent: String): String {
-        val footerLinks = buildString {
-            // GitHub 链接
-            append("""
-                <a href="https://github.com/tiedanGH/mirai-compiler-framework" target="_blank">
-                    <span class="footer-icon">🔗</span>GitHub 仓库
-                </a>
-            """.trimIndent())
-            // 相关网站链接
-            if (MailConfig.relatedWebsite.isNotEmpty()) {
-                append("""
-                    <a href="https://${MailConfig.relatedWebsite}" target="_blank">
-                        <span class="footer-icon">🌐</span>${MailConfig.relatedWebsite}
-                    </a>
-                """.trimIndent())
-            }
-            // 联系邮箱链接
-            if (MailConfig.contactMail.isNotEmpty()) {
-                append("""
-                    <a href="mailto:${MailConfig.contactMail}">
-                        <span class="footer-icon">✉️</span>${MailConfig.contactMail}
-                    </a>
-                """.trimIndent())
-            }
-        }
-
-        return """
-            <!DOCTYPE html>
-            <html lang="zh-CN">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <style>
-                    body {
-                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-                        line-height: 1.6;
-                        color: #333;
-                        max-width: 600px;
-                        margin: 0 auto;
-                        padding: 20px;
-                    }
-                    .content {
-                        margin-bottom: 30px;
-                    }
-                    .footer {
-                        margin-top: 40px;
-                        padding-top: 20px;
-                        border-top: 2px solid #e0e0e0;
-                        font-size: 14px;
-                        color: #666;
-                    }
-                    .footer-title {
-                        font-weight: bold;
-                        color: #333;
-                        margin-bottom: 10px;
-                    }
-                    .footer-links {
-                        margin: 10px 0;
-                        font-size: 12px;
-                    }
-                    .footer-links a {
-                        color: #0066cc;
-                        text-decoration: none;
-                        margin-right: 10px;
-                    }
-                    .footer-links a:last-child {
-                        margin-right: 0;
-                    }
-                    .footer-links a:hover {
-                        text-decoration: underline;
-                    }
-                    .footer-icon {
-                        display: inline-block;
-                        margin-right: 3px;
-                    }
-                    .footer-desc {
-                        margin-top: 10px;
-                        font-size: 11px;
-                        color: #999;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="content">
-                    $bodyContent
-                </div>
-                <div class="footer">
-                    <div class="footer-title">Mirai Compiler Framework</div>
-                    <div class="footer-links">
-                        $footerLinks
-                    </div>
-                    <div class="footer-desc">
-                        基于 Glot 接口的 Mirai Console 在线编译器框架
-                    </div>
-                </div>
-            </body>
-            </html>
-        """.trimIndent()
-    }
-
-    /**
-     * 为 MailContentBuilder 添加带项目页脚的 HTML 内容的扩展函数
-     * @param builderAction HTML 内容构建器
-     */
-    fun MailContentBuilder.htmlWithFooter(builderAction: StringBuilder.() -> Unit) {
-        val bodyContent = StringBuilder().apply(builderAction).toString()
-        val fullHtml = buildHtmlWithFooter(bodyContent)
-        html { append(fullHtml) }
     }
 }

@@ -178,7 +178,7 @@ object CommandBucket : RawCommand(
                             )
                             return
                         }
-                        if (mail != null && !Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$").matches(mail)) {
+                        if (mail != null && !MailService.isValidAddress(mail)) {
                             sendQuoteReply("邮箱地址无效：请输入正确的邮箱地址")
                             return
                         }

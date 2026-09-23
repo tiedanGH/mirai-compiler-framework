@@ -99,7 +99,7 @@ object CommandPastebin : RawCommand(
         Command("pb tag", "pb 标签", "查看标签库与用法", TYPE_INFO),
         Command("pb status", "pb 状态", "查看框架运行状态", TYPE_INFO),
         Command("pb thread", "pb 进程", "查询运行和等待中的进程", TYPE_INFO),
-        Command("pb export <名称>", "pb 导出 <名称>", "将项目代码缓存导出为临时链接（过期时使用）", TYPE_INFO),
+        Command("pb export <名称> [mail] [邮件地址]", "pb 导出 <名称> [邮件] [邮件地址]", "导出项目代码缓存（临时链接或邮件）", TYPE_INFO),
 
         Command("pb collab add/remove <ID>", "pb 协作 添加/移除 <平台ID>", "批量编辑自己全部项目的协作者", TYPE_DANGER),
         Command("pb rollback <名称> list", "pb 回滚 <名称> 列表", "查看可回滚的数据备份", TYPE_DANGER),
@@ -1461,7 +1461,7 @@ object CommandPastebin : RawCommand(
                             )
                             return
                         }
-                        if (mail != null && !Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$").matches(mail)) {
+                        if (mail != null && !MailService.isValidAddress(mail)) {
                             sendQuoteReply("邮箱地址无效：请输入正确的邮箱地址")
                             return
                         }
@@ -1565,6 +1565,30 @@ object CommandPastebin : RawCommand(
                     val exportCode = CodeCacheManager.get(name)
                     if (exportCode == null) {
                         sendQuoteReply("导出失败：$name 的代码缓存为空或项目链接类型不支持缓存功能")
+                        return
+                    }
+
+                    val language = PastebinData.pastebin[name]?.get("language") ?: "未知"
+                    val requestMail = args.getOrNull(2)?.content in listOf("mail", "邮件")
+                    if (requestMail) {
+                        if (!MailConfig.enable) {
+                            sendQuoteReply("[错误] 邮件功能未启用，无法通过邮件发送项目代码")
+                            return
+                        }
+                        val mail = args.getOrNull(3)?.content
+                        if (mail == null && platform != "qq") {
+                            sendQuoteReply(
+                                "⚠️ 当前平台 $platform 需要指定邮箱地址：\n" +
+                                "${commandPrefix}pb export $name mail <邮箱地址>"
+                            )
+                            return
+                        }
+                        if (mail != null && !MailService.isValidAddress(mail)) {
+                            sendQuoteReply("邮箱地址无效：请输入正确的邮箱地址")
+                            return
+                        }
+                        logger.info("请求使用邮件发送代码导出：$name")
+                        MailService.sendExportMail(this, exportCode, userID, name, language, mail)
                         return
                     }
 
