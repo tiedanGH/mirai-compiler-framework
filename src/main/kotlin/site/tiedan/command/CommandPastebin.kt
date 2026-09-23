@@ -1595,15 +1595,23 @@ object CommandPastebin : RawCommand(
                     val url =  try {
                         PastebinUrlHelper.pasteToHastebin(exportCode)
                     } catch (e: Exception) {
+                        val mailHint = if (MailConfig.enable) {
+                            " 请用邮件导出\n📧 ${commandPrefix}pb export $name mail [邮件地址]\n"
+                        } else "\n"
                         when (e) {
                             is ConnectException,
-                            is HttpUtil.HttpException ->
-                                sendQuoteReply("[API服务异常]\n原因：${e.message}")
+                            is HttpUtil.HttpException -> {
+                                logger.warning(e)
+                                sendQuoteReply(
+                                    "[API服务异常]" + mailHint +
+                                    "原因：" + trimToMaxLength(e.message.toString(), ERROR_MSG_MAX_LENGTH).first
+                                )
+                            }
 
                             else -> {
                                 logger.warning(e)
                                 sendQuoteReply(
-                                    "[导出代码失败]\n" +
+                                    "[导出代码失败]" + mailHint +
                                     "报错类别：${e::class.simpleName}\n" +
                                     "报错信息：${trimToMaxLength(e.message.toString(), ERROR_MSG_MAX_LENGTH).first}"
                                 )

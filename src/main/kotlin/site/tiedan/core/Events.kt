@@ -216,8 +216,13 @@ object Events : SimpleListenerHost() {
             if (e is CancellationException) throw e
             when (e) {
                 is ConnectException,
-                is HttpUtil.HttpException ->
-                    sendQuoteReply("[API服务异常]\n原因：${e.message}")
+                is HttpUtil.HttpException -> {
+                    logger.warning(e)
+                    sendQuoteReply(
+                        "[API服务异常]\n原因：" +
+                        trimToMaxLength(e.message.toString(), ERROR_MSG_MAX_LENGTH).first
+                    )
+                }
 
                 is OutOfMemoryError ->
                     sendQuoteReply("[内存不足] 本次执行占用内存过大，已被中止")

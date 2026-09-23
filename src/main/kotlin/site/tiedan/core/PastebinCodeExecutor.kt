@@ -408,8 +408,14 @@ object PastebinCodeExecutor {
         } catch (e: Exception) {
             return when (e) {
                 is ConnectException,
-                is HttpUtil.HttpException ->
-                    Pair("[API服务异常]\n原因：${e.message}", true)
+                is HttpUtil.HttpException -> {
+                    logger.warning(e)
+                    Pair(
+                        "[API服务异常]\n原因：" +
+                        trimToMaxLength(e.message.toString(), ERROR_MSG_MAX_LENGTH).first,
+                        true
+                    )
+                }
 
                 else -> {
                     logger.warning("执行失败：${e::class.simpleName}(${e.message})")
