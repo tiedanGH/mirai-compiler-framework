@@ -4,6 +4,7 @@ import kotlinx.coroutines.CancellationException
 import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.contact.Group
 import net.mamoe.mirai.message.data.*
+import net.mamoe.mirai.utils.debug
 import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.CONSOLE_USER_ID
 import site.tiedan.MiraiCompilerFramework.ERROR_FORWARD_MAX_LENGTH
@@ -212,7 +213,7 @@ object PastebinCodeExecutor {
             }
             Statistics.countRun(name)   // 复查通过后才计数
 
-            logger.debug("[DEBUG] input:\n$input")
+            logger.debug { "[DEBUG] input:\n$input" }
 
             // 所有格式在这里执行代码，返回字符串输出
             val pair = runCodeToString(name, language, code, format, util, input, userInput)

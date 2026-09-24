@@ -34,9 +34,11 @@ import site.tiedan.format.MarkdownImageGenerator
 import site.tiedan.module.MailService
 import site.tiedan.utils.FuzzySearch
 import site.tiedan.utils.Security
+import java.security.MessageDigest
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * # 跨项目存储库操作指令
@@ -566,8 +568,9 @@ object CommandBucket : RawCommand(
                     storageLock = lockBucket(id) ?: return
                     val backup = StorageManager.getBackup(id, num - 1)
                         ?: return sendQuoteReply("回滚失败：备份编号 $num 没有任何数据")
+                    val token = rollbackToken(id, backup.content, StorageManager.getBucketRawContent(id))
 
-                    requestUserConfirmation(userID, args.content,
+                    val confirmed = requestUserConfirmation(userID, args.content,
                         " +++⚠️ 危险操作警告 ⚠️+++\n" +
                         "您正在回滚存储库 ${bucketInfo(id)}，请再次确认以下信息：\n" +
                         "- 存储库的*主存储数据*将被指定备份覆盖\n" +
@@ -581,7 +584,18 @@ object CommandBucket : RawCommand(
                         "+ 备份大小：${backup.content.length}\n" +
                         "\n" +
                         "如您确认无误，请再次执行回滚指令以完成操作"
-                    ) ?: return
+                    )
+                    if (confirmed == null) {
+                        pendingRollback[userID] = token
+                        return
+                    }
+                    if (pendingRollback.remove(userID) != token) {
+                        sendQuoteReply(
+                            "[回滚取消] 二次确认期间数据发生了变化，本次回滚已取消\n" +
+                            "如仍需回滚请重新执行指令"
+                        )
+                        return
+                    }
 
                     StorageManager.setBucketRawContent(id, backup.content)
                     sendQuoteReply(
@@ -729,6 +743,21 @@ object CommandBucket : RawCommand(
 
     fun bucketNameToId(name: String): Long? =
         StorageManager.findBucketByName(name)?.id
+
+    /** 回滚二次确认校验 */
+    private val pendingRollback = ConcurrentHashMap<String, String>()
+
+    /**
+     * 待回滚备份与当前主存储共同的指纹
+     */
+    private fun rollbackToken(id: Long, backupContent: String, currentContent: String?): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        digest.update("$id".toByteArray())
+        digest.update(backupContent.toByteArray())
+        digest.update(byteArrayOf(if (currentContent == null) 0 else 1))
+        currentContent?.let { digest.update(it.toByteArray()) }
+        return digest.digest().joinToString("") { "%02x".format(it) }.take(12)
+    }
 
     fun formatTime(timestamp: Long): String {
         val instant = Instant.ofEpochMilli(timestamp)

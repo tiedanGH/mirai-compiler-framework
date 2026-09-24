@@ -38,7 +38,7 @@ object MiraiCompilerFramework : KotlinPlugin(
     JvmPluginDescription(
         id = "site.tiedan.mirai-compiler-framework",
         name = "Mirai Compiler Framework",
-        version = "2.2.2",
+        version = "2.2.3",
     ) {
         author("tiedan")
         info("""基于Glot接口的在线编译器框架""")
