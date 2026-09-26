@@ -3,7 +3,7 @@ package site.tiedan.module
 import site.tiedan.MiraiCompilerFramework.imageFolder
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.roundTo2
-import site.tiedan.command.CommandPastebin.containsCollaborator
+import site.tiedan.command.pastebin.PbCollaborator.containsCollaborator
 import site.tiedan.core.CodeCacheManager
 import site.tiedan.data.Database
 import site.tiedan.data.ImageData

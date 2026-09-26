@@ -23,7 +23,7 @@ import site.tiedan.MiraiCompilerFramework.pendingCommand
 import site.tiedan.MiraiCompilerFramework.requestUserConfirmation
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.uploadTempImage
-import site.tiedan.command.CommandPastebin.isCollaborator
+import site.tiedan.command.pastebin.PbCollaborator.isCollaborator
 import site.tiedan.config.MailConfig
 import site.tiedan.config.PastebinConfig
 import site.tiedan.core.StorageLockGuard.lockBucket
