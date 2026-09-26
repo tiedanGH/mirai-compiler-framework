@@ -15,7 +15,7 @@ internal object PastebinConfig : AutoSavePluginConfig("PastebinConfig") {
     val QUICK_PREFIX: List<String> by value(listOf("##"))
 
     @ValueDescription("最多进程数限制")
-    val thread_limit: Int by value(3)
+    val thread_limit: Int by value(10)
 
     @ValueDescription("最多同时进行的输出进程数（修改需重启生效）")
     val output_limit: Int by value(3)

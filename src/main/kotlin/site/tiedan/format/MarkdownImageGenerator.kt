@@ -14,6 +14,7 @@ import site.tiedan.command.CommandRun.Image_Path
 import site.tiedan.data.ImageData
 import site.tiedan.core.StorageManager
 import site.tiedan.data.PastebinData
+import site.tiedan.module.FavoriteManager
 import site.tiedan.module.Statistics
 import site.tiedan.module.StorageRollback
 import site.tiedan.module.TagManager
@@ -596,6 +597,163 @@ object MarkdownImageGenerator {
             appendLine("</tbody></table>")
             appendLine("</div>")
         }
+    }
+
+    /**
+     * 收藏卡片html
+     * @param footer 卡片底部的用法提示
+     */
+    fun generateFavoriteCardHtml(card: FavoriteManager.Card, footer: String): String {
+        val dash = "<span class='muted'>—</span>"
+        return buildString {
+            appendLine("<style>")
+            appendLine(FAVORITE_BASE_CSS)
+            appendLine("""
+            .c-slot{width:6%}
+            .c-name{width:28%}
+            .c-author{width:16%}
+            .c-alias{width:12%}
+            .c-palias{width:12%}
+            .c-lang{width:11%}
+            .c-status{width:15%}
+            .c-set{width:20%}
+            .c-count{width:12%}
+            .c-projects{width:68%}
+            .fav-alias{color:#1d4ed8;font-weight:700}
+            """.trimIndent())
+            appendLine("</style>")
+            appendLine("<div class='fav-wrap'>")
+            appendLine("<div class='fav-title'>⭐ 收藏项目和指令集 ⭐</div>")
+
+            appendLine("<div class='fav-sub'>收藏项目（${card.favorites.size}/${FavoriteManager.MAX_FAVORITES}）</div>")
+            appendLine("<table class='fav-table'>")
+            appendLine(
+                "<thead><tr><th class='c-slot'>#</th><th class='c-name'>项目</th><th class='c-author'>作者</th>" +
+                "<th class='c-alias'>收藏别名</th><th class='c-palias'>项目别名</th><th class='c-lang'>语言</th>" +
+                "<th class='c-status'>状态</th></tr></thead>"
+            )
+            appendLine("<tbody>")
+            if (card.favorites.isEmpty()) appendLine("<tr><td colspan='7' class='muted'>暂无收藏</td></tr>")
+            for (row in card.favorites) {
+                append("<tr>")
+                append("<td class='slot'>${row.slot}</td>")
+                append("<td${if (row.deleted) " class='gone'" else ""}>${esc(row.project)}</td>")
+                append("<td>${row.author?.let { esc(it) } ?: dash}</td>")
+                append("<td>${row.alias?.let { "<span class='fav-alias'>${esc(it)}</span>" } ?: dash}</td>")
+                append("<td>${row.projectAlias?.let { esc(it) } ?: dash}</td>")
+                append("<td>${row.language?.let { esc(it) } ?: dash}</td>")
+                append("<td class='wrap'>${favoriteBadge(row.badge)}</td>")
+                appendLine("</tr>")
+            }
+            appendLine("</tbody></table>")
+
+            appendLine("<div class='fav-sub'>指令集（${card.sets.size}/${FavoriteManager.MAX_SETS}）</div>")
+            appendLine("<table class='fav-table'>")
+            appendLine("<thead><tr><th class='c-set'>名称</th><th class='c-count'>条数</th><th class='c-projects'>包含项目</th></tr></thead>")
+            appendLine("<tbody>")
+            if (card.sets.isEmpty()) appendLine("<tr><td colspan='3' class='muted'>暂无指令集</td></tr>")
+            for (set in card.sets) {
+                val projects = FavoriteManager.mergeProjects(set.projects).joinToString("、") { (name, count) ->
+                    val text = if (count > 1) "${esc(name)}×$count" else esc(name)
+                    if (name in set.missing) "<span class='gone'>$text</span>" else text
+                }
+                val over = set.projects.size > card.setLimit
+                append("<tr>")
+                append("<td>${esc(set.name)}</td>")
+                append("<td${if (over) " class='over'" else ""}>${set.projects.size}/${card.setLimit}</td>")
+                append("<td class='wrap left'>$projects</td>")
+                appendLine("</tr>")
+            }
+            appendLine("</tbody></table>")
+            appendLine("<div class='fav-footer'>${esc(footer)}</div>")
+            appendLine("</div>")
+        }
+    }
+
+    /**
+     * 指令集详情html
+     * @param footer 卡片底部的用法提示
+     */
+    fun generateCommandSetHtml(detail: FavoriteManager.SetDetail, footer: String): String {
+        return buildString {
+            appendLine("<style>")
+            appendLine(FAVORITE_BASE_CSS)
+            appendLine("""
+            .c-index{width:8%}
+            .c-project{width:24%}
+            .c-input{width:50%}
+            .c-state{width:18%}
+            .fav-table td.fav-input{white-space:pre-wrap;word-wrap:break-word;text-align:left}
+            .fav-warn{text-align:center;color:#b91c1c;font-weight:700;margin:0 0 8px}
+            """.trimIndent())
+            appendLine("</style>")
+            appendLine("<div class='fav-wrap'>")
+            appendLine("<div class='fav-title'>📦 指令集「${esc(detail.name)}」</div>")
+            appendLine("<div class='fav-sub'>指令（${detail.commands.size}/${detail.setLimit}）</div>")
+            if (detail.commands.size > detail.setLimit) {
+                appendLine("<div class='fav-warn'>⚠️ 超出当前上限 ${detail.setLimit} 条，请先移除部分指令</div>")
+            }
+            appendLine("<table class='fav-table'>")
+            appendLine(
+                "<thead><tr><th class='c-index'>#</th><th class='c-project'>项目</th>" +
+                "<th class='c-input'>输入</th><th class='c-state'>状态</th></tr></thead>"
+            )
+            appendLine("<tbody>")
+            for (row in detail.commands) {
+                // 换行转为 <br>：HTML 中出现空行时 markdown 会在空行处结束 HTML 块
+                val input = if (row.input.isEmpty()) "<span class='muted'>—</span>"
+                else esc(row.input).replace("\r\n", "\n").replace("\n", "<br>")
+                append("<tr>")
+                append("<td class='slot'>${row.index}</td>")
+                append("<td${if (row.deleted) " class='gone'" else ""}>${esc(row.project)}</td>")
+                append("<td class='fav-input'>$input</td>")
+                append("<td class='wrap'>${favoriteBadge(row.badge)}</td>")
+                appendLine("</tr>")
+            }
+            appendLine("</tbody></table>")
+            appendLine("<div class='fav-footer'>${esc(footer)}</div>")
+            appendLine("</div>")
+        }
+    }
+
+    /** 收藏卡片与指令集详情共用的样式：标题、表格、状态徽标与页脚 */
+    private val FAVORITE_BASE_CSS = """
+        .fav-wrap{color:#222;padding:10px}
+        .fav-title{font-size:20px;font-weight:700;text-align:center;margin:2px 0 10px}
+        .fav-sub{font-size:16px;font-weight:700;margin:14px 0 6px}
+        .fav-table{width:100%;border-collapse:collapse;table-layout:fixed;border:2px solid #000;background:#fff}
+        .fav-table th,.fav-table td{
+          border:1px solid #888;padding:7px 6px;text-align:center;font-size:15px;
+          white-space:nowrap;overflow:hidden;text-overflow:clip
+        }
+        .fav-table th{background:#f5f5f5;font-weight:700;font-size:14px}
+        .fav-table td.wrap{white-space:normal;word-wrap:break-word}
+        .fav-table td.left{text-align:left}
+        .slot{font-weight:700;font-size:17px}
+        .muted{color:#9ca3af}
+        .gone{color:#9ca3af;text-decoration:line-through}
+        .over{color:#b91c1c;font-weight:700}
+        .tag{display:inline-block;padding:2px 8px;margin:1px 2px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+        .st-ok{background:#dcfce7;color:#15803d}
+        .st-gone{background:#e5e7eb;color:#6b7280}
+        .st-censor{background:#fef3c7;color:#b45309}
+        .st-lock{background:#dbeafe;color:#1d4ed8}
+        .st-down{background:#ffedd5;color:#c2410c}
+        .st-dead{background:#fee2e2;color:#b91c1c}
+        .fav-footer{margin-top:12px;font-size:13px;color:#555;text-align:center}
+    """.trimIndent()
+
+    /** 状态徽标，没有任何状态时显示正常 */
+    private fun favoriteBadge(badge: FavoriteManager.Badge?): String =
+        if (badge == null) "<span class='tag st-ok'>正常</span>"
+        else "<span class='tag ${badgeClass(badge.kind)}'>${esc(badge.label)}</span>"
+
+    private fun badgeClass(kind: FavoriteManager.BadgeKind) = when (kind) {
+        FavoriteManager.BadgeKind.DELETED -> "st-gone"
+        FavoriteManager.BadgeKind.CENSOR -> "st-censor"
+        FavoriteManager.BadgeKind.LOCK -> "st-lock"
+        FavoriteManager.BadgeKind.LINK_DOWN -> "st-down"
+        FavoriteManager.BadgeKind.UNRUNNABLE -> "st-dead"
     }
 
 

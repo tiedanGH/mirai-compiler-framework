@@ -35,6 +35,7 @@ import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.rejectThreadLimit
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.trimToMaxLength
+import site.tiedan.MiraiCompilerFramework.tryRegisterThreads
 import site.tiedan.command.CommandRun.queryImageUrls
 import site.tiedan.config.DockerConfig
 import site.tiedan.config.PastebinConfig
@@ -159,7 +160,11 @@ object Events : SimpleListenerHost() {
         val from = if (subject is Group) "${(subject as Group).name}(${(subject as Group).id})" else "private"
         val platform = getPlatform()
 
-        THREADS.add(ThreadInfo(jobId, "自定义${language}代码", name, userID, from, platform))
+        // 检查与登记之间可能已被其他进程占满，登记时原子复查
+        tryRegisterThreads(listOf(ThreadInfo(jobId, "自定义${language}代码", name, userID, from, platform)))?.let {
+            sendQuoteReply(it.limitMessage())
+            return
+        }
 
         try {
             // 检查命令的引用

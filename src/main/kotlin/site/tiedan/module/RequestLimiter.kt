@@ -7,9 +7,10 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * ### 代码请求限制
- * - 初次警告：近60秒内达到 15 次或近10分钟达到 100 次
- * - 二次警告：近60秒总次数达到 20 次或近10分钟达到 110 次
- * - 黑名单：近60秒总次数达到 25 次或近10分钟达到 120 次
+ * - 初次警告：近60秒内达到 15 次或近10分钟达到 130 次
+ * - 二次警告：近60秒总次数达到 20 次或近10分钟达到 145 次
+ * - 黑名单：近60秒总次数达到 25 次或近10分钟达到 150 次（管理员不会被拉黑）
+ * - 指令集整批执行走 [admitBatch]：触及黑名单阈值时整批拒绝，且不记录任何请求
  *
  * @author tiedanGH
  */
@@ -28,11 +29,14 @@ object RequestLimiter {
 
     /**
      * 记录新执行请求
+     * - 与 [admitBatch] 共用同一把锁：单用户的请求记录是普通列表，并发写入必须串行
+     *
+     * @param currentTime 请求时刻，默认为当前时间
      */
-    fun newRequest(userID: String): Pair<String, Boolean> {
+    @Synchronized
+    fun newRequest(userID: String, currentTime: Long = System.currentTimeMillis()): Pair<String, Boolean> {
         val isAdmin = PastebinConfig.admins.contains(userID)
 
-        val currentTime = System.currentTimeMillis()
         val requestTimes = userRequestTimes.computeIfAbsent(userID) { mutableListOf() }
 
         requestTimes.removeIf { it < currentTime - LONG_WINDOW }    // 清理过期的请求
@@ -90,5 +94,44 @@ object RequestLimiter {
             userWarningLevels[userID] = WarningLevel.FIRST
         }
         return Pair("", false)
+    }
+
+    /**
+     * 批量准入结果
+     * @param message 拒绝原因，或准入期间产生的最后一条警告
+     */
+    data class BatchAdmission(val admitted: Boolean, val message: String)
+
+    /** 用户近60秒与近10分钟内的请求次数 */
+    @Synchronized
+    fun counts(userID: String, now: Long = System.currentTimeMillis()): Pair<Int, Int> {
+        val times = userRequestTimes[userID] ?: return 0 to 0
+        return times.count { it >= now - SHORT_WINDOW } to times.count { it >= now - LONG_WINDOW }
+    }
+
+    /**
+     * 批量执行准入（指令集执行）
+     * - 计入 [count] 次后会触及任一黑名单阈值时整批拒绝，且不记录任何请求（管理员执行跳过此项）
+     */
+    @Synchronized
+    fun admitBatch(userID: String, count: Int, now: Long = System.currentTimeMillis()): BatchAdmission {
+        if (!PastebinConfig.admins.contains(userID)) {
+            val (short, long) = counts(userID, now)
+            if (short + count >= SHORT_THRESHOLDS[2] || long + count >= LONG_THRESHOLDS[2]) {
+                val room = minOf(SHORT_THRESHOLDS[2] - 1 - short, LONG_THRESHOLDS[2] - 1 - long).coerceAtLeast(0)
+                return BatchAdmission(
+                    false,
+                    "执行失败：本次需同时执行 $count 个项目，将触发高频请求黑名单，已阻止本次请求，请稍后重试\n" +
+                    "近60秒已请求 $short 次，近10分钟已请求 $long 次，当前最多还能执行 $room 条"
+                )
+            }
+        }
+        var warning = ""
+        repeat(count) {
+            val (msg, blocked) = newRequest(userID, now)
+            if (msg.isNotEmpty()) warning = msg
+            if (blocked) return BatchAdmission(false, msg)  // 预检已排除，仅作兜底
+        }
+        return BatchAdmission(true, warning)
     }
 }

@@ -57,7 +57,7 @@ class SchemaTest {
     fun allTablesCreated() {
         val expected = setOf(
             "meta", "project_storage", "bucket", "bucket_project", "bucket_backup",
-            "code_cache", "statistics", "statistics_total"
+            "code_cache", "statistics", "statistics_total", "favorite_project", "favorite_command"
         )
         val actual = conn.createStatement().use { st ->
             st.executeQuery("SELECT name FROM sqlite_master WHERE type = 'table'").use { rs ->

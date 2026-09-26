@@ -14,11 +14,13 @@ import site.tiedan.MiraiCompilerFramework.ThreadInfo
 import site.tiedan.MiraiCompilerFramework.getPlatform
 import site.tiedan.MiraiCompilerFramework.getUserPlatformID
 import site.tiedan.MiraiCompilerFramework.logger
+import site.tiedan.MiraiCompilerFramework.newJobId
 import site.tiedan.MiraiCompilerFramework.parseUserID
 import site.tiedan.MiraiCompilerFramework.queueAlertThreshold
 import site.tiedan.MiraiCompilerFramework.rejectThreadLimit
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.trimToMaxLength
+import site.tiedan.MiraiCompilerFramework.tryRegisterThreads
 import site.tiedan.command.CommandRun.Image_Path
 import site.tiedan.config.DockerConfig
 import site.tiedan.config.PastebinConfig
@@ -45,13 +47,42 @@ import java.net.ConnectException
  */
 object PastebinCodeExecutor {
 
+    /** 执行前的项目状态拦截 */
+    enum class BlockReason { LOCKED, CENSORED }
+
+    /**
+     * 项目在当前场景下是否禁止执行：执行锁定（作者与管理员豁免）、审核中
+     * @param inGroup 本次执行是否发生在群聊
+     */
+    fun blockReason(name: String, userID: String, inGroup: Boolean): BlockReason? {
+        val isOwner = userID == PastebinData.pastebin[name]?.get("userID")
+        val isAdmin = PastebinConfig.admins.contains(userID)
+        return when {
+            ExecutionLock.isBlocked(name, inGroup) && !isOwner && !isAdmin -> BlockReason.LOCKED
+            PastebinData.censorList.contains(name) -> BlockReason.CENSORED
+            else -> null
+        }
+    }
+
+    /** 被拦截时给执行者的提示 */
+    fun blockMessage(name: String, reason: BlockReason): String = when (reason) {
+        BlockReason.LOCKED -> ExecutionLock.blockedMessage(name)
+        BlockReason.CENSORED -> "执行失败：此条链接仍在审核中，暂时无法执行。管理员会定期对链接进行审核，您也可以主动联系进行催审"
+    }
+
     /**
      * ## pb代码执行主进程
      * @param name 项目名称
      * @param userInput 用户输入
      * @param imageUrls 输入图片URL链接
+     * @param slot 调用方已登记的进程（指令集执行）
      */
-    suspend fun CommandSender.executeMainProcess(name: String, userInput: String, imageUrls: List<String>) {
+    suspend fun CommandSender.executeMainProcess(
+        name: String,
+        userInput: String,
+        imageUrls: List<String>,
+        slot: ThreadInfo? = null,
+    ) {
 
         val userID = getUserPlatformID(this.user?.id) ?: CONSOLE_USER_ID
         val numID = parseUserID(userID)
@@ -63,31 +94,34 @@ object PastebinCodeExecutor {
             return
         }
 
-        // 请求频率限制
-        val request = RequestLimiter.newRequest(userID)
-        if (request.first.isNotEmpty()) {
-            sendQuoteReply(request.first)
-            if (request.second) return
-        }
+        // 指令集已整批计入频率并登记进程，逐条执行时不再重复
+        if (slot == null) {
+            // 请求频率限制
+            val request = RequestLimiter.newRequest(userID)
+            if (request.first.isNotEmpty()) {
+                sendQuoteReply(request.first)
+                if (request.second) return
+            }
 
-        if (rejectThreadLimit(userID)) return
+            if (rejectThreadLimit(userID)) return
+        }
         val ownerID = PastebinData.pastebin[name]?.get("userID")
         val isOwner = userID == ownerID
         val isAdmin = PastebinConfig.admins.contains(userID)
-        if (ExecutionLock.isBlocked(name, subject is Group) && !isOwner && !isAdmin) {
-            sendQuoteReply(ExecutionLock.blockedMessage(name))
-            return
-        }
-        if (PastebinData.censorList.contains(name)) {
-            sendQuoteReply("执行失败：此条链接仍在审核中，暂时无法执行。管理员会定期对链接进行审核，您也可以主动联系进行催审")
+        blockReason(name, userID, subject is Group)?.let {
+            sendQuoteReply(blockMessage(name, it))
             return
         }
 
-        val jobId = "${System.currentTimeMillis()}-${name}-$nickname($userID)"
         val from = if (subject is Group) "${(subject as Group).name}(${(subject as Group).id})" else "private"
         val platform = getPlatform()
-
-        THREADS.add(ThreadInfo(jobId, name, nickname, userID, from, platform))
+        val jobId = slot?.id ?: newJobId(name, nickname, userID).also { id ->
+            // 检查与登记之间可能已被其他进程占满，登记时原子复查
+            tryRegisterThreads(listOf(ThreadInfo(id, name, nickname, userID, from, platform)))?.let {
+                sendQuoteReply(it.limitMessage())
+                return
+            }
+        }
 
         // 记录本进程下的锁状态：持有句柄本身即是归属凭据
         var projectLock: StorageManager.StorageLock? = null

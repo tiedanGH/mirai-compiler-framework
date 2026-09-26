@@ -91,6 +91,7 @@ object CommandPastebin : RawCommand(
 
         Command("glot help", "glot 帮助", "查看框架信息", TYPE_RELATED),
         Command("image help", "图片 帮助", "本地图片操作指令", TYPE_RELATED),
+        Command("fav help", "收藏 帮助", "个人收藏与指令集", TYPE_RELATED),
 
         Command("pb handle <名称> <同意/拒绝> [备注]", "pb 处理 <名称> <同意/拒绝> [备注]", "处理添加和修改申请", TYPE_ADMIN),
         Command("pb black [ID]", "pb 黑名单 [平台ID]", "黑名单处理", TYPE_ADMIN),

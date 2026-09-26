@@ -7,6 +7,7 @@
 - [Run Commands & Quick Prefix](#run-commands--quick-prefix)
 - [Cross-Project Bucket Commands](#cross-project-bucket-commands)
 - [Local Image Commands](#local-image-commands)
+- [Personal Favorites Commands](#personal-favorites-commands)
 - [Supported Code Upload Sites](#supported-code-upload-sites)
 
 ---
@@ -145,6 +146,34 @@ Manage and operate local images.
 |-----------------------------------|-------------------------|
 | `/img set <name> <param> <value>` | Modify image attributes |
 | `/img delete <name>`              | Delete image            |
+
+---
+
+## Personal Favorites Commands
+Favorite frequently used projects and build command sets that run in one go.
+
+### ⭐ Favorites
+| Command                                    | Description                         |
+|--------------------------------------------|-------------------------------------|
+| `/fav [list]`                              | View favorite lists                 |
+| `/fav add <project1> [project2]...`        | Add projects to favorites           |
+| `/fav rm <slot/project/alias>...`          | Remove favorites                    |
+| `/fav alias <slot/project/alias> [alias]`  | Set a favorite alias (empty clears) |
+| `/fav run <slot/alias> [input]`            | Run a favorite project              |
+
+### 📦 Command Sets
+| Command                                  | Description                                 |
+|------------------------------------------|---------------------------------------------|
+| `/fav run <set>`                         | Run every command of a set at once          |
+| `/fav set [set]`                         | View command sets                           |
+| `/fav set <set> add <project> [input]`   | Append a command (auto creates command set) |
+| `/fav set <set> rm <index>`              | Remove one command                          |
+| `/fav set <set> delete`                  | Delete the whole set                        |
+
+- Favorite slots are fixed: removing a favorite leaves its slot empty, and new favorites take the smallest free slot
+- A favorite alias cannot match a project name, another of your aliases, or one of your set names
+- Commands in a set run concurrently, each taking one process; a set holds at most the per-user process limit (process limit minus 2)
+- Before a set runs, process capacity and request frequency are checked for the whole set; if either fails, nothing runs and no requests are counted
 
 ---
 

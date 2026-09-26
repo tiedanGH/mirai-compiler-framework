@@ -47,6 +47,7 @@ _Mirai Console online compiler framework based on Glot API_
     + [Run Commands & Quick Prefix](docs/en/commands_en.md#run-commands--quick-prefix)
     + [Cross-Project Bucket Commands](docs/en/commands_en.md#cross-project-bucket-commands)
     + [Local Image Commands](docs/en/commands_en.md#local-image-commands)
+    + [Personal Favorites Commands](docs/en/commands_en.md#personal-favorites-commands)
 - [Supported Code Upload Websites](docs/en/commands_en.md#supported-code-upload-sites)
 - [Pastebin Commands and Advanced Features Documentation](docs/en/pastebin_en.md)
     + [1. Basic Command Functionality and Usage](docs/en/pastebin_en.md#1-basic-functions-and-usage)

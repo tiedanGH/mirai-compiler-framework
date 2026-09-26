@@ -21,6 +21,7 @@ import site.tiedan.core.StorageLockGuard.lockProject
 import site.tiedan.core.StorageManager
 import site.tiedan.data.PastebinData
 import site.tiedan.module.ExecutionLock
+import site.tiedan.module.FavoriteManager
 import site.tiedan.module.Statistics
 import site.tiedan.module.TagManager
 import site.tiedan.utils.FuzzySearch
@@ -239,6 +240,8 @@ internal suspend fun CommandSender.pbSet(ctx: PbContext) {
             CodeCacheManager.rename(name, content)
             // 转移统计数据
             Statistics.renameProject(name, content)
+            // 转移收藏与指令集
+            FavoriteManager.renameProject(name, content)
         }
         "alias"-> {
             PastebinData.alias.entries.removeIf { it.value == name }

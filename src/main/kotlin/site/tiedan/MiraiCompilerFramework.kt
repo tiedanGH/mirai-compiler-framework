@@ -33,6 +33,7 @@ import java.io.File
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicLong
 
 object MiraiCompilerFramework : KotlinPlugin(
     JvmPluginDescription(
@@ -90,7 +91,49 @@ object MiraiCompilerFramework : KotlinPlugin(
     /**
      * 单用户的进程数上限（给全局留出2个余额）
      */
-    private val userThreadLimit: Int get() = (PastebinConfig.thread_limit - 2).coerceAtLeast(1)
+    internal val userThreadLimit: Int get() = (PastebinConfig.thread_limit - 2).coerceAtLeast(1)
+
+    /**
+     * 进程余量快照
+     * @param total 全局进程数
+     * @param user 该用户的进程数
+     */
+    data class ThreadQuota(val total: Int, val totalLimit: Int, val user: Int, val userLimit: Int) {
+        /** 该用户此刻还能登记的进程数，受全局与单用户上限约束 */
+        val available: Int get() = minOf(totalLimit - total, userLimit - user).coerceAtLeast(0)
+
+        /** 余量不足时的提示，全局已满优先 */
+        fun limitMessage(): String =
+            if (total >= totalLimit) "执行失败：当前已经有 $total 个进程正在执行，请等待几秒后再次尝试"
+            else "执行失败：您当前已有 $user 个进程正在执行或等待，请等待自己的进程执行完成后再次尝试"
+    }
+
+    /** 检查余量与登记进程必须在同一把锁内完成 */
+    private val threadLock = Any()
+    private val jobSequence = AtomicLong()
+
+    /** 当前的进程余量快照 */
+    fun threadQuota(userID: String): ThreadQuota = ThreadQuota(
+        THREADS.size, PastebinConfig.thread_limit, THREADS.count { it.userID == userID }, userThreadLimit
+    )
+
+    /**
+     * 原子地为同一用户登记一批进程
+     * - 余量足够时全部登记，否则一个都不登记
+     * @return 登记成功返回 null；余量不足时返回登记前的快照
+     */
+    fun tryRegisterThreads(infos: List<ThreadInfo>): ThreadQuota? {
+        synchronized(threadLock) {
+            val quota = threadQuota(infos.first().userID)
+            if (quota.available < infos.size) return quota
+            THREADS.addAll(infos)
+            return null
+        }
+    }
+
+    /** 进程ID：附带自增序号，同一毫秒内的同名执行也不会重复 */
+    fun newJobId(name: String, nickname: String, userID: String): String =
+        "${System.currentTimeMillis()}-${jobSequence.incrementAndGet()}-$name-$nickname($userID)"
 
     /**
      * 触发排队提示的同队列进程数（最低2）
@@ -102,16 +145,10 @@ object MiraiCompilerFramework : KotlinPlugin(
      * @return true 表示已超限，本次执行中止
      */
     suspend fun CommandSender.rejectThreadLimit(userID: String): Boolean {
-        if (THREADS.size >= PastebinConfig.thread_limit) {
-            sendQuoteReply("执行失败：当前已经有 ${THREADS.size} 个进程正在执行，请等待几秒后再次尝试")
-            return true
-        }
-        val userThreads = THREADS.count { it.userID == userID }
-        if (userThreads >= userThreadLimit) {
-            sendQuoteReply("执行失败：您当前已有 $userThreads 个进程正在执行或等待，请等待自己的进程执行完成后再次尝试")
-            return true
-        }
-        return false
+        val quota = threadQuota(userID)
+        if (quota.available > 0) return false
+        sendQuoteReply(quota.limitMessage())
+        return true
     }
 
     data class Command(val usage: String, val usageCN: String, val desc: String, val type: Int)
@@ -127,6 +164,7 @@ object MiraiCompilerFramework : KotlinPlugin(
         CommandBucket.register()
         CommandImage.register()
         CommandRun.register()
+        CommandFavorite.register()
 
         reloadConfig()
 
@@ -174,6 +212,7 @@ object MiraiCompilerFramework : KotlinPlugin(
         CommandBucket.unregister()
         CommandImage.unregister()
         CommandRun.unregister()
+        CommandFavorite.unregister()
 
         // 关闭时额外备份一次数据（生成数据库快照需要活连接，必须先于 Database.close）
         BackupManager.backupOnShutdown()

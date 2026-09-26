@@ -4,12 +4,13 @@ import site.tiedan.data.Database
 import site.tiedan.data.PastebinData
 import site.tiedan.data.dao.BucketDao
 import site.tiedan.data.dao.CodeCacheDao
+import site.tiedan.data.dao.FavoriteDao
 import site.tiedan.data.dao.StatisticsDao
 import site.tiedan.data.dao.StorageDao
 
 /**
  * # 数据自检
- * - 逐项核对数据库中的存储、代码缓存、项目统计、存储库关联，是否都还对应着 `PastebinData` 里真实存在的项目，对不上的称为**孤儿数据**。
+ * - 逐项核对数据库中的存储、代码缓存、项目统计、存储库关联、收藏、指令集，是否都还对应着 `PastebinData` 里真实存在的项目，对不上的称为**孤儿数据**。
  *
  * 只汇报，不自动清除：这里只负责给出清单，是否清理交由管理员判断。
  *
@@ -21,6 +22,8 @@ object DataAudit {
     private const val LABEL_CACHE = "代码缓存"
     private const val LABEL_STATISTICS = "项目统计"
     private const val LABEL_BUCKET_LINK = "存储库关联"
+    private const val LABEL_FAVORITE = "收藏"
+    private const val LABEL_COMMAND_SET = "指令集"
 
     /** 单项孤儿数据 */
     data class OrphanGroup(val label: String, val projects: List<String>)
@@ -42,6 +45,8 @@ object DataAudit {
                     OrphanGroup(LABEL_CACHE, CodeCacheDao.listProjects(conn).filterNot { it in known }),
                     OrphanGroup(LABEL_STATISTICS, StatisticsDao.listProjects(conn).filterNot { it in known }),
                     OrphanGroup(LABEL_BUCKET_LINK, BucketDao.listLinkedProjects(conn).filterNot { it in known }),
+                    OrphanGroup(LABEL_FAVORITE, FavoriteDao.listFavoritedProjects(conn).filterNot { it in known }),
+                    OrphanGroup(LABEL_COMMAND_SET, FavoriteDao.listCommandProjects(conn).filterNot { it in known }),
                 )
             )
         }
@@ -80,6 +85,8 @@ object DataAudit {
                     LABEL_CACHE -> CodeCacheDao.remove(conn, project)
                     LABEL_STATISTICS -> StatisticsDao.remove(conn, project)
                     LABEL_BUCKET_LINK -> BucketDao.removeProjectFromAll(conn, project)
+                    LABEL_FAVORITE -> FavoriteDao.removeFavoritesOf(conn, project)
+                    LABEL_COMMAND_SET -> FavoriteDao.removeCommandsOf(conn, project)
                 }
                 removed++
             }

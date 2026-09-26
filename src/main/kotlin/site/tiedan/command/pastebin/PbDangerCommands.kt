@@ -17,6 +17,7 @@ import site.tiedan.core.StorageLockGuard.lockProject
 import site.tiedan.core.StorageManager
 import site.tiedan.data.PastebinData
 import site.tiedan.format.MarkdownImageGenerator
+import site.tiedan.module.FavoriteManager
 import site.tiedan.module.Statistics
 import site.tiedan.module.StorageRollback
 import site.tiedan.utils.FuzzySearch
@@ -279,6 +280,7 @@ internal suspend fun CommandSender.pbDelete(ctx: PbContext) {
     Statistics.removeProject(name)
     StorageManager.removeProjectStorage(name)
     removeProjectFromBucket(name)
+    FavoriteManager.removeProject(name)
     if (skipConfirm) logger.warning("管理员 $userID 跳过二次确认删除了项目 $name")
     sendQuoteReply(
         if (skipConfirm) "[管理员操作] 删除项目 $name 成功！"

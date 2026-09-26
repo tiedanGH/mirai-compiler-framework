@@ -10,6 +10,7 @@ import site.tiedan.MiraiCompilerFramework.save
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
+import site.tiedan.module.FavoriteManager
 
 /*
  * # PB管理指令
@@ -20,7 +21,6 @@ import site.tiedan.data.PastebinData
 /** 处理添加和修改申请（审核功能） */
 internal suspend fun CommandSender.pbHandle(ctx: PbContext) {
     val args = ctx.args
-    val userID = ctx.userID
     val isAdmin = ctx.isAdmin
     if (!isAdmin) throw PermissionDeniedException()
     val name = args[1].content
@@ -54,6 +54,7 @@ internal suspend fun CommandSender.pbHandle(ctx: PbContext) {
         }
     if (option == "拒绝") {
         PastebinData.pastebin.remove(name)
+        FavoriteManager.removeProject(name)
     }
     sendQuoteReply(reply)   // 回复指令发出者
 }

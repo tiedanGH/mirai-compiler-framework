@@ -113,6 +113,33 @@ object Schema {
         )
         """,
         "INSERT OR IGNORE INTO statistics_total(id) VALUES(1)",
+
+        // 个人收藏：序号固定，移除后空置；收藏别名为空时存 NULL
+        """
+        CREATE TABLE IF NOT EXISTS favorite_project (
+            user_id TEXT    NOT NULL,
+            slot    INTEGER NOT NULL,
+            project TEXT    NOT NULL,
+            alias   TEXT,
+            PRIMARY KEY (user_id, project),
+            UNIQUE (user_id, slot),
+            UNIQUE (user_id, alias)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_fav_project ON favorite_project(project)",
+
+        // 收藏指令集：同一用户同名的全部指令构成一个指令集，按 id 排序
+        """
+        CREATE TABLE IF NOT EXISTS favorite_command (
+            id       INTEGER PRIMARY KEY,
+            user_id  TEXT NOT NULL,
+            set_name TEXT NOT NULL,
+            project  TEXT NOT NULL,
+            input    TEXT NOT NULL
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_favcmd_user_set ON favorite_command(user_id, set_name)",
+        "CREATE INDEX IF NOT EXISTS idx_favcmd_project ON favorite_command(project)",
     )
 
     /**
