@@ -1,10 +1,5 @@
 package site.tiedan.format
 
-import com.sun.management.OperatingSystemMXBean
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import site.tiedan.config.PastebinConfig
@@ -16,7 +11,6 @@ import site.tiedan.MiraiCompilerFramework.roundTo2
 import site.tiedan.command.CommandBucket.formatTime
 import site.tiedan.command.CommandBucket.projectsCount
 import site.tiedan.command.CommandRun.Image_Path
-import site.tiedan.config.SystemConfig
 import site.tiedan.data.ImageData
 import site.tiedan.core.StorageManager
 import site.tiedan.data.PastebinData
@@ -25,7 +19,6 @@ import site.tiedan.module.StorageRollback
 import site.tiedan.module.TagManager
 import java.io.File
 import java.util.UUID
-import java.lang.management.ManagementFactory
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDateTime
@@ -41,8 +34,6 @@ import kotlin.math.ceil
 object MarkdownImageGenerator {
     // markdown 转图片进程池（配置修改重启生效）
     private val MarkdownPool = Semaphore(PastebinConfig.output_limit.coerceAtLeast(1))
-    // 操作系统相关信息（仅用于监测内存用量）
-    private val osBean = ManagementFactory.getOperatingSystemMXBean() as OperatingSystemMXBean
 
     data class MarkdownResult(val success: Boolean, val message: String, val duration: Long, val file: File? = null)
 
@@ -89,24 +80,8 @@ object MarkdownImageGenerator {
                         "--output=${outputFile.path}"
                     ).directory(File(".")).start()
                 }
-                // 在后台线程中监控进程的内存使用情况
-                CoroutineScope(Dispatchers.IO).launch {
-                    var seconds = 0
-                    while (process.isAlive) {
-                        val physicalUsage = osBean.totalMemorySize - osBean.freeMemorySize
-                        val swapUsage = osBean.totalSwapSpaceSize - osBean.freeSwapSpaceSize
-                        val totalUsage = physicalUsage + swapUsage
-                        if (totalUsage > SystemConfig.memoryLimit * 1024 * 1024) {
-                            seconds++
-                            if (seconds >= 5) {
-                                logger.warning("监测到系统总内存使用超过${SystemConfig.memoryLimit}MB达到5秒，当前总内存：${totalUsage / 1024 / 1024}MB，程序进程被中断")
-                                process.destroyForcibly()
-                                break
-                            }
-                        }
-                        delay(1000)
-                    }
-                }
+                // 整机内存超出安全限制时，由内存守护按占用从高到低依次终止渲染进程
+                val watched = RenderMemoryGuard.watch(process, name)
                 if (!process.waitFor(timeout, TimeUnit.SECONDS)) {
                     process.destroyForcibly()
                     duration = timeout.toDouble()
@@ -117,9 +92,14 @@ object MarkdownImageGenerator {
                         return@run MarkdownResult(false, "执行超时：执行超出剩余时间${timeout}秒限制，图片生成被中断", timeout)
                     }
                 } else if (process.exitValue() != 0) {
-                    saveErrorRecord(content, "ProcessError(${process.exitValue()})")
                     val endTime = Instant.now()     // 记录结束时间
                     duration = Duration.between(startTime, endTime).toMillis() / 1000.0
+                    if (watched.killed) {
+                        saveErrorRecord(content, "MemoryLimit")
+                        val usage = watched.usageAtKill?.let { "，本次渲染占用 ${it / 1024 / 1024}MB" } ?: ""
+                        return@run MarkdownResult(false, "操作失败：系统内存超出安全限制，按内存占用从高到低中断执行$usage", ceil(duration).toLong())
+                    }
+                    saveErrorRecord(content, "ProcessError(${process.exitValue()})")
                     if (process.exitValue() == 137) {
                         return@run MarkdownResult(false, "操作失败：因内存占用过大被中断，超出系统安全内存限制。exitValue：137", ceil(duration).toLong())
                     }
