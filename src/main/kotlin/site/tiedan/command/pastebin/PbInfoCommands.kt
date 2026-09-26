@@ -14,6 +14,7 @@ import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.requestUserConfirmation
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.trimToMaxLength
+import site.tiedan.command.CommandBucket.formatTime
 import site.tiedan.command.pastebin.PbCollaborator.isCollaborator
 import site.tiedan.config.MailConfig
 import site.tiedan.config.PastebinConfig
@@ -276,24 +277,40 @@ internal suspend fun CommandSender.pbExport(ctx: PbContext) {
         return
     }
 
-    val exportCode = CodeCacheManager.get(name)
-    if (exportCode == null) {
-        sendQuoteReply("导出失败：$name 的代码缓存为空或项目链接类型不支持缓存功能")
+    // 导出上一版本时，后续的邮件参数整体后移一位
+    val wantPrevious = args.getOrNull(2)?.content in listOf("prev", "上一版")
+    val prevArg = if (wantPrevious) "prev " else ""
+    val mailIndex = if (wantPrevious) 3 else 2
+    val previous = if (wantPrevious) CodeCacheManager.getPrevious(name) else null
+    if (wantPrevious && previous == null) {
+        sendQuoteReply("导出失败：$name 没有保留的上一版本代码，仅在修改链接替换代码缓存时才会保留")
         return
     }
+    val exportCode = previous?.code ?: CodeCacheManager.get(name)
+    if (exportCode == null) {
+        sendQuoteReply(
+            "导出失败：$name 的代码缓存为空或项目链接类型不支持缓存功能" +
+            // 链接换成不支持缓存的网站后，旧代码只剩上一版本这一份
+            if (CodeCacheManager.getPrevious(name) != null) {
+                "\n💡 该项目保留有上一版本代码，可使用「${commandPrefix}pb export $name prev」导出"
+            } else ""
+        )
+        return
+    }
+    val version = previous?.let { "上一版本（替换于 ${formatTime(it.savedAt)}）" }
 
     val language = PastebinData.pastebin[name]?.get("language") ?: "未知"
-    val requestMail = args.getOrNull(2)?.content in listOf("mail", "邮件")
+    val requestMail = args.getOrNull(mailIndex)?.content in listOf("mail", "邮件")
     if (requestMail) {
         if (!MailConfig.enable) {
             sendQuoteReply("[错误] 邮件功能未启用，无法通过邮件发送项目代码")
             return
         }
-        val mail = args.getOrNull(3)?.content
+        val mail = args.getOrNull(mailIndex + 1)?.content
         if (mail == null && platform != "qq") {
             sendQuoteReply(
                 "⚠️ 当前平台 $platform 需要指定邮箱地址：\n" +
-                "${commandPrefix}pb export $name mail <邮箱地址>"
+                "${commandPrefix}pb export $name ${prevArg}mail <邮箱地址>"
             )
             return
         }
@@ -302,7 +319,7 @@ internal suspend fun CommandSender.pbExport(ctx: PbContext) {
             return
         }
         logger.info("请求使用邮件发送代码导出：$name")
-        MailService.sendExportMail(this, exportCode, userID, name, language, mail)
+        MailService.sendExportMail(this, exportCode, userID, name, language, mail, version)
         return
     }
 
@@ -310,7 +327,7 @@ internal suspend fun CommandSender.pbExport(ctx: PbContext) {
         PastebinUrlHelper.pasteToHastebin(exportCode)
     } catch (e: Exception) {
         val mailHint = if (MailConfig.enable) {
-            " 请用邮件导出\n📧 ${commandPrefix}pb export $name mail [邮件地址]\n"
+            " 请用邮件导出\n📧 ${commandPrefix}pb export $name ${prevArg}mail [邮件地址]\n"
         } else "\n"
         when (e) {
             is ConnectException,
@@ -333,7 +350,9 @@ internal suspend fun CommandSender.pbExport(ctx: PbContext) {
         }
         return
     }
-    sendQuoteReply("已成功将 $name 的源代码从缓存导出至 Hastebin，链接如下（有效期 30 天）：\n$url")
+    sendQuoteReply(
+        "已成功将 $name 的${version ?: "源代码"}从缓存导出至 Hastebin，链接如下（有效期 30 天）：\n$url"
+    )
 }
 
 /** 查询存储数据 */

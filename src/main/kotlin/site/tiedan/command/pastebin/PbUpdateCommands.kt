@@ -484,15 +484,24 @@ internal suspend fun CommandSender.pbSet(ctx: PbContext) {
         }
         else -> {
             if (option == "url") {
-                val code = fetchedCode
-                if (code != null && PastebinUrlHelper.enableCache(content)) {
-                    // 已取到新代码，直接覆盖缓存，无需等待下次执行
-                    CodeCacheManager.put(name, code)
-                    additionalOutput = "🔗 源代码URL已修改，新代码成功获取并保存至缓存\n"
-                } else if (CodeCacheManager.contains(name)) {
-                    // 新链接不支持缓存，旧缓存必须清除
-                    CodeCacheManager.remove(name)
-                    additionalOutput = "🔗 源代码URL已修改，代码缓存已清除\n"
+                // 已取到新代码，直接写入缓存，无需等待下次执行；新链接不支持缓存时旧缓存必须清除
+                val newCode = fetchedCode?.takeIf { PastebinUrlHelper.enableCache(content) }
+                val hadCache = CodeCacheManager.contains(name)
+                val oldUrl = PastebinData.pastebin[name]?.get("url").orEmpty()
+                // 替换前把旧缓存保留为上一版本，停服网站项目的唯一副本不会随之丢失
+                val preservation = CodeCacheManager.replaceOnUrlChange(name, oldUrl, newCode)
+                additionalOutput = buildString {
+                    when {
+                        newCode != null -> append("🔗 源代码URL已修改，新代码成功获取并保存至缓存\n")
+                        hadCache -> append("🔗 源代码URL已修改，代码缓存已清除\n")
+                    }
+                    when (preservation) {
+                        CodeCacheManager.Preservation.SAVED ->
+                            append("🗂 旧代码已保留为上一版本，可使用「${commandPrefix}pb export $name prev」取回\n")
+                        CodeCacheManager.Preservation.KEPT_DISCONTINUED ->
+                            append("🗂 上一版本保留的是停服网站的旧代码，本次替换下的代码未覆盖它，可从原链接重新获取\n")
+                        CodeCacheManager.Preservation.NONE -> {}
+                    }
                 }
             }
             PastebinData.pastebin[name]?.set(option, content)

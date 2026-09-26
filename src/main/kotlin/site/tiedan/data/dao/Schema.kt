@@ -88,6 +88,17 @@ object Schema {
         )
         """,
 
+        // 代码上一版本：修改链接时被替换下来的缓存，每个项目保留一份
+        """
+        CREATE TABLE IF NOT EXISTS code_cache_prev (
+            project  TEXT PRIMARY KEY,
+            code     TEXT NOT NULL,
+            code_len INTEGER NOT NULL,
+            url      TEXT NOT NULL,
+            saved_at INTEGER NOT NULL
+        )
+        """,
+
         // 项目数据统计：markdown/md_time/download/dl_time 必须可空
         """
         CREATE TABLE IF NOT EXISTS statistics (

@@ -19,6 +19,7 @@ object DataAudit {
 
     private const val LABEL_STORAGE = "存储"
     private const val LABEL_CACHE = "代码缓存"
+    private const val LABEL_CACHE_PREV = "代码上一版本"
     private const val LABEL_STATISTICS = "项目统计"
     private const val LABEL_BUCKET_LINK = "存储库关联"
 
@@ -40,6 +41,7 @@ object DataAudit {
                 listOf(
                     OrphanGroup(LABEL_STORAGE, StorageDao.listProjects(conn).filterNot { it in known }),
                     OrphanGroup(LABEL_CACHE, CodeCacheDao.listProjects(conn).filterNot { it in known }),
+                    OrphanGroup(LABEL_CACHE_PREV, CodeCacheDao.listPreviousProjects(conn).filterNot { it in known }),
                     OrphanGroup(LABEL_STATISTICS, StatisticsDao.listProjects(conn).filterNot { it in known }),
                     OrphanGroup(LABEL_BUCKET_LINK, BucketDao.listLinkedProjects(conn).filterNot { it in known }),
                 )
@@ -78,6 +80,7 @@ object DataAudit {
                 when (group.label) {
                     LABEL_STORAGE -> StorageDao.removeProject(conn, project)
                     LABEL_CACHE -> CodeCacheDao.remove(conn, project)
+                    LABEL_CACHE_PREV -> CodeCacheDao.removePrevious(conn, project)
                     LABEL_STATISTICS -> StatisticsDao.remove(conn, project)
                     LABEL_BUCKET_LINK -> BucketDao.removeProjectFromAll(conn, project)
                 }

@@ -81,17 +81,21 @@ object MailService {
         name: String,
         language: String,
         mail: String?,
+        version: String? = null,
     ) {
+        // 上一版本单独命名附件，便于与当前版本区分
+        val fileName = if (version != null) "PreviousSourceCode.txt" else "SourceCode.txt"
         val body = MailTemplate.banner("📤 项目代码导出结果") +
             usageNotice("导出的代码仅供查阅与备份，请勿用于任何违规用途") +
             MailTemplate.infoTable(
                 title = "📋 项目信息",
-                rows = listOf(
-                    "项目名称" to name,
-                    "编程语言" to language,
-                    "代码长度" to "${code.length}",
-                    "代码文件" to "📎 SourceCode.txt（请查看附件）",
-                ),
+                rows = buildList {
+                    add("项目名称" to name)
+                    add("编程语言" to language)
+                    version?.let { add("代码版本" to it) }
+                    add("代码长度" to "${code.length}")
+                    add("代码文件" to "📎 $fileName（请查看附件）")
+                },
             ) +
             MailTemplate.tip("代码取自框架的本地缓存，与源链接的最新内容可能存在差异。")
 
@@ -102,7 +106,7 @@ object MailService {
             label = "项目代码",
             title = "项目代码导出",
             body = body,
-            fileName = "SourceCode.txt",
+            fileName = fileName,
             content = code,
         )
     }

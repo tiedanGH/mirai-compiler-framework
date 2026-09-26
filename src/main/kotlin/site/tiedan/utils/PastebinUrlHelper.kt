@@ -74,9 +74,9 @@ object PastebinUrlHelper {
     /**
      * 访问已停服网站（[discontinuedUrls]）时追加的迁移提示
      */
-    private val MIGRATION_TIP =
-        "请联系此项目作者将代码迁移至其他网站后重新设置链接\n" +
-        "通过「${commandPrefix}pb support」查看可用网站"
+    private val MIGRATION_TIP
+        get() = "请联系此项目作者将代码迁移至其他网站后重新设置链接\n" +
+            "通过「${commandPrefix}pb support」查看可用网站"
 
     /**
      * 支持的网站 + 已停服的网站，用于需要识别全部历史链接的场景（如代码缓存判断）

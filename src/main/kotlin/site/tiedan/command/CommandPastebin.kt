@@ -81,7 +81,7 @@ object CommandPastebin : RawCommand(
         Command("pb tag", "pb 标签", "查看标签库与用法", TYPE_INFO),
         Command("pb status", "pb 状态", "查看框架运行状态", TYPE_INFO),
         Command("pb thread", "pb 进程", "查询运行和等待中的进程", TYPE_INFO),
-        Command("pb export <名称> [mail] [邮件地址]", "pb 导出 <名称> [邮件] [邮件地址]", "导出项目代码缓存（临时链接或邮件）", TYPE_INFO),
+        Command("pb export <名称> [prev] [mail] [邮件地址]", "pb 导出 <名称> [上一版] [邮件] [邮件地址]", "导出项目代码缓存（临时链接或邮件）", TYPE_INFO),
 
         Command("pb collab add/remove <ID>", "pb 协作 添加/移除 <平台ID>", "批量编辑自己全部项目的协作者", TYPE_DANGER),
         Command("pb rollback <名称> list", "pb 回滚 <名称> 列表", "查看可回滚的数据备份", TYPE_DANGER),

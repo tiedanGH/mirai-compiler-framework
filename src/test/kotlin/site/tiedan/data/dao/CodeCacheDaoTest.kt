@@ -84,6 +84,61 @@ class CodeCacheDaoTest {
     }
 
     @Test
+    @DisplayName("上一版本的写入、读取与覆盖")
+    fun previousPutGetAndOverwrite() {
+        assertNull(CodeCacheDao.getPrevious(conn, "proj"))
+
+        CodeCacheDao.putPrevious(conn, "proj", CodeCacheDao.Previous("v1", "https://a/", 100L))
+        assertEquals(CodeCacheDao.Previous("v1", "https://a/", 100L), CodeCacheDao.getPrevious(conn, "proj"))
+
+        CodeCacheDao.putPrevious(conn, "proj", CodeCacheDao.Previous("v2", "https://b/", 200L))
+        assertEquals(CodeCacheDao.Previous("v2", "https://b/", 200L), CodeCacheDao.getPrevious(conn, "proj"))
+        assertEquals(listOf("proj"), CodeCacheDao.listPreviousProjects(conn))
+    }
+
+    @Test
+    @DisplayName("上一版本与当前缓存互相独立")
+    fun previousIsIndependentFromCurrent() {
+        CodeCacheDao.put(conn, "proj", "current")
+        CodeCacheDao.putPrevious(conn, "proj", CodeCacheDao.Previous("old", "https://a/", 1L))
+
+        CodeCacheDao.remove(conn, "proj")
+        assertNull(CodeCacheDao.get(conn, "proj"))
+        assertEquals("old", CodeCacheDao.getPrevious(conn, "proj")?.code)
+
+        CodeCacheDao.removePrevious(conn, "proj")
+        assertNull(CodeCacheDao.getPrevious(conn, "proj"))
+        assertEquals(0, CodeCacheDao.count(conn), "上一版本不计入缓存数量")
+    }
+
+    @Test
+    @DisplayName("改名迁移上一版本，并覆盖目标名下的旧记录")
+    fun renamePreviousMovesAndOverwrites() {
+        CodeCacheDao.putPrevious(conn, "from", CodeCacheDao.Previous("moved", "https://a/", 1L))
+        CodeCacheDao.putPrevious(conn, "to", CodeCacheDao.Previous("stale", "https://b/", 2L))
+
+        CodeCacheDao.renamePrevious(conn, "from", "to")
+
+        assertNull(CodeCacheDao.getPrevious(conn, "from"))
+        assertEquals("moved", CodeCacheDao.getPrevious(conn, "to")?.code)
+
+        // 源名下没有上一版本时不应动到目标
+        CodeCacheDao.renamePrevious(conn, "absent", "to")
+        assertEquals("moved", CodeCacheDao.getPrevious(conn, "to")?.code)
+    }
+
+    @Test
+    @DisplayName("上一版本的特殊字符原样保留")
+    fun previousHostileValuesAreNotNormalized() {
+        for ((index, value) in TestDb.HOSTILE_VALUES.withIndex()) {
+            CodeCacheDao.putPrevious(conn, "proj$index", CodeCacheDao.Previous(value, value, index.toLong()))
+        }
+        for ((index, value) in TestDb.HOSTILE_VALUES.withIndex()) {
+            assertEquals(CodeCacheDao.Previous(value, value, index.toLong()), CodeCacheDao.getPrevious(conn, "proj$index"))
+        }
+    }
+
+    @Test
     @DisplayName("空库的统计查询返回 0")
     fun emptyDatabaseAggregates() {
         assertEquals(0, CodeCacheDao.count(conn))
