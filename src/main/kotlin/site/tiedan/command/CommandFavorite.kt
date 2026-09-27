@@ -97,7 +97,7 @@ object CommandFavorite : RawCommand(
                 .joinToString("") { "$commandPrefix${if (cn) it.usageCN else it.usage}　${it.desc}\n" }
         return group("⭐ 个人收藏：", 1) +
             group("📦 指令集：", 2) +
-            "💡 指令集中的指令同时执行，每条占用一个进程，单个指令集最多 $userThreadLimit 条"
+            "💡 指令集按顺序自动执行，每条占用一个进程，单个指令集最多 $userThreadLimit 条"
     }
 
     /* ==================== 收藏 ==================== */

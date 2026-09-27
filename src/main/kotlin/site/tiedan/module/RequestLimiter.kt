@@ -121,7 +121,7 @@ object RequestLimiter {
                 val room = minOf(SHORT_THRESHOLDS[2] - 1 - short, LONG_THRESHOLDS[2] - 1 - long).coerceAtLeast(0)
                 return BatchAdmission(
                     false,
-                    "执行失败：本次需同时执行 $count 个项目，将触发高频请求黑名单，已阻止本次请求，请稍后重试\n" +
+                    "执行失败：本次需执行 $count 个项目，将触发高频请求黑名单，已阻止本次请求，请稍后重试\n" +
                     "近60秒已请求 $short 次，近10分钟已请求 $long 次，当前最多还能执行 $room 条"
                 )
             }

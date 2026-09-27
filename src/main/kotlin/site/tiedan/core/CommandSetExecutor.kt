@@ -28,7 +28,8 @@ import site.tiedan.module.RequestLimiter
 /**
  * # 指令集执行
  * - 整批预检：条数上限、逐条可执行性、进程余量、请求频率，任一不满足整批拒绝，不执行任何指令
- * - 预检通过后全部指令同时执行，每条占用一个进程
+ * - 预检通过后一次性登记全部进程，按指令集顺序启动，不同项目同时执行，每条执行完即退还自己的进程
+ * - 同名项目、共享存储库的存储项目归入同一队列，队列内按指令集顺序依次执行，先后次序不会错乱
  *
  * @author tiedanGH
  */
@@ -66,7 +67,7 @@ object CommandSetExecutor {
         }
         tryRegisterThreads(slots)?.let { quota ->
             sendQuoteReply(
-                "执行失败：指令集的 ${slots.size} 条指令需同时执行，当前可用进程不足，请稍后再试\n" +
+                "执行失败：指令集的 ${slots.size} 条指令需预留 ${slots.size} 个进程，当前可用进程不足，请稍后再试\n" +
                 "全局进程 ${quota.total}/${quota.totalLimit}，您的进程 ${quota.user}/${quota.userLimit}"
             )
             return
@@ -80,19 +81,25 @@ object CommandSetExecutor {
             val warning = admission.message.takeIf { it.isNotEmpty() }?.let { "\n\n$it" }.orEmpty()
             val projects = FavoriteManager.mergedProjectText(commands.map { it.project })
             sendQuoteReply("▶️ 开始执行指令集「$setName」（${slots.size} 条）：$projects$warning")
-            // 每条执行内部都有阻塞的网络请求，放到 IO 线程池才能真正同时执行
+            // 同一队列内按指令集顺序依次执行，不同队列按顺序启动并同时执行
+            val queues = queueGroups(commands.map { it.project }) { lockKeys(it) }
             coroutineScope {
-                for ((command, slot) in commands.zip(slots)) {
+                for (queue in queues) {
+                    // 执行内部有阻塞的网络请求，放到 IO 线程池
                     launch(Dispatchers.IO) {
-                        try {
-                            executeMainProcess(command.project, command.input, emptyList(), slot)
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Throwable) {
-                            // 单条异常不能连累同批其他指令
-                            logger.warning("指令集「$setName」中的 ${command.project} 执行异常", e)
-                        } finally {
-                            THREADS.removeIf { it.id == slot.id }
+                        for (index in queue) {
+                            val command = commands[index]
+                            val slot = slots[index]
+                            try {
+                                executeMainProcess(command.project, command.input, emptyList(), slot)
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Throwable) {
+                                // 单条异常不影响其他指令
+                                logger.warning("指令集「$setName」中的 ${command.project} 执行异常", e)
+                            } finally {
+                                THREADS.removeIf { it.id == slot.id }
+                            }
                         }
                     }
                 }
@@ -101,6 +108,39 @@ object CommandSetExecutor {
             // 频率拒绝、发送消息失败等提前结束需退还进程，按 ID 删除
             val ids = slots.mapTo(HashSet()) { it.id }
             THREADS.removeIf { it.id in ids }
+        }
+    }
+
+    /**
+     * 按执行时争用的锁划分队列：锁有交集的指令归入同一队列（可传递）
+     * @param lockKeys 项目执行时会占用的锁
+     * @return 各队列包含的指令下标，队列按首条指令的先后排列，队列内保持指令集顺序
+     */
+    internal fun queueGroups(projects: List<String>, lockKeys: (String) -> Set<String>): List<List<Int>> {
+        val keysOf = projects.distinct().associateWith(lockKeys)
+        val parent = IntArray(projects.size) { it }
+        fun root(i: Int): Int {
+            var x = i
+            while (parent[x] != x) x = parent[x]
+            return x
+        }
+        for (i in projects.indices) {
+            for (j in 0 until i) {
+                if (keysOf.getValue(projects[i]).any { it in keysOf.getValue(projects[j]) }) {
+                    parent[root(i)] = root(j)
+                }
+            }
+        }
+        return projects.indices.groupBy { root(it) }.values.toList()
+    }
+
+    /**
+     * 项目执行时会占用的锁：项目自身；开启存储的项目还会锁定关联的全部存储库
+     */
+    private fun lockKeys(name: String): Set<String> = buildSet {
+        add("project:$name")
+        if (PastebinData.pastebin[name]?.get("storage") == "true") {
+            StorageManager.linkedBucketIds(name).forEach { add("bucket:$it") }
         }
     }
 

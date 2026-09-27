@@ -164,7 +164,7 @@ Favorite frequently used projects and build command sets that run in one go.
 ### 📦 Command Sets
 | Command                                  | Description                                 |
 |------------------------------------------|---------------------------------------------|
-| `/fav run <set>`                         | Run every command of a set at once          |
+| `/fav run <set>`                         | Run every command of a set                  |
 | `/fav set [set]`                         | View command sets                           |
 | `/fav set <set> add <project> [input]`   | Append a command (auto creates command set) |
 | `/fav set <set> rm <index>`              | Remove one command                          |
@@ -172,7 +172,7 @@ Favorite frequently used projects and build command sets that run in one go.
 
 - Favorite slots are fixed: removing a favorite leaves its slot empty, and new favorites take the smallest free slot
 - A favorite alias cannot match a project name, another of your aliases, or one of your set names
-- Commands in a set run concurrently, each taking one process; a set holds at most the per-user process limit (process limit minus 2)
+- Commands in a set start in order and run concurrently, each taking one process; a set holds at most the per-user process limit (process limit minus 2)
 - Before a set runs, process capacity and request frequency are checked for the whole set; if either fails, nothing runs and no requests are counted
 
 ---
