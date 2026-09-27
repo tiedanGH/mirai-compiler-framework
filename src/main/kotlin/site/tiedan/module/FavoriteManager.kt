@@ -6,6 +6,7 @@ import site.tiedan.data.PastebinData
 import site.tiedan.data.dao.CodeCacheDao
 import site.tiedan.data.dao.FavoriteDao
 import site.tiedan.utils.PastebinUrlHelper
+import java.sql.Connection
 
 /**
  * # 个人收藏
@@ -248,6 +249,56 @@ object FavoriteManager {
         val aliases = FavoriteDao.listFavorites(conn, userID).mapNotNullTo(HashSet()) { it.alias }
         checkSetName(to, aliases)?.let { return@transaction RenameResult.Rejected(it) }
         RenameResult.Renamed(FavoriteDao.renameSet(conn, userID, from, to))
+    }
+
+    /* ==================== 分享导入 ==================== */
+
+    /**
+     * 导入被拒绝的原因
+     * @param nameIssue 是否为名称问题，指定其他名称后可以导入
+     */
+    data class ImportProblem(val reason: String, val nameIssue: Boolean)
+
+    /** 导入的结果 */
+    sealed interface ImportResult {
+        /** @param skipped 已不存在而被跳过的项目 */
+        data class Imported(val size: Int, val skipped: List<String>) : ImportResult
+        data class Rejected(val problem: ImportProblem) : ImportResult
+    }
+
+    /**
+     * 导入前检查，不写入任何数据
+     * @param count 仍然存在的项目对应的指令条数
+     */
+    fun checkImport(userID: String, setName: String, count: Int, perSetLimit: Int): ImportProblem? =
+        Database.read { importProblem(it, userID, setName, count, perSetLimit) }
+
+    /**
+     * 将分享的指令集导入为自己的新指令集，已不存在的项目跳过
+     * @param perSetLimit 单个指令集的条数上限
+     */
+    fun importSet(userID: String, setName: String, items: List<FavoriteShare.Item>, perSetLimit: Int): ImportResult =
+        Database.transaction { conn ->
+            val (valid, missing) = items.partition { it.project in PastebinData.pastebin }
+            importProblem(conn, userID, setName, valid.size, perSetLimit)
+                ?.let { return@transaction ImportResult.Rejected(it) }
+            for (item in valid) FavoriteDao.addCommand(conn, userID, setName, item.project, item.input)
+            ImportResult.Imported(valid.size, missing.map { it.project }.distinct())
+        }
+
+    private fun importProblem(conn: Connection, userID: String, setName: String, count: Int, perSetLimit: Int): ImportProblem? {
+        if (count == 0) return ImportProblem("分享的指令集中的项目都已不存在，无法导入", nameIssue = false)
+        val names = FavoriteDao.setNames(conn, userID)
+        if (setName in names) return ImportProblem("导入名称和您的指令集重名，请指定新名称后重试", nameIssue = true)
+        val aliases = FavoriteDao.listFavorites(conn, userID).mapNotNullTo(HashSet()) { it.alias }
+        checkSetName(setName, aliases)?.let { return ImportProblem(it, nameIssue = true) }
+        if (names.size >= MAX_SETS) {
+            return ImportProblem("指令集已达上限 $MAX_SETS 个，请先删除不用的指令集", nameIssue = false)
+        }
+        if (count > perSetLimit) {
+            return ImportProblem("该指令集共 $count 条指令，超出单用户进程上限 $perSetLimit 条", nameIssue = false)
+        }
+        return null
     }
 
     /* ==================== 快捷前缀 ==================== */

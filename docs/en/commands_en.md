@@ -155,29 +155,33 @@ Manage and operate local images.
 Favorite frequently used projects and build command sets that run in one go.
 
 ### ⭐ Favorites
-| Command                                    | Description                         |
-|--------------------------------------------|-------------------------------------|
-| `/fav [list]`                              | View favorite lists                 |
-| `/fav add <project1> [project2]...`        | Add projects to favorites           |
-| `/fav rm <slot/project/alias>...`          | Remove favorites                    |
-| `/fav alias <slot/project/alias> [alias]`  | Set a favorite alias (empty clears) |
-| `/fav run <slot/alias> [input]`            | Run a favorite project              |
+| Command                                 | Description                         |
+|-----------------------------------------|-------------------------------------|
+| `/f [list]`                             | View favorite lists                 |
+| `/f add <project1> [project2]...`       | Add projects to favorites           |
+| `/f rm <slot/project/alias>...`         | Remove favorites                    |
+| `/f alias <slot/project/alias> [alias]` | Set a favorite alias (empty clears) |
+| `/f run <slot/alias> [input]`           | Run a favorite project              |
 
 ### 📦 Command Sets
-| Command                                  | Description                                 |
-|------------------------------------------|---------------------------------------------|
-| `/fav run <set>`                         | Run every command of a set                  |
-| `/fav set [set]`                         | View command sets                           |
-| `/fav set <set> add <project> [input]`   | Append a command (auto creates command set) |
-| `/fav set <set> rm <index>`              | Remove one command                          |
-| `/fav set <set> rename <new name>`       | Rename a command set                        |
-| `/fav set <set> delete`                  | Delete the whole set                        |
+| Command                              | Description                                 |
+|--------------------------------------|---------------------------------------------|
+| `/f run <set>`                       | Run every command of a set                  |
+| `/f set [set]`                       | View command sets                           |
+| `/f set <set> add <project> [input]` | Append a command (auto creates command set) |
+| `/f set <set> rm <index>`            | Remove one command                          |
+| `/f set <set> rename <new name>`     | Rename a command set                        |
+| `/f set <set> delete`                | Delete the whole set                        |
+| `/f share <set>`                     | Create a share code for a set               |
+| `/f import <code> [new name]`        | Import a command set from a share code      |
 
 - Favorite slots are fixed: removing a favorite leaves its slot empty, and new favorites take the smallest free slot
 - A favorite alias cannot match a project name, another of your aliases, or one of your set names
 - Favorite aliases and command sets can be run directly with the Quick Prefix (e.g. `##<alias>`, `##<set>`), taking priority over projects with the same name
 - Commands in a set start in order and run concurrently, each taking one process; a set holds at most the per-user process limit (process limit minus 2)
 - Before a set runs, process capacity and request frequency are checked for the whole set; if either fails, nothing runs and no requests are counted
+- A share code keeps a snapshot of the set, is valid for 24 hours and is cleared when the bot restarts; sets with identical commands share the same code
+- Each user keeps at most 20 share codes at once, and the one least recently shared is cleared when a new one exceeds the limit; imports show a preview and need a confirmation
 
 ---
 

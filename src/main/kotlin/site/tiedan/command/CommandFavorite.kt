@@ -20,6 +20,7 @@ import site.tiedan.MiraiCompilerFramework.getUserPlatformID
 import site.tiedan.MiraiCompilerFramework.isBotEnabled
 import site.tiedan.MiraiCompilerFramework.logger
 import site.tiedan.MiraiCompilerFramework.pendingCommand
+import site.tiedan.MiraiCompilerFramework.requestUserConfirmation
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.uploadTempImage
 import site.tiedan.MiraiCompilerFramework.userThreadLimit
@@ -32,6 +33,7 @@ import site.tiedan.data.PastebinData
 import site.tiedan.data.dao.FavoriteDao
 import site.tiedan.format.MarkdownImageGenerator
 import site.tiedan.module.FavoriteManager
+import site.tiedan.module.FavoriteShare
 import site.tiedan.utils.FuzzySearch
 
 /**
@@ -59,6 +61,8 @@ object CommandFavorite : RawCommand(
         Command("f set <指令集> rm <序号>", "收藏 指令集 <指令集> 移除 <序号>", "移除一条指令", 2),
         Command("f set <指令集> rename <新名称>", "收藏 指令集 <指令集> 改名 <新名称>", "修改指令集名称", 2),
         Command("f set <指令集> delete", "收藏 指令集 <指令集> 删除", "删除整个指令集", 2),
+        Command("f share <指令集>", "收藏 分享 <指令集>", "生成指令集分享码", 2),
+        Command("f import <分享码> [新名称]", "收藏 导入 <分享码> [新名称]", "通过分享码导入指令集", 2),
     )
 
     override suspend fun CommandSender.onCommand(args: MessageChain) {
@@ -81,6 +85,8 @@ object CommandFavorite : RawCommand(
                 "alias", "别名"-> setAlias(userID, args)
                 "run", "执行"-> run(userID, args)
                 "set", "指令集"-> commandSet(userID, args)
+                "share", "分享"-> shareSet(userID, args[1].content)
+                "import", "导入"-> importSet(userID, args)
                 else-> sendQuoteReply("[参数不匹配]\n请使用「${commandPrefix}f help」来查看指令帮助")
             }
         } catch (_: IndexOutOfBoundsException) {
@@ -356,6 +362,73 @@ object CommandFavorite : RawCommand(
             if (count == 0) unknownSetMessage(userID, setName)
             else "已删除指令集「$setName」（共 $count 条指令）"
         )
+    }
+
+    /* ==================== 分享 ==================== */
+
+    private suspend fun CommandSender.shareSet(userID: String, setName: String) {
+        val commands = FavoriteManager.commandSet(userID, setName)
+        if (commands.isEmpty()) {
+            sendQuoteReply(unknownSetMessage(userID, setName))
+            return
+        }
+        val snapshot = FavoriteShare.share(userID, setName, commands.map { FavoriteShare.Item(it.project, it.input) })
+        sendQuoteReply(
+            "📤 分享成功：${snapshot.code}\n" +
+            "24 小时内有效，且重启后失效\n" +
+            "📥 一键导入「$setName」：\n" +
+            "${commandPrefix}f import ${snapshot.code}"
+        )
+    }
+
+    /**
+     * 通过分享码导入：先预览指令内容，二次确认后导入
+     */
+    private suspend fun CommandSender.importSet(userID: String, args: MessageChain) {
+        val code = args[1].content.uppercase()
+        if (args.size > 3) {
+            sendQuoteReply("指令集名称中不能包含空格")
+            return
+        }
+        val snapshot = FavoriteShare.find(code)
+        if (snapshot == null) {
+            sendQuoteReply("$code 不存在或已失效\n分享码 24 小时内有效，机器人重启后失效，请联系分享人重新分享")
+            return
+        }
+        val setName = args.getOrNull(2)?.content ?: snapshot.setName
+        val (valid, missing) = snapshot.items.partition { it.project in PastebinData.pastebin }
+        FavoriteManager.checkImport(userID, setName, valid.size, userThreadLimit)?.let {
+            val hint = if (it.nameIssue) "\n📥 ${commandPrefix}f import $code <新名称>" else ""
+            sendQuoteReply("导入失败：${it.reason}$hint")
+            return
+        }
+
+        requestUserConfirmation(userID, args.content, buildString {
+            appendLine("📥 即将导入「$setName」（${valid.size} 条）：")
+            valid.forEachIndexed { index, item ->
+                append("${index + 1}. ${item.project}")
+                if (item.input.isNotEmpty()) append("：${FavoriteManager.inputPreview(item.input)}")
+                appendLine()
+            }
+            if (missing.isNotEmpty()) {
+                appendLine("跳过不存在项目：${missing.map { it.project }.distinct().joinToString("、")}")
+            }
+            appendLine("⚠️ 导入后指令集将以您的身份执行，会读写自己的存档")
+            appendLine()
+            append("请再次发送本指令完成导入")
+        }) ?: return
+
+        when (val result = FavoriteManager.importSet(userID, setName, snapshot.items, userThreadLimit)) {
+            is FavoriteManager.ImportResult.Rejected -> sendQuoteReply("导入失败：${result.problem.reason}")
+            is FavoriteManager.ImportResult.Imported -> {
+                FavoriteShare.afterImport(code)
+                sendQuoteReply(buildString {
+                    append("📥 已导入指令集「$setName」（${result.size} 条）")
+                    if (result.skipped.isNotEmpty()) append("\n跳过不存在项目：${result.skipped.joinToString("、")}")
+                    append("\n▶️ 执行：${runHint(setName)}")
+                })
+            }
+        }
     }
 
     private fun unknownSetMessage(userID: String, setName: String): String {
