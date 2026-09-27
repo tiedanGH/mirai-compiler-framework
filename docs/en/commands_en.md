@@ -101,6 +101,8 @@ Run code saved in Pastebin
 
 *The Quick Prefix can be configured in [PastebinConfig](../../src/main/kotlin/site/tiedan/config/PastebinConfig.kt)
 
+*The Quick Prefix first matches your own favorite aliases and command sets, then project names and project aliases; anything else is ignored
+
 ---
 
 ## Cross-Project Bucket Commands
@@ -168,10 +170,12 @@ Favorite frequently used projects and build command sets that run in one go.
 | `/fav set [set]`                         | View command sets                           |
 | `/fav set <set> add <project> [input]`   | Append a command (auto creates command set) |
 | `/fav set <set> rm <index>`              | Remove one command                          |
+| `/fav set <set> rename <new name>`       | Rename a command set                        |
 | `/fav set <set> delete`                  | Delete the whole set                        |
 
 - Favorite slots are fixed: removing a favorite leaves its slot empty, and new favorites take the smallest free slot
 - A favorite alias cannot match a project name, another of your aliases, or one of your set names
+- Favorite aliases and command sets can be run directly with the Quick Prefix (e.g. `##<alias>`, `##<set>`), taking priority over projects with the same name
 - Commands in a set start in order and run concurrently, each taking one process; a set holds at most the per-user process limit (process limit minus 2)
 - Before a set runs, process capacity and request frequency are checked for the whole set; if either fails, nothing runs and no requests are counted
 

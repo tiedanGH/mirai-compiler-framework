@@ -22,8 +22,9 @@ import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.uploadTempImage
 import site.tiedan.MiraiCompilerFramework.userThreadLimit
 import site.tiedan.command.CommandRun.queryImageUrls
+import site.tiedan.core.CommandSetExecutor.NO_EXTRA_INPUT
 import site.tiedan.core.CommandSetExecutor.executeCommandSet
-import site.tiedan.core.PastebinCodeExecutor.executeMainProcess
+import site.tiedan.core.CommandSetExecutor.executeFavorite
 import site.tiedan.data.PastebinData
 import site.tiedan.data.dao.FavoriteDao
 import site.tiedan.format.MarkdownImageGenerator
@@ -40,7 +41,7 @@ object CommandFavorite : RawCommand(
     primaryName = "favorite",
     secondaryNames = arrayOf("f", "fav", "收藏"),
     description = "个人收藏与指令集",
-    usage = "${commandPrefix}fav help"
+    usage = "${commandPrefix}f help"
 ) {
     private val commandList = arrayOf(
         Command("f [list]", "收藏 [列表]", "查看收藏列表", 1),
@@ -53,6 +54,7 @@ object CommandFavorite : RawCommand(
         Command("f set [指令集]", "收藏 指令集 [指令集]", "查看指令集", 2),
         Command("f set <指令集> add <项目> [输入]", "收藏 指令集 <指令集> 添加 <项目> [输入]", "追加指令（自动创建指令集）", 2),
         Command("f set <指令集> rm <序号>", "收藏 指令集 <指令集> 移除 <序号>", "移除一条指令", 2),
+        Command("f set <指令集> rename <新名称>", "收藏 指令集 <指令集> 改名 <新名称>", "修改指令集名称", 2),
         Command("f set <指令集> delete", "收藏 指令集 <指令集> 删除", "删除整个指令集", 2),
     )
 
@@ -79,10 +81,10 @@ object CommandFavorite : RawCommand(
                 "alias", "别名"-> setAlias(userID, args)
                 "run", "执行"-> run(userID, args)
                 "set", "指令集"-> commandSet(userID, args)
-                else-> sendQuoteReply("[参数不匹配]\n请使用「${commandPrefix}fav help」来查看指令帮助")
+                else-> sendQuoteReply("[参数不匹配]\n请使用「${commandPrefix}f help」来查看指令帮助")
             }
         } catch (_: IndexOutOfBoundsException) {
-            sendQuoteReply("[参数不足]\n请使用「${commandPrefix}fav help」来查看指令帮助")
+            sendQuoteReply("[参数不足]\n请使用「${commandPrefix}f help」来查看指令帮助")
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -97,7 +99,7 @@ object CommandFavorite : RawCommand(
                 .joinToString("") { "$commandPrefix${if (cn) it.usageCN else it.usage}　${it.desc}\n" }
         return group("⭐ 个人收藏：", 1) +
             group("📦 指令集：", 2) +
-            "💡 指令集按顺序自动执行，每条占用一个进程，单个指令集最多 $userThreadLimit 条"
+            "💡 指令集按顺序自动执行，每个最多 $userThreadLimit 条"
     }
 
     /* ==================== 收藏 ==================== */
@@ -218,7 +220,7 @@ object CommandFavorite : RawCommand(
             return
         }
         if (args.size > 2) {
-            sendQuoteReply("执行失败：指令集不支持附加输入，每条指令使用保存时的输入")
+            sendQuoteReply(NO_EXTRA_INPUT)
             return
         }
         executeCommandSet(userID, target, commands)
@@ -226,10 +228,6 @@ object CommandFavorite : RawCommand(
 
     /** 执行单个收藏：输入与图片的处理和 run 指令一致 */
     private suspend fun CommandSender.runFavorite(favorite: FavoriteDao.Favorite, args: MessageChain) {
-        if (favorite.project !in PastebinData.pastebin) {
-            sendQuoteReply("项目 ${favorite.project} 已被删除，请使用「${commandPrefix}f rm ${favorite.slot}」移除收藏")
-            return
-        }
         val userInput = inputAfter(args, 2)
         val imageUrls = args.drop(2).toMessageChain().queryImageUrls()
         if (this is CommandSenderOnMessage<*> && fromEvent.message[QuoteReply.Key] != null) {
@@ -237,7 +235,7 @@ object CommandFavorite : RawCommand(
                 ?.source?.originalMessage?.queryImageUrls()
                 ?.let { imageUrls.addAll(0, it) }
         }
-        executeMainProcess(favorite.project, userInput, imageUrls)
+        executeFavorite(favorite, userInput, imageUrls)
     }
 
     /* ==================== 指令集 ==================== */
@@ -252,6 +250,7 @@ object CommandFavorite : RawCommand(
             null-> showSet(userID, setName)
             "add", "添加"-> addCommand(userID, setName, args)
             "rm", "remove", "移除"-> removeCommand(userID, setName, args)
+            "rename", "改名"-> renameSet(userID, setName, args)
             "delete", "删除"-> deleteSet(userID, setName)
             else-> sendQuoteReply("[参数不匹配]\n请使用「${commandPrefix}f help」来查看指令帮助")
         }
@@ -329,6 +328,22 @@ object CommandFavorite : RawCommand(
             append("已从指令集「$setName」移除第 $index 条指令：${removed.project}")
             if (remaining == 0) append("\n指令集已没有指令，随之删除")
         })
+    }
+
+    private suspend fun CommandSender.renameSet(userID: String, setName: String, args: MessageChain) {
+        val newName = args[3].content
+        if (args.size > 4) {
+            sendQuoteReply("指令集名称中不能包含空格")
+            return
+        }
+        when (val result = FavoriteManager.renameSet(userID, setName, newName)) {
+            is FavoriteManager.RenameResult.NotFound -> sendQuoteReply(unknownSetMessage(userID, setName))
+            is FavoriteManager.RenameResult.Rejected -> sendQuoteReply("改名失败：${result.reason}")
+            is FavoriteManager.RenameResult.Renamed -> sendQuoteReply(
+                "已将指令集「$setName」改名为「$newName」（共 ${result.count} 条指令）\n" +
+                "▶️ 执行：${commandPrefix}f run $newName"
+            )
+        }
     }
 
     private suspend fun CommandSender.deleteSet(userID: String, setName: String) {

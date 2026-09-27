@@ -4,6 +4,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import net.mamoe.mirai.console.command.CommandManager.INSTANCE.commandPrefix
 import net.mamoe.mirai.console.command.CommandSender
 import net.mamoe.mirai.contact.Group
 import site.tiedan.MiraiCompilerFramework.THREADS
@@ -34,6 +35,20 @@ import site.tiedan.module.RequestLimiter
  * @author tiedanGH
  */
 object CommandSetExecutor {
+
+    /** 执行指令集时附带了输入 */
+    const val NO_EXTRA_INPUT = "执行失败：指令集不支持附加输入，每条指令使用保存时的输入"
+
+    /**
+     * 执行单个收藏的项目，项目已被删除时提示
+     */
+    suspend fun CommandSender.executeFavorite(favorite: FavoriteDao.Favorite, userInput: String, imageUrls: List<String>) {
+        if (favorite.project !in PastebinData.pastebin) {
+            sendQuoteReply("项目 ${favorite.project} 已被删除，请使用「${commandPrefix}f rm ${favorite.slot}」移除收藏")
+            return
+        }
+        executeMainProcess(favorite.project, userInput, imageUrls)
+    }
 
     /**
      * 执行整个指令集
@@ -67,7 +82,7 @@ object CommandSetExecutor {
         }
         tryRegisterThreads(slots)?.let { quota ->
             sendQuoteReply(
-                "执行失败：指令集的 ${slots.size} 条指令需预留 ${slots.size} 个进程，当前可用进程不足，请稍后再试\n" +
+                "执行失败：此指令集需预留 ${slots.size} 个进程，当前可用进程不足，请稍后再试\n" +
                 "全局进程 ${quota.total}/${quota.totalLimit}，您的进程 ${quota.user}/${quota.userLimit}"
             )
             return

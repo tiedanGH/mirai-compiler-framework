@@ -31,6 +31,16 @@ object FavoriteDao {
             }
         }
 
+    /** 按收藏别名查找收藏，不存在时返回 null */
+    fun findByAlias(conn: Connection, userID: String, alias: String): Favorite? =
+        conn.prepareStatement("SELECT slot, project, alias FROM favorite_project WHERE user_id = ? AND alias = ?").use { ps ->
+            ps.setString(1, userID)
+            ps.setString(2, alias)
+            ps.executeQuery().use { rs ->
+                if (rs.next()) Favorite(rs.getInt(1), rs.getString(2), rs.getString(3)) else null
+            }
+        }
+
     /** 在指定序号写入收藏，项目已收藏或序号已占用时不写入并返回 false */
     fun addFavorite(conn: Connection, userID: String, slot: Int, project: String): Boolean =
         conn.prepareStatement("INSERT OR IGNORE INTO favorite_project(user_id, slot, project) VALUES(?, ?, ?)").use { ps ->
@@ -106,6 +116,15 @@ object FavoriteDao {
             ps.setString(1, userID)
             ps.setLong(2, id)
             ps.executeUpdate() > 0
+        }
+
+    /** 指令集改名，指令的先后顺序不变，返回迁移的指令条数 */
+    fun renameSet(conn: Connection, userID: String, from: String, to: String): Int =
+        conn.prepareStatement("UPDATE favorite_command SET set_name = ? WHERE user_id = ? AND set_name = ?").use { ps ->
+            ps.setString(1, to)
+            ps.setString(2, userID)
+            ps.setString(3, from)
+            ps.executeUpdate()
         }
 
     /** 删除整个指令集，返回删除的指令条数 */

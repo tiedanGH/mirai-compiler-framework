@@ -3,6 +3,7 @@ package site.tiedan.data.dao
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
@@ -117,6 +118,33 @@ class FavoriteDaoTest {
         assertEquals(0, FavoriteDao.deleteSet(conn, "1", "早安"))
         assertEquals(2, FavoriteDao.deleteSet(conn, "1", "签到"))
         assertEquals(emptyList<String>(), FavoriteDao.setNames(conn, "1"))
+    }
+
+    @Test
+    @DisplayName("指令集改名迁移全部指令且顺序不变，不影响其他指令集与其他用户")
+    fun renameSetKeepsOrder() {
+        FavoriteDao.addCommand(conn, "1", "早安", "天气", "北京")
+        FavoriteDao.addCommand(conn, "1", "签到", "签到", "")
+        FavoriteDao.addCommand(conn, "1", "早安", "运势", "")
+        FavoriteDao.addCommand(conn, "2", "早安", "天气", "上海")
+
+        assertEquals(2, FavoriteDao.renameSet(conn, "1", "早安", "晨间"))
+        assertEquals(listOf("晨间", "签到"), FavoriteDao.setNames(conn, "1"), "改名后指令集的先后位置不变")
+        assertEquals(listOf("天气", "运势"), FavoriteDao.listSet(conn, "1", "晨间").map { it.project })
+        assertEquals(listOf("早安"), FavoriteDao.setNames(conn, "2"))
+        assertEquals(0, FavoriteDao.renameSet(conn, "1", "不存在", "x"))
+    }
+
+    @Test
+    @DisplayName("按收藏别名查找只匹配自己的收藏")
+    fun findByAlias() {
+        FavoriteDao.addFavorite(conn, "1", 3, "今日运势")
+        FavoriteDao.setAlias(conn, "1", 3, "ys")
+        FavoriteDao.addFavorite(conn, "2", 1, "猜数字")
+
+        assertEquals(FavoriteDao.Favorite(3, "今日运势", "ys"), FavoriteDao.findByAlias(conn, "1", "ys"))
+        assertNull(FavoriteDao.findByAlias(conn, "2", "ys"), "别人的收藏别名不能匹配")
+        assertNull(FavoriteDao.findByAlias(conn, "1", "今日运势"), "项目名称不是收藏别名")
     }
 
     @Test

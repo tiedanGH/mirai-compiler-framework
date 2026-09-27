@@ -39,7 +39,11 @@ import site.tiedan.MiraiCompilerFramework.tryRegisterThreads
 import site.tiedan.command.CommandRun.queryImageUrls
 import site.tiedan.config.DockerConfig
 import site.tiedan.config.PastebinConfig
+import site.tiedan.core.CommandSetExecutor.NO_EXTRA_INPUT
+import site.tiedan.core.CommandSetExecutor.executeCommandSet
+import site.tiedan.core.CommandSetExecutor.executeFavorite
 import site.tiedan.core.PastebinCodeExecutor.executeMainProcess
+import site.tiedan.module.FavoriteManager
 import site.tiedan.data.ExtraData
 import site.tiedan.data.PastebinData
 import site.tiedan.format.ForwardMessageGenerator
@@ -101,6 +105,7 @@ object Events : SimpleListenerHost() {
 
     /**
      * 快捷前缀执行pastebin中的代码
+     * - 先匹配自己的收藏别名与指令集，再匹配项目名称与项目别名，均不匹配时忽略
      */
     suspend fun CommandSender.commandRunOnEvent(message: MessageChain) {
         val content = message.content
@@ -112,17 +117,35 @@ object Events : SimpleListenerHost() {
         if (msg.isEmpty()) return
 
         val parts = NAME_SEPARATOR.split(msg, limit = 2)
-        val name = PastebinData.alias[parts[0]] ?: parts[0]
+        val token = parts[0]
+        val userInput = parts.getOrElse(1) { "" }
+
+        // 收藏别名与指令集
+        val userID = getUserPlatformID(this.user?.id) ?: CONSOLE_USER_ID
+        when (val target = FavoriteManager.resolveQuick(userID, token)) {
+            is FavoriteManager.QuickTarget.Favorite ->
+                return executeFavorite(target.favorite, userInput, message.collectImageUrls())
+            is FavoriteManager.QuickTarget.CommandSet -> {
+                if (userInput.isNotEmpty()) return sendQuoteReply(NO_EXTRA_INPUT)
+                return executeCommandSet(userID, target.name, target.commands)
+            }
+            null -> {}
+        }
+
+        // 项目名称与别名
+        val name = PastebinData.alias[token] ?: token
         if (name !in PastebinData.pastebin) return
 
-        val userInput = parts.getOrElse(1) { "" }
-        val imageUrls = message.queryImageUrls().toMutableList()
+        this.executeMainProcess(name, userInput, message.collectImageUrls())
+    }
 
-        message.findIsInstance<QuoteReply>()
+    /** 消息与所引用消息中的图片链接，引用消息中的在前 */
+    private suspend fun MessageChain.collectImageUrls(): List<String> {
+        val imageUrls = queryImageUrls().toMutableList()
+        findIsInstance<QuoteReply>()
             ?.source?.originalMessage?.queryImageUrls()
             ?.let { imageUrls.addAll(0, it) }
-
-        this.executeMainProcess(name, userInput, imageUrls)
+        return imageUrls
     }
 
     /**

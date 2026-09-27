@@ -28,7 +28,7 @@ object FavoriteManager {
 
     private fun checkNameFormat(name: String, what: String): String? = when {
         name.length > MAX_NAME_LENGTH -> "${what}不能超过 $MAX_NAME_LENGTH 个字"
-        isIndexToken(name) -> "${what}不能是纯数字（序号）"
+        isIndexToken(name) -> "${what}不能是纯数字"
         else -> null
     }
 
@@ -228,6 +228,48 @@ object FavoriteManager {
     /** 删除整个指令集，返回删除的指令条数 */
     fun deleteSet(userID: String, setName: String): Int =
         Database.transaction { FavoriteDao.deleteSet(it, userID, setName) }
+
+    /** 指令集改名的结果 */
+    sealed interface RenameResult {
+        /** @param count 迁移的指令条数 */
+        data class Renamed(val count: Int) : RenameResult
+        data class Rejected(val reason: String) : RenameResult
+        data object NotFound : RenameResult
+    }
+
+    /**
+     * 指令集改名：新名称沿用新建指令集的校验，且不能与自己已有的指令集重名
+     */
+    fun renameSet(userID: String, from: String, to: String): RenameResult = Database.transaction { conn ->
+        val names = FavoriteDao.setNames(conn, userID)
+        if (from !in names) return@transaction RenameResult.NotFound
+        if (to == from) return@transaction RenameResult.Rejected("新名称与原名称相同")
+        if (to in names) return@transaction RenameResult.Rejected("指令集「$to」已存在")
+        val aliases = FavoriteDao.listFavorites(conn, userID).mapNotNullTo(HashSet()) { it.alias }
+        checkSetName(to, aliases)?.let { return@transaction RenameResult.Rejected(it) }
+        RenameResult.Renamed(FavoriteDao.renameSet(conn, userID, from, to))
+    }
+
+    /* ==================== 快捷前缀 ==================== */
+
+    /** 快捷前缀匹配到的收藏目标 */
+    sealed interface QuickTarget {
+        data class Favorite(val favorite: FavoriteDao.Favorite) : QuickTarget
+        data class CommandSet(val name: String, val commands: List<FavoriteDao.Command>) : QuickTarget
+    }
+
+    /**
+     * 按快捷前缀后的名称查找自己的收藏别名或指令集，收藏别名优先
+     * - 收藏别名与指令集名称不超过 [MAX_NAME_LENGTH] 个字且不是纯数字，不符合的名称直接跳过，不查询数据库
+     * @return 都不匹配时返回 null
+     */
+    fun resolveQuick(userID: String, token: String): QuickTarget? {
+        if (token.length > MAX_NAME_LENGTH || isIndexToken(token)) return null
+        return Database.read { conn ->
+            FavoriteDao.findByAlias(conn, userID, token)?.let { return@read QuickTarget.Favorite(it) }
+            FavoriteDao.listSet(conn, userID, token).takeIf { it.isNotEmpty() }?.let { QuickTarget.CommandSet(token, it) }
+        }
+    }
 
     /* ==================== 项目联动 ==================== */
 
