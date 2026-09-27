@@ -14,6 +14,8 @@ import net.mamoe.mirai.message.data.toMessageChain
 import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.CONSOLE_USER_ID
 import site.tiedan.MiraiCompilerFramework.Command
+import site.tiedan.MiraiCompilerFramework.getPlatform
+import site.tiedan.MiraiCompilerFramework.getQuickPrefix
 import site.tiedan.MiraiCompilerFramework.getUserPlatformID
 import site.tiedan.MiraiCompilerFramework.isBotEnabled
 import site.tiedan.MiraiCompilerFramework.logger
@@ -21,6 +23,7 @@ import site.tiedan.MiraiCompilerFramework.pendingCommand
 import site.tiedan.MiraiCompilerFramework.sendQuoteReply
 import site.tiedan.MiraiCompilerFramework.uploadTempImage
 import site.tiedan.MiraiCompilerFramework.userThreadLimit
+import site.tiedan.command.CommandRun.inputAfter
 import site.tiedan.command.CommandRun.queryImageUrls
 import site.tiedan.core.CommandSetExecutor.NO_EXTRA_INPUT
 import site.tiedan.core.CommandSetExecutor.executeCommandSet
@@ -58,9 +61,6 @@ object CommandFavorite : RawCommand(
         Command("f set <指令集> delete", "收藏 指令集 <指令集> 删除", "删除整个指令集", 2),
     )
 
-    /** 输入与前面参数之间的分隔符 */
-    private val SEPARATOR = Regex("\\s+")
-
     override suspend fun CommandSender.onCommand(args: MessageChain) {
 
         if (!isBotEnabled(bot?.id)) return
@@ -74,7 +74,7 @@ object CommandFavorite : RawCommand(
 
         try {
             when (args.getOrNull(0)?.content ?: "list") {
-                "help", "帮助"-> sendQuoteReply(buildHelp(cn = args[0].content == "帮助"))
+                "help", "帮助"-> sendQuoteReply(buildHelp(cn = args[0].content == "帮助", firstQuickPrefix()))
                 "list", "列表"-> showCard(userID)
                 "add", "添加"-> addFavorites(userID, args)
                 "rm", "remove", "移除"-> removeFavorites(userID, args)
@@ -93,13 +93,15 @@ object CommandFavorite : RawCommand(
         }
     }
 
-    private fun buildHelp(cn: Boolean): String {
+    /**
+     * @param quickPrefix 把快捷执行放在帮助最前面
+     */
+    private fun buildHelp(cn: Boolean, quickPrefix: String?): String {
         fun group(title: String, type: Int) = title + "\n" +
             commandList.filter { it.type == type }
-                .joinToString("") { "$commandPrefix${if (cn) it.usageCN else it.usage}　${it.desc}\n" }
-        return group("⭐ 个人收藏：", 1) +
-            group("📦 指令集：", 2) +
-            "💡 指令集按顺序自动执行，每个最多 $userThreadLimit 条"
+                .joinToString("\n") { "$commandPrefix${if (cn) it.usageCN else it.usage}　${it.desc}" }
+        val quick = quickPrefix?.let { "$it<收藏别名/指令集>　执行收藏项目或指令集\n" }.orEmpty()
+        return quick + group("⭐ 个人收藏：", 1) + "\n" + group("📦 指令集：", 2)
     }
 
     /* ==================== 收藏 ==================== */
@@ -114,7 +116,9 @@ object CommandFavorite : RawCommand(
             )
             return
         }
-        val footer = "▶️ 执行：${commandPrefix}f run <序号/收藏别名/指令集>"
+        val footer = firstQuickPrefix()
+            ?.let { "▶️ 执行：$it<收藏别名/指令集> 或 ${commandPrefix}f run <序号>" }
+            ?: "▶️ 执行：${commandPrefix}f run <序号/收藏别名/指令集>"
         replyRendered(MarkdownImageGenerator.generateFavoriteCardHtml(card, footer), width = "760") {
             FavoriteManager.formatCardText(card) + "\n$footer"
         }
@@ -183,7 +187,7 @@ object CommandFavorite : RawCommand(
                 val target = "#${result.favorite.slot} ${result.favorite.project}"
                 sendQuoteReply(
                     if (result.alias == null) "已清除 $target 的收藏别名"
-                    else "已将 $target 的收藏别名设为「${result.alias}」\n▶️ 执行：${commandPrefix}f run ${result.alias} [输入]"
+                    else "已将 $target 的收藏别名设为「${result.alias}」\n▶️ 执行：${runHint(result.alias)} [输入]"
                 )
             }
         }
@@ -276,7 +280,7 @@ object CommandFavorite : RawCommand(
             return
         }
         val detail = FavoriteManager.buildSetDetail(setName, commands, userThreadLimit)
-        val footer = "▶️ 执行：${commandPrefix}f run $setName"
+        val footer = "▶️ 执行：${runHint(setName)}"
         replyRendered(MarkdownImageGenerator.generateCommandSetHtml(detail, footer), width = "640") {
             FavoriteManager.formatSetDetailText(detail) + "\n$footer"
         }
@@ -306,7 +310,7 @@ object CommandFavorite : RawCommand(
                 if (result.created) appendLine("📦 已创建指令集「$setName」")
                 append("已添加第 ${result.size} 条指令：$project")
                 if (input.isNotEmpty()) append("：${FavoriteManager.inputPreview(input)}")
-                append("\n当前 ${result.size}/$userThreadLimit 条，执行：${commandPrefix}f run $setName")
+                append("\n当前 ${result.size}/$userThreadLimit 条，执行：${runHint(setName)}")
             })
         }
     }
@@ -341,7 +345,7 @@ object CommandFavorite : RawCommand(
             is FavoriteManager.RenameResult.Rejected -> sendQuoteReply("改名失败：${result.reason}")
             is FavoriteManager.RenameResult.Renamed -> sendQuoteReply(
                 "已将指令集「$setName」改名为「$newName」（共 ${result.count} 条指令）\n" +
-                "▶️ 执行：${commandPrefix}f run $newName"
+                "▶️ 执行：${runHint(newName)}"
             )
         }
     }
@@ -363,16 +367,15 @@ object CommandFavorite : RawCommand(
 
     /* ==================== 工具 ==================== */
 
+    /** 第一个快捷前缀，未设置时返回 null */
+    private fun CommandSender.firstQuickPrefix(): String? =
+        getQuickPrefix(getPlatform()).firstOrNull { it.isNotEmpty() }
+
     /**
-     * 取第 [skip] 个参数之后的全部内容作为输入，保留其中的换行与连续空白
-     * - 消息事件中从原始消息切分（原始消息比参数多出开头的指令名）
+     * 执行提示：优先使用第一个快捷前缀，未设置快捷前缀时使用收藏执行指令
      */
-    private fun CommandSender.inputAfter(args: MessageChain, skip: Int): String {
-        val joined = { args.drop(skip).joinToString(" ") { it.content } }
-        val raw = (this as? CommandSenderOnMessage<*>)?.fromEvent?.message?.content?.trim()
-            ?: return joined()
-        return SEPARATOR.split(raw, limit = skip + 2).getOrNull(skip + 1) ?: joined()
-    }
+    private fun CommandSender.runHint(target: String): String =
+        firstQuickPrefix()?.let { "$it$target" } ?: "${commandPrefix}f run $target"
 
     /**
      * 渲染为图片回复，渲染或上传失败时退回文字版

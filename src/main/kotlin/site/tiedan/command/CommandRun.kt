@@ -30,6 +30,20 @@ object CommandRun : RawCommand(
     suspend fun MessageChain.queryImageUrls(): MutableList<String> =
         filterIsInstance<Image>().map { it.queryUrl() }.toMutableList()
 
+    /** 输入与前面参数之间的分隔符 */
+    private val SEPARATOR = Regex("\\s+")
+
+    /**
+     * 取第 [skip] 个参数之后的全部内容作为输入，保留其中的换行与连续空白
+     * - 消息事件中从原始消息切分（原始消息比参数多出开头的指令名）
+     */
+    fun CommandSender.inputAfter(args: MessageChain, skip: Int): String {
+        val joined = { args.drop(skip).joinToString(" ") { it.content } }
+        val raw = (this as? CommandSenderOnMessage<*>)?.fromEvent?.message?.content?.trim()
+            ?: return joined()
+        return SEPARATOR.split(raw, limit = skip + 2).getOrNull(skip + 1) ?: joined()
+    }
+
     /**
      * 从保存的pastebin链接中直接运行
      */
@@ -55,7 +69,7 @@ object CommandRun : RawCommand(
             return
         }
 
-        val userInput = args.drop(1).joinToString(separator = " ") { it.content }
+        val userInput = inputAfter(args, 1)
         val imageUrls = args.drop(1).toMessageChain().queryImageUrls()
         if (this is CommandSenderOnMessage<*> && fromEvent.message[QuoteReply.Key] != null) {
             fromEvent.message.findIsInstance<QuoteReply>()
