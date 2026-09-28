@@ -9,8 +9,9 @@ import java.util.concurrent.ConcurrentHashMap
  * ### 代码请求限制
  * - 初次警告：近60秒内达到 15 次或近10分钟达到 130 次
  * - 二次警告：近60秒总次数达到 20 次或近10分钟达到 145 次
- * - 黑名单：近60秒总次数达到 25 次或近10分钟达到 150 次（管理员不会被拉黑）
- * - 指令集整批执行走 [admitBatch]：触及黑名单阈值时整批拒绝，且不记录任何请求
+ * - 阻止执行：近60秒总次数达到 25 次或近10分钟达到 150 次（管理员不受限制）
+ * - 黑名单：被阻止 2 次后仍继续请求时拉黑，被阻止的请求同样计入次数（管理员不会被拉黑）
+ * - 指令集整批执行走 [admitBatch]：计入后会达到阻止标准时整批拒绝，且不记录任何请求
  *
  * @author tiedanGH
  */
@@ -21,8 +22,11 @@ object RequestLimiter {
 
     private const val SHORT_WINDOW: Long = 60_000L
     private const val LONG_WINDOW: Long = 600_000L
+    /** 初次警告、二次警告、阻止执行的阈值 */
     private val SHORT_THRESHOLDS = listOf(15, 20, 25)
     private val LONG_THRESHOLDS = listOf(130, 145, 150)
+    /** 达到阻止标准后最多阻止次数，仍继续请求则拉黑 */
+    const val BLOCK_TIMES = 2
 
     private val userRequestTimes = ConcurrentHashMap<String, MutableList<Long>>()
     private val userWarningLevels = ConcurrentHashMap<String, WarningLevel>()
@@ -49,9 +53,9 @@ object RequestLimiter {
         // 获取用户当前的警告级别
         val currentLevel = userWarningLevels.getOrDefault(userID, WarningLevel.NONE)
 
-        // --- 黑名单判定 ---
-        val shortBlack = shortCount >= SHORT_THRESHOLDS[2]
-        val longBlack = longCount >= LONG_THRESHOLDS[2]
+        // --- 黑名单判定：阻止 BLOCK_TIMES 次后仍继续请求 ---
+        val shortBlack = shortCount >= SHORT_THRESHOLDS[2] + BLOCK_TIMES
+        val longBlack = longCount >= LONG_THRESHOLDS[2] + BLOCK_TIMES
         if ((shortBlack || longBlack) && currentLevel == WarningLevel.SECOND && !isAdmin) {
             ExtraData.BlackList.add(userID)
             ExtraData.save()
@@ -60,15 +64,23 @@ object RequestLimiter {
             return Pair("[警告无效处理]\n由于$reason，您已被加入执行代码黑名单，暂时无法再执行代码。黑名单将在每日8点自动重置。", true)
         }
 
+        // --- 阻止执行判定 ---
+        val shortBlock = shortCount >= SHORT_THRESHOLDS[2]
+        val longBlock = longCount >= LONG_THRESHOLDS[2]
+        if ((shortBlock || longBlock) && currentLevel == WarningLevel.SECOND && !isAdmin) {
+            val reason = if (shortBlock) "近 60秒 内请求量已达上限" else "近 10分钟 内累计请求量已达上限"
+            return Pair("[请求最终警告]\n$reason，已被阻止。**请立即停止所有执行请求**，否则将被bot拉黑", true)
+        }
+
         // --- 二次警告判定 ---
         val shortSecond = shortCount >= SHORT_THRESHOLDS[1]
         val longSecond = longCount >= LONG_THRESHOLDS[1]
         if ((shortSecond || longSecond) && currentLevel == WarningLevel.FIRST && !isAdmin) {
             userWarningLevels[userID] = WarningLevel.SECOND
             val msg = if (shortSecond) {
-                "[高频二次警告]\n近 60秒 内请求次数极高。**请暂停所有代码执行请求**，并等待大约 30秒 的时间，以避免被bot拉黑的风险"
+                "[高频二次警告]\n近 60秒 内请求次数极高。**请暂停所有代码执行请求**，并等待 30秒，以避免被bot拉黑的风险"
             } else {
-                "[累计二次警告]\n近 10分钟 内累计请求量过高。**请暂停所有代码执行请求**，并休息大约 5分钟 的时间，以避免被bot拉黑的风险"
+                "[累计二次警告]\n近 10分钟 内累计请求量过高。**请暂停所有代码执行请求**，并休息 几分钟，以避免被bot拉黑的风险"
             }
             return Pair(msg, false)
         }
@@ -111,7 +123,7 @@ object RequestLimiter {
 
     /**
      * 批量执行准入（指令集执行）
-     * - 计入 [count] 次后会触及任一黑名单阈值时整批拒绝，且不记录任何请求（管理员执行跳过此项）
+     * - 计入 [count] 次后会达到任一阻止标准时整批拒绝，且不记录任何请求（管理员执行跳过此项）
      */
     @Synchronized
     fun admitBatch(userID: String, count: Int, now: Long = System.currentTimeMillis()): BatchAdmission {
@@ -121,8 +133,8 @@ object RequestLimiter {
                 val room = minOf(SHORT_THRESHOLDS[2] - 1 - short, LONG_THRESHOLDS[2] - 1 - long).coerceAtLeast(0)
                 return BatchAdmission(
                     false,
-                    "执行失败：本次需执行 $count 个项目，将触发高频请求黑名单，已阻止本次请求，请稍后重试\n" +
-                    "近60秒已请求 $short 次，近10分钟已请求 $long 次，当前最多还能执行 $room 条"
+                    "执行失败：$count 个指令超出高频请求上限，已被阻止，请稍后重试\n" +
+                    "近60秒请求 $short 次，近10分钟请求 $long 次，当前最多执行 $room 条"
                 )
             }
         }

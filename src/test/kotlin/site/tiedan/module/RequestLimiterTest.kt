@@ -78,4 +78,19 @@ class RequestLimiterTest {
         // 默认配置中控制台用户 10000 是管理员
         assertTrue(RequestLimiter.admitBatch("10000", 30, start).admitted)
     }
+
+    @Test
+    @DisplayName("达到阻止标准后阻止执行，被阻止的请求同样计入次数")
+    fun blocksBeforeBlacklist() {
+        val user = newUser()
+        repeat(24) { assertFalse(RequestLimiter.newRequest(user, start).second, "阻止标准之前不应阻止") }
+        for (times in 1..RequestLimiter.BLOCK_TIMES) {
+            val (msg, blocked) = RequestLimiter.newRequest(user, start)
+            assertTrue(blocked, "第 ${24 + times} 次请求应被阻止")
+            assertTrue(msg.contains("阻止"), msg)
+        }
+        // 再请求一次就会拉黑；拉黑会写入插件数据，单元测试中不触发
+        val total = 24 + RequestLimiter.BLOCK_TIMES
+        assertEquals(total to total, RequestLimiter.counts(user, start), "被阻止的请求同样计入次数")
+    }
 }

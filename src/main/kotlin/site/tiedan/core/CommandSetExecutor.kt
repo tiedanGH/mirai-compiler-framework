@@ -95,7 +95,7 @@ object CommandSetExecutor {
             }
             val warning = admission.message.takeIf { it.isNotEmpty() }?.let { "\n\n$it" }.orEmpty()
             val projects = FavoriteManager.mergedProjectText(commands.map { it.project })
-            sendQuoteReply("▶️ 开始执行指令集「$setName」（${slots.size} 条）：$projects$warning")
+            sendQuoteReply("▶️ 执行指令集「$setName」（${slots.size} 条）：$projects$warning")
             // 同一队列内按指令集顺序依次执行，不同队列按顺序启动并同时执行
             val queues = queueGroups(commands.map { it.project }) { lockKeys(it) }
             coroutineScope {
