@@ -41,9 +41,9 @@ object FavoriteManager {
      */
     fun checkAlias(alias: String, projects: Set<String>, otherAliases: Set<String>, setNames: Collection<String>): String? =
         checkNameFormat(alias, "收藏别名") ?: when (alias) {
-            in projects -> "收藏别名不能与项目名称重复：$alias"
+            in projects -> "收藏别名不能与已有项目名称重复"
             in otherAliases -> "当前别名已被您的其他收藏使用"
-            in setNames -> "收藏别名不能与您的指令集名称重复：$alias"
+            in setNames -> "收藏别名不能与您的指令集名称重复"
             else -> null
         }
 
@@ -149,24 +149,36 @@ object FavoriteManager {
 
     /** 设置收藏别名的结果 */
     sealed interface AliasResult {
-        data class Updated(val favorite: FavoriteDao.Favorite, val alias: String?) : AliasResult
+        /** @param added 项目原本不在收藏中，本次先加入了收藏 */
+        data class Updated(val favorite: FavoriteDao.Favorite, val alias: String?, val added: Boolean) : AliasResult
         data class Rejected(val reason: String) : AliasResult
         data object NotFound : AliasResult
     }
 
     /**
      * 设置收藏别名，传 null 清除
+     * - 目标不在收藏中、但是已存在的项目名称或项目别名时，先加入收藏再设置别名；清除别名时不自动收藏
      */
     fun setAlias(userID: String, token: String, alias: String?): AliasResult = Database.transaction { conn ->
         val favorites = FavoriteDao.listFavorites(conn, userID)
-        val target = findFavorite(favorites, token) ?: return@transaction AliasResult.NotFound
+        val existing = findFavorite(favorites, token)
+        val project = if (existing == null && alias != null) {
+            (PastebinData.alias[token] ?: token).takeIf { it in PastebinData.pastebin }
+        } else null
+        if (existing == null && project == null) return@transaction AliasResult.NotFound
         if (alias != null) {
-            val otherAliases = favorites.filter { it.slot != target.slot }.mapNotNullTo(HashSet()) { it.alias }
+            val otherAliases = favorites.filter { it.slot != existing?.slot }.mapNotNullTo(HashSet()) { it.alias }
             checkAlias(alias, PastebinData.pastebin.keys, otherAliases, FavoriteDao.setNames(conn, userID))
                 ?.let { return@transaction AliasResult.Rejected(it) }
         }
+        val target = existing ?: run {
+            val slot = firstFreeSlot(favorites.mapTo(HashSet()) { it.slot })
+                ?: return@transaction AliasResult.Rejected("收藏已达上限 $MAX_FAVORITES 个，无法将 $project 加入收藏")
+            FavoriteDao.addFavorite(conn, userID, slot, project!!)
+            FavoriteDao.Favorite(slot, project, null)
+        }
         FavoriteDao.setAlias(conn, userID, target.slot, alias)
-        AliasResult.Updated(target, alias)
+        AliasResult.Updated(target, alias, added = existing == null)
     }
 
     /* ==================== 指令集 ==================== */
@@ -289,7 +301,7 @@ object FavoriteManager {
     private fun importProblem(conn: Connection, userID: String, setName: String, count: Int, perSetLimit: Int): ImportProblem? {
         if (count == 0) return ImportProblem("分享的指令集中的项目都已不存在，无法导入", nameIssue = false)
         val names = FavoriteDao.setNames(conn, userID)
-        if (setName in names) return ImportProblem("导入名称和您的指令集重名，请指定新名称后重试", nameIssue = true)
+        if (setName in names) return ImportProblem("导入名称与您的指令集「$setName」重名，请指定新名称后重试", nameIssue = true)
         val aliases = FavoriteDao.listFavorites(conn, userID).mapNotNullTo(HashSet()) { it.alias }
         checkSetName(setName, aliases)?.let { return ImportProblem(it, nameIssue = true) }
         if (names.size >= MAX_SETS) {

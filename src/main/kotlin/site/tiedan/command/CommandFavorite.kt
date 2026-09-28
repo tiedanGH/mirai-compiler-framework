@@ -187,13 +187,18 @@ object CommandFavorite : RawCommand(
         when (val result = FavoriteManager.setAlias(userID, token, alias)) {
             is FavoriteManager.AliasResult.Rejected -> sendQuoteReply("设置失败：${result.reason}")
             is FavoriteManager.AliasResult.NotFound -> sendQuoteReply(
-                "未找到收藏：$token\n请使用「${commandPrefix}收藏」查看收藏序号"
+                (if (alias == null) "未找到收藏：$token" else "未找到项目：$token") +
+                "\n请使用「${commandPrefix}收藏」查看收藏序号"
             )
             is FavoriteManager.AliasResult.Updated -> {
                 val target = "#${result.favorite.slot} ${result.favorite.project}"
                 sendQuoteReply(
-                    if (result.alias == null) "已清除 $target 的收藏别名"
-                    else "已将 $target 的收藏别名设为「${result.alias}」\n▶️ 执行：${runHint(result.alias)} [输入]"
+                    when {
+                        result.alias == null -> "已清除 $target 的收藏别名"
+                        result.added -> "⭐ 已收藏 ${result.favorite.project}（#${result.favorite.slot}）\n" +
+                            "已将收藏别名设为「${result.alias}」\n▶️ 执行：${runHint(result.alias)} [输入]"
+                        else -> "已将 $target 的收藏别名设为「${result.alias}」\n▶️ 执行：${runHint(result.alias)} [输入]"
+                    }
                 )
             }
         }
