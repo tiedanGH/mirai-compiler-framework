@@ -121,6 +121,23 @@ class FavoriteDaoTest {
     }
 
     @Test
+    @DisplayName("原位改写指令时 id 与指令集位置不变，改写别人的指令无效")
+    fun updateCommandInPlace() {
+        FavoriteDao.addCommand(conn, "1", "早安", "天气", "北京")
+        FavoriteDao.addCommand(conn, "1", "签到", "签到", "")
+        FavoriteDao.addCommand(conn, "1", "早安", "运势", "")
+        val before = FavoriteDao.listSet(conn, "1", "早安")
+
+        assertFalse(FavoriteDao.updateCommand(conn, "2", before[0].id, "x", ""), "不能改写别人的指令")
+        assertTrue(FavoriteDao.updateCommand(conn, "1", before[0].id, "天气", "第一行\n第二行"))
+
+        val after = FavoriteDao.listSet(conn, "1", "早安")
+        assertEquals(before.map { it.id }, after.map { it.id })
+        assertEquals(listOf("天气" to "第一行\n第二行", "运势" to ""), after.map { it.project to it.input })
+        assertEquals(listOf("早安", "签到"), FavoriteDao.setNames(conn, "1"))
+    }
+
+    @Test
     @DisplayName("指令集改名迁移全部指令且顺序不变，不影响其他指令集与其他用户")
     fun renameSetKeepsOrder() {
         FavoriteDao.addCommand(conn, "1", "早安", "天气", "北京")

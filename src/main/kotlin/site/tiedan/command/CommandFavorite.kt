@@ -7,6 +7,7 @@ import net.mamoe.mirai.console.command.CommandSenderOnMessage
 import net.mamoe.mirai.console.command.RawCommand
 import net.mamoe.mirai.message.data.Image
 import net.mamoe.mirai.message.data.MessageChain
+import net.mamoe.mirai.message.data.PlainText
 import net.mamoe.mirai.message.data.QuoteReply
 import net.mamoe.mirai.message.data.content
 import net.mamoe.mirai.message.data.findIsInstance
@@ -59,6 +60,8 @@ object CommandFavorite : RawCommand(
         Command("f set [指令集]", "收藏 指令集 [指令集]", "查看指令集", 2),
         Command("f set <指令集> add <项目> [输入]", "收藏 指令集 <指令集> 添加 <项目> [输入]", "追加指令（自动创建指令集）", 2),
         Command("f set <指令集> rm <序号>", "收藏 指令集 <指令集> 移除 <序号>", "移除一条指令", 2),
+        Command("f set <指令集> edit <序号> <项目> [输入]", "收藏 指令集 <指令集> 修改 <序号> <项目> [输入]", "修改一条指令", 2),
+        Command("f set <指令集> move <序号> <新序号>", "收藏 指令集 <指令集> 移动 <序号> <新序号>", "调整指令顺序", 2),
         Command("f set <指令集> rename <新名称>", "收藏 指令集 <指令集> 改名 <新名称>", "修改指令集名称", 2),
         Command("f set <指令集> delete", "收藏 指令集 <指令集> 删除", "删除整个指令集", 2),
         Command("f share <指令集>", "收藏 分享 <指令集>", "生成指令集分享码", 2),
@@ -265,6 +268,8 @@ object CommandFavorite : RawCommand(
             null-> showSet(userID, setName)
             "add", "添加"-> addCommand(userID, setName, args)
             "rm", "remove", "移除"-> removeCommand(userID, setName, args)
+            "edit", "修改"-> editCommand(userID, setName, args)
+            "move", "移动"-> moveCommand(userID, setName, args)
             "rename", "改名"-> renameSet(userID, setName, args)
             "delete", "删除"-> deleteSet(userID, setName)
             else-> sendQuoteReply("[参数不匹配]\n请使用「${commandPrefix}f help」来查看指令帮助")
@@ -284,7 +289,11 @@ object CommandFavorite : RawCommand(
         )
     }
 
-    private suspend fun CommandSender.showSet(userID: String, setName: String) {
+    /**
+     * 以图片展示指令集详情
+     * @param caption 附在图片前的说明
+     */
+    private suspend fun CommandSender.showSet(userID: String, setName: String, caption: String? = null) {
         val commands = FavoriteManager.commandSet(userID, setName)
         if (commands.isEmpty()) {
             sendQuoteReply(unknownSetMessage(userID, setName))
@@ -292,29 +301,38 @@ object CommandFavorite : RawCommand(
         }
         val detail = FavoriteManager.buildSetDetail(setName, commands, userThreadLimit)
         val footer = "▶️ 执行：${runHint(setName)}"
-        replyRendered(MarkdownImageGenerator.generateCommandSetHtml(detail, footer), width = "640") {
+        replyRendered(MarkdownImageGenerator.generateCommandSetHtml(detail, footer), width = "640", caption) {
             FavoriteManager.formatSetDetailText(detail) + "\n$footer"
         }
     }
 
-    private suspend fun CommandSender.addCommand(userID: String, setName: String, args: MessageChain) {
-        val token = args[3].content
+    /**
+     * 解析一条指令：第 [projectAt] 个参数为项目，其后的全部内容为输入
+     * @return 项目真名与输入；解析失败时已回复原因并返回 null
+     */
+    private suspend fun CommandSender.parseCommand(args: MessageChain, projectAt: Int): Pair<String, String>? {
+        val token = args[projectAt].content
         val project = PastebinData.alias[token] ?: token
         if (project !in PastebinData.pastebin) {
             val fuzzy = FuzzySearch.fuzzyFind(PastebinData.pastebin, project)
             val suggestion = if (fuzzy.isNotEmpty()) "\n🔍 模糊匹配结果->\n" + fuzzy.take(20).joinToString(" ") else ""
             sendQuoteReply("未知的项目：$token$suggestion")
-            return
+            return null
         }
-        if (args.drop(4).any { it is Image }) {
-            sendQuoteReply("指令集中保存的输入不能包含图片")
-            return
+        if (args.drop(projectAt + 1).any { it is Image }) {
+            sendQuoteReply("指令集中的输入不支持包含图片")
+            return null
         }
-        val input = inputAfter(args, 4)
+        val input = inputAfter(args, projectAt + 1)
         if (input.length > FavoriteManager.MAX_INPUT_LENGTH) {
             sendQuoteReply("输入过长：单条指令的输入不能超过 ${FavoriteManager.MAX_INPUT_LENGTH} 字")
-            return
+            return null
         }
+        return project to input
+    }
+
+    private suspend fun CommandSender.addCommand(userID: String, setName: String, args: MessageChain) {
+        val (project, input) = parseCommand(args, projectAt = 3) ?: return
         when (val result = FavoriteManager.addCommand(userID, setName, project, input, userThreadLimit)) {
             is FavoriteManager.SetAddResult.Rejected -> sendQuoteReply("添加失败：${result.reason}")
             is FavoriteManager.SetAddResult.Added -> sendQuoteReply(buildString {
@@ -344,6 +362,44 @@ object CommandFavorite : RawCommand(
             if (remaining == 0) append("\n指令集已没有指令，随之删除")
         })
     }
+
+    private suspend fun CommandSender.editCommand(userID: String, setName: String, args: MessageChain) {
+        val index = args[3].content.toIntOrNull()
+            ?: return sendQuoteReply("[参数不足] 请输入修改的指令序号\n🔍 查看序号：${commandPrefix}f set $setName")
+        val (project, input) = parseCommand(args, projectAt = 4) ?: return
+        when (val result = FavoriteManager.editCommand(userID, setName, index, project, input)) {
+            is FavoriteManager.SetEditResult.NotFound -> sendQuoteReply(unknownSetMessage(userID, setName))
+            is FavoriteManager.SetEditResult.OutOfRange -> sendQuoteReply(outOfRangeMessage(setName, result))
+            is FavoriteManager.SetEditResult.Edited -> {
+                val preview = if (input.isNotEmpty()) "：${FavoriteManager.inputPreview(input)}" else ""
+                showSet(userID, setName, caption = "✏️ 已修改第 $index 条指令：$project$preview")
+            }
+        }
+    }
+
+    private suspend fun CommandSender.moveCommand(userID: String, setName: String, args: MessageChain) {
+        val from = args[3].content.toIntOrNull()
+        val to = args[4].content.toIntOrNull()
+        if (from == null || to == null) {
+            sendQuoteReply("[参数不足] 请输入原序号与新序号\n🔍 查看序号：${commandPrefix}f set $setName")
+            return
+        }
+        if (from == to) {
+            sendQuoteReply("移动失败：原序号与新序号相同，指令位置没有变化")
+            return
+        }
+        when (val result = FavoriteManager.moveCommand(userID, setName, from, to)) {
+            is FavoriteManager.SetEditResult.NotFound -> sendQuoteReply(unknownSetMessage(userID, setName))
+            is FavoriteManager.SetEditResult.OutOfRange -> sendQuoteReply(outOfRangeMessage(setName, result))
+            is FavoriteManager.SetEditResult.Edited -> showSet(
+                userID, setName, caption = "↕️ 已将第 $from 条指令 ${result.before.project} 移动到第 $to 条"
+            )
+        }
+    }
+
+    private fun outOfRangeMessage(setName: String, result: FavoriteManager.SetEditResult.OutOfRange): String =
+        "指令集「$setName」中没有第 ${result.index} 条指令（共 ${result.size} 条）\n" +
+        "🔍 查看序号：${commandPrefix}f set $setName"
 
     private suspend fun CommandSender.renameSet(userID: String, setName: String, args: MessageChain) {
         val newName = args[3].content
@@ -457,16 +513,17 @@ object CommandFavorite : RawCommand(
 
     /**
      * 渲染为图片回复，渲染或上传失败时退回文字版
+     * @param caption 与图片同一条消息发送的说明，放在图片前
      */
-    private suspend fun CommandSender.replyRendered(html: String, width: String, fallback: () -> String) {
+    private suspend fun CommandSender.replyRendered(html: String, width: String, caption: String? = null, fallback: () -> String) {
         val markdownResult = MarkdownImageGenerator.processMarkdown(name = null, html, width = width)
         val image = markdownResult.file?.takeIf { markdownResult.success }
             ?.let { subject?.uploadTempImage(it) }
         if (image == null) {
             markdownResult.file?.delete()
-            sendQuoteReply(fallback())
+            sendQuoteReply(listOfNotNull(caption, fallback()).joinToString("\n"))
             return
         }
-        sendQuoteReply(image)
+        sendQuoteReply(if (caption == null) image else PlainText("$caption\n") + image)
     }
 }

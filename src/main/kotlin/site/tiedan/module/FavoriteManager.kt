@@ -238,6 +238,48 @@ object FavoriteManager {
             target
         }
 
+    /** 按序号修改或移动指令的结果 */
+    sealed interface SetEditResult {
+        /** @param before 修改或移动前的指令 */
+        data class Edited(val before: FavoriteDao.Command) : SetEditResult
+        /** 指令集中没有第 [index] 条指令，[size] 为当前条数 */
+        data class OutOfRange(val index: Int, val size: Int) : SetEditResult
+        data object NotFound : SetEditResult
+    }
+
+    /**
+     * 原位覆盖指令集中的第 [index] 条指令，其余指令与顺序不变
+     */
+    fun editCommand(userID: String, setName: String, index: Int, project: String, input: String): SetEditResult =
+        Database.transaction { conn ->
+            val commands = FavoriteDao.listSet(conn, userID, setName)
+            checkIndexes(commands, index)?.let { return@transaction it }
+            val target = commands[index - 1]
+            FavoriteDao.updateCommand(conn, userID, target.id, project, input)
+            SetEditResult.Edited(target)
+        }
+
+    /**
+     * 将第 [from] 条指令移动到第 [to] 条，其间的指令依次顺延
+     */
+    fun moveCommand(userID: String, setName: String, from: Int, to: Int): SetEditResult =
+        Database.transaction { conn ->
+            val commands = FavoriteDao.listSet(conn, userID, setName)
+            checkIndexes(commands, from, to)?.let { return@transaction it }
+            val reordered = commands.toMutableList().apply { add(to - 1, removeAt(from - 1)) }
+            commands.zip(reordered).forEach { (row, content) ->
+                if (row.id != content.id) FavoriteDao.updateCommand(conn, userID, row.id, content.project, content.input)
+            }
+            SetEditResult.Edited(commands[from - 1])
+        }
+
+    /** 指令集不存在或序号超出范围时返回对应结果，序号均有效时返回 null */
+    private fun checkIndexes(commands: List<FavoriteDao.Command>, vararg indexes: Int): SetEditResult? {
+        if (commands.isEmpty()) return SetEditResult.NotFound
+        val invalid = indexes.firstOrNull { it !in 1..commands.size } ?: return null
+        return SetEditResult.OutOfRange(invalid, commands.size)
+    }
+
     /** 删除整个指令集，返回删除的指令条数 */
     fun deleteSet(userID: String, setName: String): Int =
         Database.transaction { FavoriteDao.deleteSet(it, userID, setName) }

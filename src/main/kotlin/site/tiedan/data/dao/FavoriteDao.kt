@@ -5,7 +5,8 @@ import java.sql.Connection
 /**
  * # 个人收藏数据访问
  * - 收藏按序号排列，序号固定：移除后空置，其余收藏的序号不变
- * - 指令集由同一用户同名的全部指令构成，按写入先后排列，最后一条移除后指令集随之消失
+ * - 指令集由同一用户同名的全部指令构成，按 id 排列，最后一条移除后指令集随之消失
+ * - 修改与移动指令只改写各行内容，id 不变，指令集在列表中的位置也不变
  *
  * @author tiedanGH
  */
@@ -69,7 +70,7 @@ object FavoriteDao {
 
     /* ==================== 指令集 ==================== */
 
-    /** 用户的全部指令，按写入先后排列 */
+    /** 用户的全部指令，按 id 排列 */
     fun listCommands(conn: Connection, userID: String): List<Command> =
         conn.prepareStatement(
             "SELECT id, set_name, project, input FROM favorite_command WHERE user_id = ? ORDER BY id"
@@ -78,7 +79,7 @@ object FavoriteDao {
             ps.executeQuery().use { rs -> readCommands(rs) }
         }
 
-    /** 指令集中的全部指令，按写入先后排列 */
+    /** 指令集中的全部指令，按 id 排列即为执行顺序 */
     fun listSet(conn: Connection, userID: String, setName: String): List<Command> =
         conn.prepareStatement(
             "SELECT id, set_name, project, input FROM favorite_command WHERE user_id = ? AND set_name = ? ORDER BY id"
@@ -109,6 +110,16 @@ object FavoriteDao {
             ps.executeUpdate()
         }
     }
+
+    /** 原位改写一条指令的项目与输入，id 不变 */
+    fun updateCommand(conn: Connection, userID: String, id: Long, project: String, input: String): Boolean =
+        conn.prepareStatement("UPDATE favorite_command SET project = ?, input = ? WHERE user_id = ? AND id = ?").use { ps ->
+            ps.setString(1, project)
+            ps.setString(2, input)
+            ps.setString(3, userID)
+            ps.setLong(4, id)
+            ps.executeUpdate() > 0
+        }
 
     /** 删除一条指令，只能删除自己的 */
     fun removeCommand(conn: Connection, userID: String, id: Long): Boolean =
