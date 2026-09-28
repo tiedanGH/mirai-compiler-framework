@@ -51,14 +51,14 @@ object PastebinCodeExecutor {
     enum class BlockReason { LOCKED, CENSORED }
 
     /**
-     * 项目在当前场景下是否禁止执行：执行锁定（作者与管理员豁免）、审核中
+     * 项目在当前场景下是否禁止执行：执行锁定（管理员豁免，作者豁免项目锁定）、审核中
      * @param inGroup 本次执行是否发生在群聊
      */
     fun blockReason(name: String, userID: String, inGroup: Boolean): BlockReason? {
         val isOwner = userID == PastebinData.pastebin[name]?.get("userID")
         val isAdmin = PastebinConfig.admins.contains(userID)
         return when {
-            ExecutionLock.isBlocked(name, inGroup) && !isOwner && !isAdmin -> BlockReason.LOCKED
+            ExecutionLock.isBlocked(name, inGroup, isOwner, isAdmin) -> BlockReason.LOCKED
             PastebinData.censorList.contains(name) -> BlockReason.CENSORED
             else -> null
         }
@@ -201,8 +201,8 @@ object PastebinCodeExecutor {
                 }
                 // 只锁本项目及其关联存储库，其他项目不受影响
                 projectLock = StorageManager.acquireProjectLock(name)
-                // 排队期间作者可能已锁定项目，需拦截项目执行
-                if (ExecutionLock.isBlocked(name, subject is Group) && !isOwner && !isAdmin) {
+                // 排队期间作者或管理员可能已锁定项目，需拦截项目执行
+                if (ExecutionLock.isBlocked(name, subject is Group, isOwner, isAdmin)) {
                     sendQuoteReply("[执行取消] 项目被锁定\n${ExecutionLock.blockedMessage(name)}")
                     return
                 }

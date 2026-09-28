@@ -342,11 +342,15 @@ internal suspend fun CommandSender.pbSet(ctx: PbContext) {
             }
         }
         "lock"-> {
+            if (ExecutionLock.of(name) == ExecutionLock.Mode.ADMIN && !isAdmin) {
+                sendQuoteReply("修改失败：此项目已被管理员锁定，无法修改锁定状态，如有疑问请联系管理员")
+                return
+            }
             if (ExecutionLock.isClearWord(content)) {
                 ExecutionLock.set(name, null)
                 content = ExecutionLock.CLEARED_DESC
             } else {
-                val mode = ExecutionLock.parse(content)
+                val mode = ExecutionLock.parse(content, isAdmin)
                 if (mode == null) {
                     sendQuoteReply(
                         "无效的配置项：锁定范围仅支持\n" +

@@ -359,11 +359,12 @@ object FavoriteManager {
 
     data class Badge(val label: String, val kind: BadgeKind)
 
-    /** 锁定范围的简短标签 */
-    fun lockLabel(mode: ExecutionLock.Mode): String = when (mode) {
-        ExecutionLock.Mode.PRIVATE -> "🔒 仅群聊"
-        ExecutionLock.Mode.GROUP -> "🔒 仅私信"
-        ExecutionLock.Mode.ALL -> "🔒 禁止执行"
+    /** 锁定范围的徽标 */
+    fun lockBadge(mode: ExecutionLock.Mode): Badge = when (mode) {
+        ExecutionLock.Mode.PRIVATE -> Badge("🔒 仅群聊", BadgeKind.LOCK)
+        ExecutionLock.Mode.GROUP -> Badge("🔒 仅私信", BadgeKind.LOCK)
+        ExecutionLock.Mode.ALL -> Badge("🔒 禁止执行", BadgeKind.UNRUNNABLE)
+        ExecutionLock.Mode.ADMIN -> Badge("🔒 管理员锁定", BadgeKind.UNRUNNABLE)
     }
 
     /**
@@ -377,15 +378,17 @@ object FavoriteManager {
 
     /**
      * 项目当前的状态徽标，正常时为 null
-     * - 只取优先级最高的一个：已删除 > 审核中 > 无法执行 > 锁定 > 链接停服
+     * - 只取优先级最高的一个：已删除 > 管理员锁定 > 审核中 > 无法执行 > 锁定 > 链接失效
      */
     fun projectBadge(name: String, cached: () -> Set<String>): Badge? {
         val data = PastebinData.pastebin[name] ?: return Badge("已删除", BadgeKind.DELETED)
+        val lock = ExecutionLock.of(name)
+        if (lock == ExecutionLock.Mode.ADMIN) return lockBadge(lock)
         if (name in PastebinData.censorList) return Badge("审核中", BadgeKind.CENSOR)
         val discontinued = data["url"]?.let { PastebinUrlHelper.isDiscontinued(it) } == true
         if (discontinued && name !in cached()) return Badge("⚠️ 无法执行", BadgeKind.UNRUNNABLE)
-        ExecutionLock.of(name)?.let { return Badge(lockLabel(it), BadgeKind.LOCK) }
-        return if (discontinued) Badge("⚠️ 链接停服", BadgeKind.LINK_DOWN) else null
+        lock?.let { return lockBadge(it) }
+        return if (discontinued) Badge("⚠️ 链接失效", BadgeKind.LINK_DOWN) else null
     }
 
     /** 已缓存代码的项目名单 */

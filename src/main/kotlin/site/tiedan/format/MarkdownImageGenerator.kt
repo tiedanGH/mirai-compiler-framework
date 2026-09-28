@@ -642,7 +642,7 @@ object MarkdownImageGenerator {
                 append("<td>${row.alias?.let { "<span class='fav-alias'>${esc(it)}</span>" } ?: dash}</td>")
                 append("<td>${row.projectAlias?.let { esc(it) } ?: dash}</td>")
                 append("<td>${row.language?.let { esc(it) } ?: dash}</td>")
-                append("<td class='wrap'>${favoriteBadge(row.badge)}</td>")
+                append("<td class='status'>${favoriteBadge(row.badge)}</td>")
                 appendLine("</tr>")
             }
             appendLine("</tbody></table>")
@@ -707,7 +707,7 @@ object MarkdownImageGenerator {
                 append("<td class='slot'>${row.index}</td>")
                 append("<td${if (row.deleted) " class='gone'" else ""}>${esc(row.project)}</td>")
                 append("<td class='fav-input'>$input</td>")
-                append("<td class='wrap'>${favoriteBadge(row.badge)}</td>")
+                append("<td class='status'>${favoriteBadge(row.badge)}</td>")
                 appendLine("</tr>")
             }
             appendLine("</tbody></table>")
@@ -729,6 +729,7 @@ object MarkdownImageGenerator {
         .fav-table th{background:#f5f5f5;font-weight:700;font-size:14px}
         .fav-table td.wrap{white-space:normal;word-wrap:break-word}
         .fav-table td.left{text-align:left}
+        .fav-table td.status{padding-left:0;padding-right:0}
         .slot{font-weight:700;font-size:17px}
         .muted{color:#9ca3af}
         .gone{color:#9ca3af;text-decoration:line-through}
