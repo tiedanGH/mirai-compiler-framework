@@ -74,9 +74,9 @@ object PastebinUrlHelper {
     /**
      * 访问已停服网站（[discontinuedUrls]）时追加的迁移提示
      */
-    private val MIGRATION_TIP =
-        "请联系此项目作者将代码迁移至其他网站后重新设置链接\n" +
-        "通过「${commandPrefix}pb support」查看可用网站"
+    private val migrationTip: String
+        get() = "请联系此项目作者将代码迁移至其他网站后重新设置链接\n" +
+            "通过「${commandPrefix}pb support」查看可用网站"
 
     /**
      * 支持的网站 + 已停服的网站，用于需要识别全部历史链接的场景（如代码缓存判断）
@@ -128,7 +128,7 @@ object PastebinUrlHelper {
             url.startsWith("https://pastebin.ubuntu.com/p/") -> {
                 // 网站已停止服务，原始获取方法保留供参考：
                 // HttpUtil.documentSelect(HttpUtil.getDocument(url), "#hidden-content").text()
-                throw ServiceDiscontinuedException("Ubuntu Pastebin 已停止服务，无法再获取代码\n$MIGRATION_TIP")
+                throw ServiceDiscontinuedException("Ubuntu Pastebin 已停止服务，无法再获取代码\n$migrationTip")
             }
 
             url.startsWith("https://glot.io/snippets/") ->
@@ -151,7 +151,7 @@ object PastebinUrlHelper {
             url.startsWith("https://bytebin.lucko.me/") -> {
                 // 网站已废弃且即将永久关闭，原始获取方法保留供参考：
                 // getRawText(url)
-                throw ServiceDiscontinuedException("bytebin 已废弃且即将永久关闭，作者已声明请勿继续使用该服务\n$MIGRATION_TIP")
+                throw ServiceDiscontinuedException("bytebin 已废弃且即将永久关闭，作者已声明请勿继续使用该服务\n$migrationTip")
             }
 
             url.startsWith("https://pastes.dev/") -> getRawText(url.replace("pastes", "api.pastes"))

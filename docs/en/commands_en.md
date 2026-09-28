@@ -70,7 +70,8 @@ View and add pastebin code, profile info, statistics, and configure advanced fea
 | `/pb stats [name]`     | View statistics                         |
 | `/pb list [QueryMode]` | View full list                          |
 | `/pb info <name>`      | View info & run sample                  |
-| `/pb thread`           | Query running and pending processes     | 
+| `/pb thread`           | Query running and pending processes     |
+| `/pb status [invalid]` | View framework status                   |
 
 ### ✏️ Update Pastebin Data
 | Command                                                        | Description                                     |

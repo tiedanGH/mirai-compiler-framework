@@ -79,7 +79,7 @@ object CommandPastebin : RawCommand(
         Command("pb stats [名称]", "pb 统计 [名称]", "查看统计信息", TYPE_INFO),
         Command("pb profile [ID]", "pb 简介 [平台ID]", "查看个人信息", TYPE_INFO),
         Command("pb tag", "pb 标签", "查看标签库与用法", TYPE_INFO),
-        Command("pb status", "pb 状态", "查看框架运行状态", TYPE_INFO),
+        Command("pb status [失效]", "pb 状态 [失效]", "查看框架运行状态", TYPE_INFO),
         Command("pb thread", "pb 进程", "查询运行和等待中的进程", TYPE_INFO),
         Command("pb export <名称> [mail] [邮件地址]", "pb 导出 <名称> [邮件] [邮件地址]", "导出项目代码缓存（临时链接或邮件）", TYPE_INFO),
 

@@ -11,6 +11,7 @@ import site.tiedan.data.dao.StorageDao
 /**
  * # 数据自检
  * - 逐项核对数据库中的存储、代码缓存、项目统计、存储库关联、收藏、指令集，是否都还对应着 `PastebinData` 里真实存在的项目，对不上的称为**孤儿数据**。
+ * - 另外统计**失效项目**：链接指向已停服网站、且本地无代码缓存，已无法执行的项目。
  *
  * 只汇报，不自动清除：这里只负责给出清单，是否清理交由管理员判断。
  *
@@ -53,20 +54,31 @@ object DataAudit {
     }
 
     /**
-     * 渲染为 `#pb status` 中的自检段落
+     * 失效项目：链接指向已停服网站、且本地无代码缓存，已无法执行
      */
-    fun format(result: Result, maxNames: Int = 10): String = buildString {
-        if (result.clean) {
+    fun invalidProjects(): List<String> {
+        val cached by lazy { FavoriteManager.cachedProjects() }
+        return PastebinData.pastebin.keys.filter { FavoriteManager.isDiscontinuedWithoutCache(it) { cached } }
+    }
+
+    /**
+     * 渲染为 `#pb status` 中的自检段落
+     * @param invalidCount 失效项目数量，自检中只显示数量
+     */
+    fun format(result: Result, invalidCount: Int = 0, maxNames: Int = 10): String = buildString {
+        if (result.clean && invalidCount == 0) {
             append("🔍 数据自检：✅")
             return@buildString
         }
-        appendLine("🔍 数据自检：⚠️ ${result.total} 项孤儿数据")
-        val groups = result.groups.filter { it.projects.isNotEmpty() }
-        for ((index, group) in groups.withIndex()) {
+        val summary = listOfNotNull(
+            "${result.total} 项孤儿数据".takeUnless { result.clean },
+            "$invalidCount 个失效项目".takeIf { invalidCount > 0 },
+        )
+        append("🔍 数据自检：⚠️ ${summary.joinToString("，")}")
+        for (group in result.groups.filter { it.projects.isNotEmpty() }) {
             val shown = group.projects.take(maxNames).joinToString("、")
             val more = if (group.projects.size > maxNames) "…等 ${group.projects.size} 项" else ""
-            val line = " · ${group.label}：$shown$more"
-            if (index < groups.lastIndex) appendLine(line) else append(line)
+            append("\n · ${group.label}：$shown$more")
         }
     }
 

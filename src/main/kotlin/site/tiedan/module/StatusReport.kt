@@ -47,7 +47,7 @@ object StatusReport {
                 appendLine(" · 连接：❌ 未初始化，存储相关功能全部不可用")
             }
             appendLine(" · 累计错误：${formatErrors()}")
-            appendLine(DataAudit.format(DataAudit.scan()))
+            appendLine(DataAudit.format(DataAudit.scan(), invalidCount = DataAudit.invalidProjects().size))
             appendLine()
 
             appendLine("⚙️ 运行中")

@@ -207,7 +207,12 @@ internal suspend fun CommandSender.pbStatus(ctx: PbContext) {
     val args = ctx.args
     val userID = ctx.userID
     val isAdmin = ctx.isAdmin
-    if (args.getOrNull(1)?.content != "clean") {
+    val action = args.getOrNull(1)?.content
+    if (action in listOf("invalid", "失效")) {
+        sendQuoteReply(invalidProjectsReport())
+        return
+    }
+    if (action != "clean") {
         sendQuoteReply(StatusReport.generate())
         return
     }
@@ -215,7 +220,7 @@ internal suspend fun CommandSender.pbStatus(ctx: PbContext) {
     if (!isAdmin) throw PermissionDeniedException()
     val result = DataAudit.scan()
     if (result.clean) {
-        sendQuoteReply("🔍 数据自检：✅ 未发现孤儿数据，无需清理")
+        sendQuoteReply("✅ 未发现孤儿数据，无需清理")
         return
     }
     requestUserConfirmation(userID, args.content,
@@ -232,6 +237,26 @@ internal suspend fun CommandSender.pbStatus(ctx: PbContext) {
     val removed = DataAudit.clean(result)
     logger.warning("管理员 $userID 清除了 $removed 项孤儿数据")
     sendQuoteReply("✅ 已清除 $removed 项孤儿数据")
+}
+
+/**
+ * 失效项目清单：任何人可查看，按作者分组列出项目名称
+ * - 失效项目多的作者排在前面，数量相同时按项目添加的先后
+ */
+private fun invalidProjectsReport(): String {
+    val projects = DataAudit.invalidProjects()
+    if (projects.isEmpty()) return "✅ 未发现失效项目"
+    val byAuthor = projects
+        .groupBy { PastebinData.pastebin[it]?.get("author")?.takeIf { author -> author.isNotBlank() } ?: "未知作者" }
+        .entries.sortedByDescending { it.value.size }
+    return buildString {
+        appendLine("⚠️ 失效项目（${projects.size} 个）")
+        appendLine("项目链接指向已停服网站，且本地无代码缓存，已无法执行：")
+        for ((author, names) in byAuthor) {
+            appendLine("· $author（${names.size}）：${names.joinToString("、")}")
+        }
+        append("💡 作者将代码迁移至其他网站后，使用「${commandPrefix}pb set <名称> url <新链接>」重新设置链接即可恢复")
+    }
 }
 
 /** 查询运行和等待中的进程 */
