@@ -37,3 +37,9 @@ Co-Authored-By: <协作模型> <noreply@anthropic.com>
 ### 结尾
 
 保留 `Co-Authored-By` trailer，署名填本次实际使用的模型，不要写死某个版本。
+
+## 版本号规范
+
+- 版本号同时写在 `build.gradle.kts` 的 `version` 与 `MiraiCompilerFramework.kt` 的 `JvmPluginDescription`，两处必须一起修改
+- **小版本**（只变末位，如 `2.3.2` → `2.3.3`）：版本号修改与本次改动放在同一个提交中
+- **大版本**（前两位变化，如 `2.4.0`、`3.0.0`）：版本号修改单独提交，标题为 `chore(release): bump version to <版本号>`
