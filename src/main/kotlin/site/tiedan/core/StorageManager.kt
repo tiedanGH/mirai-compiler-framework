@@ -50,20 +50,21 @@ object StorageManager {
 
     /**
      * 获取存储锁
-     * - 加锁顺序固定为**先项目锁、再按存储库编号升序**，任何路径都不得反向，也不得在持有存储库锁时再去获取项目锁，否则会死锁。
+     * - 加锁顺序固定为**先按名称升序加项目锁、再按存储库编号升序加存储库锁**，任何路径都不得反向，也不得在持有存储库锁时再去获取项目锁，否则会死锁。
      *
-     * @param project 需要锁定的项目，同时会锁定它关联的全部存储库；为 null 时只锁 [extraBuckets]
+     * @param projects 需要锁定的项目，同时会锁定它们关联的全部存储库；为空时只锁 [extraBuckets]
      * @param extraBuckets 额外锁定的存储库，用于关联/解除关联等会改变关联关系的操作
      */
-    private suspend fun acquire(project: String?, extraBuckets: List<Long>): StorageLock {
+    private suspend fun acquire(projects: Collection<String>, extraBuckets: List<Long>): StorageLock {
         val held = mutableListOf<Mutex>()
         try {
-            if (project != null) {
+            val names = projects.distinct().sorted()
+            for (project in names) {
                 val projectMutex = projectLocks.computeIfAbsent(project) { Mutex() }
                 projectMutex.lock()
                 held.add(projectMutex)
             }
-            val linked = project?.let { linkedBucketIds(it) } ?: emptyList()
+            val linked = names.flatMap { linkedBucketIds(it) }
             for (id in (linked + extraBuckets).distinct().sorted()) {
                 val bucketMutex = bucketLocks.computeIfAbsent(id) { Mutex() }
                 bucketMutex.lock()
@@ -81,14 +82,20 @@ object StorageManager {
      * 获取项目锁，以及该项目关联的全部存储库的锁
      * - 收益：不同项目完全并行，只有同项目、或共享同一存储库的项目之间才需要排队。
      */
-    suspend fun acquireProjectLock(name: String): StorageLock = acquire(name, emptyList())
+    suspend fun acquireProjectLock(name: String): StorageLock = acquire(listOf(name), emptyList())
+
+    /**
+     * 一次锁定多个项目，以及它们关联的全部存储库
+     * - 用于指令集同一队列连续执行：整队持有期间，其他执行无法插队
+     */
+    suspend fun acquireProjectsLock(names: Collection<String>): StorageLock = acquire(names, emptyList())
 
     /** 获取单个存储库的锁 */
-    suspend fun acquireBucketLock(id: Long): StorageLock = acquire(null, listOf(id))
+    suspend fun acquireBucketLock(id: Long): StorageLock = acquire(emptyList(), listOf(id))
 
     /** 获取项目锁与指定存储库的锁，用于改变两者关联关系的操作 */
     suspend fun acquireProjectAndBucketLock(name: String, bucketId: Long): StorageLock =
-        acquire(name, listOf(bucketId))
+        acquire(listOf(name), listOf(bucketId))
 
     /** [acquireProjectLock] 的限时版本，超时返回 null */
     suspend fun awaitProjectLock(name: String): StorageLock? =

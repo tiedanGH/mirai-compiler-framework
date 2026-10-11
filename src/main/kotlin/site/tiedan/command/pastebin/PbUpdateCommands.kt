@@ -210,8 +210,8 @@ internal suspend fun CommandSender.pbSet(ctx: PbContext) {
         }
         fetchedCode = preCheckUrl(content, name) ?: return
     }
-    // 改名会搬动存储数据、锁定状态后禁用执行，要等正在执行的进程结束
-    if (option == "name" || option == "lock") {
+    // 改名会搬动存储数据、锁定状态后禁用执行、清空存储会删除数据，都要等正在执行的进程结束
+    if (option == "name" || option == "lock" || willClearStorage(option, content)) {
         ctx.storageLock = lockProject(name) ?: return
     }
     when (option) {
@@ -327,11 +327,11 @@ internal suspend fun CommandSender.pbSet(ctx: PbContext) {
         }
         "hide"-> {
             when (content) {
-                in arrayListOf("enable","on","true","开启")-> {
+                in ON_WORDS-> {
                     content = "隐藏"
                     PastebinData.hiddenUrl.add(name)
                 }
-                in arrayListOf("disable","off","false","关闭")-> {
+                in OFF_WORDS-> {
                     content = "显示"
                     PastebinData.hiddenUrl.remove(name)
                 }
@@ -427,16 +427,16 @@ internal suspend fun CommandSender.pbSet(ctx: PbContext) {
             } else {
                 PastebinData.pastebin[name]?.remove("width")
                 when (paras.getOrNull(1)?.lowercase()) {
-                    in arrayListOf("enable","on","true","开启")-> {
+                    in ON_WORDS-> {
                         content = "$format（开启存储）"
                         PastebinData.pastebin[name]?.set("storage", "true")
                     }
-                    in arrayListOf("disable","off","false","关闭")-> {
+                    in OFF_WORDS-> {
                         content = "$format（关闭存储）"
                         PastebinData.pastebin[name]?.remove("storage")
                         StorageManager.removeProjectStorage(name)
                     }
-                    in arrayListOf("clear","清空")-> {
+                    in CLEAR_WORDS-> {
                         content = "$format（清空存储）"
                         StorageManager.removeProjectStorage(name)
                     }
@@ -445,11 +445,11 @@ internal suspend fun CommandSender.pbSet(ctx: PbContext) {
         }
         "storage"-> {
             when (content) {
-                in arrayListOf("enable","on","true","开启")-> {
+                in ON_WORDS-> {
                     content = "开启"
                     PastebinData.pastebin[name]?.set("storage", "true")
                 }
-                in arrayListOf("disable","off","false","关闭")-> {
+                in OFF_WORDS-> {
                     content = "关闭"
                     PastebinData.pastebin[name]?.remove("storage")
                     if (PastebinData.pastebin[name]?.get("base64") != null) {
@@ -458,7 +458,7 @@ internal suspend fun CommandSender.pbSet(ctx: PbContext) {
                     }
                     StorageManager.removeProjectStorage(name)
                 }
-                in arrayListOf("clear","清空")-> {
+                in CLEAR_WORDS-> {
                     content = "清空"
                     StorageManager.removeProjectStorage(name)
                 }
@@ -470,7 +470,7 @@ internal suspend fun CommandSender.pbSet(ctx: PbContext) {
         }
         "base64"-> {
             when (content) {
-                in arrayListOf("enable","on","true","开启")-> {
+                in ON_WORDS-> {
                     if (PastebinData.pastebin[name]?.get("storage") != "true") {
                         sendQuoteReply("启用失败：此项目未开启存储功能，无法使用输入图片base64功能")
                         return
@@ -478,10 +478,9 @@ internal suspend fun CommandSender.pbSet(ctx: PbContext) {
                     content = "开启"
                     PastebinData.pastebin[name]?.set("base64", "true")
                 }
-                in arrayListOf("disable","off","false","关闭")-> {
+                in OFF_WORDS-> {
                     content = "关闭"
                     PastebinData.pastebin[name]?.remove("base64")
-                    StorageManager.removeProjectStorage(name)
                 }
                 else-> {
                     sendQuoteReply("无效的配置项：请设置 开启/关闭 输入图片转base64")
@@ -522,6 +521,20 @@ internal suspend fun CommandSender.pbSet(ctx: PbContext) {
         sendQuoteReply("${additionalOutput}成功将 $name 的 $option 参数修改为 $content")
     }
     PastebinData.save()
+}
+
+private val ON_WORDS = listOf("enable", "on", "true", "开启")
+private val OFF_WORDS = listOf("disable", "off", "false", "关闭")
+private val CLEAR_WORDS = listOf("clear", "清空")
+
+/**
+ * 本次修改是否会清空项目存储
+ * - 清空时若有进程正在执行，执行结束后会把数据写回，因此必须先等进程结束
+ */
+private fun willClearStorage(option: String, content: String): Boolean = when (option) {
+    "storage" -> content in OFF_WORDS || content in CLEAR_WORDS
+    "format" -> content.split(" ").getOrNull(1)?.lowercase().let { it in OFF_WORDS || it in CLEAR_WORDS }
+    else -> false
 }
 
 /**

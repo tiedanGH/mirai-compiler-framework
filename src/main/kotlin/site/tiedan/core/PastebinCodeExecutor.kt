@@ -76,12 +76,14 @@ object PastebinCodeExecutor {
      * @param userInput 用户输入
      * @param imageUrls 输入图片URL链接
      * @param slot 调用方已登记的进程（指令集执行）
+     * @param lockHeld 调用方已持有本项目及存储库的存储锁（指令集持锁），此处不再加锁
      */
     suspend fun CommandSender.executeMainProcess(
         name: String,
         userInput: String,
         imageUrls: List<String>,
         slot: ThreadInfo? = null,
+        lockHeld: Boolean = false,
     ) {
 
         val userID = getUserPlatformID(this.user?.id) ?: CONSOLE_USER_ID
@@ -191,16 +193,18 @@ object PastebinCodeExecutor {
                 val imageData = Base64Processor.encodeImagesToBase64(imageUrls, encodeBase64)
                 val avatar = MiraiCompilerFramework.getAvatarUrl(numID, platform)
 
-                if (StorageManager.isProjectLocked(name)) {
-                    logger.debug("(${userID})执行$name [存储]进程执行请求等待中...")
-                    val rivals = StorageManager.rivalProjects(name)
-                    val queued = THREADS.count { it.name in rivals }
-                    if (queued >= queueAlertThreshold) {
-                        sendQuoteReply("此项目排队较多（${queued - 1} 个正在等待），等待时间可能较长")
+                if (!lockHeld) {
+                    if (StorageManager.isProjectLocked(name)) {
+                        logger.debug("(${userID})执行$name [存储]进程执行请求等待中...")
+                        val rivals = StorageManager.rivalProjects(name)
+                        val queued = THREADS.count { it.name in rivals }
+                        if (queued >= queueAlertThreshold) {
+                            sendQuoteReply("此项目排队较多（${queued - 1} 个正在等待），等待时间可能较长")
+                        }
                     }
+                    // 只锁本项目及其关联存储库，其他项目不受影响
+                    projectLock = StorageManager.acquireProjectLock(name)
                 }
-                // 只锁本项目及其关联存储库，其他项目不受影响
-                projectLock = StorageManager.acquireProjectLock(name)
                 // 排队期间作者或管理员可能已锁定项目，需拦截项目执行
                 if (ExecutionLock.isBlocked(name, subject is Group, isOwner, isAdmin)) {
                     sendQuoteReply("[执行取消] 项目被锁定\n${ExecutionLock.blockedMessage(name)}")

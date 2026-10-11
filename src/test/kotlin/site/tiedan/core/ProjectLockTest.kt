@@ -1,5 +1,10 @@
 package site.tiedan.core
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.jupiter.api.AfterEach
@@ -15,6 +20,7 @@ import org.junit.jupiter.api.io.TempDir
 import site.tiedan.data.Database
 import site.tiedan.data.dao.BucketDao
 import java.io.File
+import java.util.Collections
 
 /**
  * 项目级并发锁：不同项目并行，同项目或共享存储库时排队
@@ -234,6 +240,53 @@ class ProjectLockTest {
         linkBucket(11L, "他人项目")
 
         assertEquals(setOf("孤立项目"), StorageManager.rivalProjects("孤立项目"))
+    }
+
+    @Test
+    @DisplayName("整队持锁时，同项目的其他执行只能排在整个队列之后")
+    fun queueLockKeepsCommandsConsecutive() {
+        runBlocking {
+            val order = Collections.synchronizedList(mutableListOf<String>())
+            val queue = StorageManager.acquireProjectsLock(listOf("连续项目"))
+            // 其他用户在队列执行中途发起同项目执行
+            val other = launch(Dispatchers.Default) {
+                val lock = StorageManager.acquireProjectLock("连续项目")
+                order.add("其他执行")
+                lock.release()
+            }
+            repeat(3) { i ->
+                delay(50)
+                order.add("第${i + 1}条")
+            }
+            queue.release()
+            other.join()
+            assertEquals(listOf("第1条", "第2条", "第3条", "其他执行"), order)
+        }
+    }
+
+    @Test
+    @DisplayName("一次锁定多个项目时连带锁住关联存储库，相反顺序并发加锁不会死锁")
+    fun multiProjectLockCoversBucketsWithoutDeadlock() {
+        runBlocking {
+            linkBucket(12L, "整队甲")
+            val queue = StorageManager.acquireProjectsLock(listOf("整队乙", "整队甲"))
+            assertTrue(StorageManager.isProjectLocked("整队甲"))
+            assertTrue(StorageManager.isProjectLocked("整队乙"))
+            assertTrue(StorageManager.isBucketLocked(12L), "队列内项目关联的存储库也要锁住")
+            queue.release()
+
+            val acquired = (1..20).map { i ->
+                async(Dispatchers.Default) {
+                    val names = if (i % 2 == 0) listOf("整队甲", "整队乙") else listOf("整队乙", "整队甲")
+                    withTimeoutOrNull(freeMs) {
+                        val lock = StorageManager.acquireProjectsLock(names)
+                        try { delay(5) } finally { lock.release() }
+                        true
+                    }
+                }
+            }.awaitAll()
+            assertTrue(acquired.all { it == true }, "项目锁按名称升序获取，声明顺序相反也不会互相卡死")
+        }
     }
 
     @Test

@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "site.tiedan"
-version = "2.3.2"
+version = "2.3.3"
 
 repositories {
     mavenCentral()

@@ -31,6 +31,7 @@ import site.tiedan.module.RequestLimiter
  * - 整批预检：条数上限、逐条可执行性、进程余量、请求频率，任一不满足整批拒绝，不执行任何指令
  * - 预检通过后一次性登记全部进程，按指令集顺序启动，不同项目同时执行，每条执行完即退还自己的进程
  * - 同名项目、共享存储库的存储项目归入同一队列，队列内按指令集顺序依次执行，先后次序不会错乱
+ * - 含存储项目的队列开始前一次性锁定队列内全部项目，整队执行完毕才释放，其他执行无法插到队列中间
  *
  * @author tiedanGH
  */
@@ -102,19 +103,24 @@ object CommandSetExecutor {
                 for (queue in queues) {
                     // 执行内部有阻塞的网络请求，放到 IO 线程池
                     launch(Dispatchers.IO) {
-                        for (index in queue) {
-                            val command = commands[index]
-                            val slot = slots[index]
-                            try {
-                                executeMainProcess(command.project, command.input, emptyList(), slot)
-                            } catch (e: CancellationException) {
-                                throw e
-                            } catch (e: Throwable) {
-                                // 单条异常不影响其他指令
-                                logger.warning("指令集「$setName」中的 ${command.project} 执行异常", e)
-                            } finally {
-                                THREADS.removeIf { it.id == slot.id }
+                        val queueLock = lockQueue(queue.map { commands[it].project })
+                        try {
+                            for (index in queue) {
+                                val command = commands[index]
+                                val slot = slots[index]
+                                try {
+                                    executeMainProcess(command.project, command.input, emptyList(), slot, lockHeld = queueLock != null)
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Throwable) {
+                                    // 单条异常不影响其他指令
+                                    logger.warning("指令集「$setName」中的 ${command.project} 执行异常", e)
+                                } finally {
+                                    THREADS.removeIf { it.id == slot.id }
+                                }
                             }
+                        } finally {
+                            queueLock?.release()
                         }
                     }
                 }
@@ -147,6 +153,17 @@ object CommandSetExecutor {
             }
         }
         return projects.indices.groupBy { root(it) }.values.toList()
+    }
+
+    /**
+     * 队列中有开启存储的项目时，一次锁定队列内全部项目及其关联的存储库
+     * - 整队持有到最后一条执行完毕，同项目、共享存储库的其他执行排在整个队列之后
+     * @return 队列中没有存储项目时不加锁，返回 null
+     */
+    private suspend fun lockQueue(projects: List<String>): StorageManager.StorageLock? {
+        val distinct = projects.distinct()
+        if (distinct.none { PastebinData.pastebin[it]?.get("storage") == "true" }) return null
+        return StorageManager.acquireProjectsLock(distinct)
     }
 
     /**
