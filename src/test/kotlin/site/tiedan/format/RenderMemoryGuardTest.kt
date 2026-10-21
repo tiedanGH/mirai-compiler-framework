@@ -58,6 +58,19 @@ class RenderMemoryGuardTest {
     }
 
     @Test
+    @DisplayName("单个上限选出全部严格超出的进程，恰好等于上限不算超出")
+    fun overRenderLimitSelectsAllAboveLimit() {
+        val highest = watched(0)
+        val over = watched(0)
+        val exact = watched(0)
+        val under = watched(0)
+        val usages = mapOf(highest to 2048L, over to 1025L, exact to 1024L, under to 512L)
+        // 各进程的单个上限互不影响，同一轮可以同时选出多个
+        assertEquals(mapOf(highest to 2048L, over to 1025L), RenderMemoryGuard.overRenderLimit(usages, 1024L))
+        assertTrue(RenderMemoryGuard.overRenderLimit(mapOf(exact to 1024L, under to 512L), 1024L).isEmpty())
+    }
+
+    @Test
     @DisplayName("终止后记录占用、进程退出，且不再作为候选")
     fun killMarksAndExcludes() {
         val windows = System.getProperty("os.name").lowercase().contains("windows")
@@ -65,8 +78,9 @@ class RenderMemoryGuardTest {
         else ProcessBuilder("sleep", "30").start()
         try {
             val target = RenderMemoryGuard.Watched(process.toHandle(), "测试", 0)
-            target.kill(123L)
+            target.kill(123L, RenderMemoryGuard.KillReason.SYSTEM_LIMIT)
             assertTrue(target.killed)
+            assertEquals(RenderMemoryGuard.KillReason.SYSTEM_LIMIT, target.killReason)
             assertEquals(123L, target.usageAtKill)
             assertTrue(process.waitFor(5, TimeUnit.SECONDS), "进程应已被终止")
             assertTrue(RenderMemoryGuard.eligible(listOf(target), 0, GRACE_MILLIS).isEmpty())

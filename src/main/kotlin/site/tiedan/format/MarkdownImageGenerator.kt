@@ -3,6 +3,7 @@ package site.tiedan.format
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import site.tiedan.config.PastebinConfig
+import site.tiedan.config.SystemConfig
 import site.tiedan.MiraiCompilerFramework
 import site.tiedan.MiraiCompilerFramework.MARKDOWN_MAX_TIME
 import site.tiedan.MiraiCompilerFramework.cacheFolder
@@ -81,7 +82,7 @@ object MarkdownImageGenerator {
                         "--output=${outputFile.path}"
                     ).directory(File(".")).start()
                 }
-                // 整机内存超出安全限制时，由内存守护按占用从高到低依次终止渲染进程
+                // 由内存守护监测：单个渲染超出上限时立即终止，整机超出安全限制时按占用从高到低依次终止
                 val watched = RenderMemoryGuard.watch(process, name)
                 if (!process.waitFor(timeout, TimeUnit.SECONDS)) {
                     process.destroyForcibly()
@@ -95,10 +96,17 @@ object MarkdownImageGenerator {
                 } else if (process.exitValue() != 0) {
                     val endTime = Instant.now()     // 记录结束时间
                     duration = Duration.between(startTime, endTime).toMillis() / 1000.0
-                    if (watched.killed) {
-                        saveErrorRecord(content, "MemoryLimit")
-                        val usage = watched.usageAtKill?.let { "，本次渲染占用 ${it / 1024 / 1024}MB" } ?: ""
-                        return@run MarkdownResult(false, "操作失败：系统内存超出安全限制，按内存占用从高到低中断执行$usage", ceil(duration).toLong())
+                    val usage = watched.usageAtKill?.let { "，本次渲染占用 ${it / 1024 / 1024}MB" } ?: ""
+                    when (watched.killReason) {
+                        RenderMemoryGuard.KillReason.RENDER_LIMIT -> {
+                            saveErrorRecord(content, "RenderMemoryLimit")
+                            return@run MarkdownResult(false, "操作失败：单个渲染进程的内存占用超出上限 ${SystemConfig.renderMemoryLimit}MB，图片生成被中断", ceil(duration).toLong())
+                        }
+                        RenderMemoryGuard.KillReason.SYSTEM_LIMIT -> {
+                            saveErrorRecord(content, "MemoryLimit")
+                            return@run MarkdownResult(false, "操作失败：系统内存超出安全限制，按内存占用从高到低中断执行$usage", ceil(duration).toLong())
+                        }
+                        null -> {}
                     }
                     saveErrorRecord(content, "ProcessError(${process.exitValue()})")
                     if (process.exitValue() == 137) {
