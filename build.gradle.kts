@@ -22,7 +22,7 @@ dependencies {
     implementation("org.apache.tika:tika-core:4.0.0")
     implementation("xyz.cssxsh.baidu:baidu-aip:3.3.2")
     implementation("at.favre.lib:bcrypt:0.10.2")
-    implementation("org.xerial:sqlite-jdbc:3.53.4.0")
+    implementation("org.xerial:sqlite-jdbc:3.54.1.0")
 
     testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.0")
