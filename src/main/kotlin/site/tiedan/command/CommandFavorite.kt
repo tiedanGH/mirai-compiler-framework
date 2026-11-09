@@ -148,7 +148,7 @@ object CommandFavorite : RawCommand(
                 appendLine("已在收藏中：" + result.duplicated.joinToString("、"))
             }
             if (result.overflow.isNotEmpty()) {
-                appendLine("收藏已达上限 ${FavoriteManager.MAX_FAVORITES} 个，未能收藏：" + result.overflow.joinToString("、"))
+                appendLine("收藏已达上限 ${FavoriteManager.maxFavorites} 个，未能收藏：" + result.overflow.joinToString("、"))
             }
             if (result.unknown.isNotEmpty()) {
                 appendLine("未知的项目：" + result.unknown.joinToString("、"))
@@ -208,7 +208,7 @@ object CommandFavorite : RawCommand(
     }
 
     /**
-     * 执行：纯数字按收藏序号，然后先匹配收藏别名，再匹配指令集
+     * 执行：3 位以内的纯数字按收藏序号，然后先匹配收藏别名，再匹配指令集
      */
     private suspend fun CommandSender.run(userID: String, args: MessageChain) {
         val target = args[1].content
@@ -283,7 +283,7 @@ object CommandFavorite : RawCommand(
             return
         }
         sendQuoteReply(
-            "📦 我的指令集（${sets.size}/${FavoriteManager.MAX_SETS}）\n" +
+            "📦 我的指令集（${sets.size}/${FavoriteManager.maxSets}）\n" +
             sets.entries.joinToString("\n") { (name, commands) -> "· $name（${commands.size}/$userThreadLimit 条）" } +
             "\n🔍 查看详情：${commandPrefix}f set <名称>"
         )

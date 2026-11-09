@@ -73,7 +73,7 @@ class FavoriteShareTest {
     @Test
     @DisplayName("超出单人上限时清除最久未重新分享的那个，内容重复的分享不占名额")
     fun perUserLimitEvictsOldest() {
-        val codes = (0 until FavoriteShare.MAX_ACTIVE_PER_USER).map { i ->
+        val codes = (0 until FavoriteShare.maxActivePerUser).map { i ->
             FavoriteShare.share("1", "集$i", listOf(Item("p$i", "")), start + i).code
         }
         // 重新分享第一个，它不再是最久未分享的

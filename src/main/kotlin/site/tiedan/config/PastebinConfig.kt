@@ -20,6 +20,12 @@ internal object PastebinConfig : AutoSavePluginConfig("PastebinConfig") {
     @ValueDescription("最多同时进行的输出进程数（修改需重启生效）")
     val output_limit: Int by value(3)
 
+    @ValueDescription("个人收藏：每人可收藏的项目数上限（最多 999）")
+    val favorite_limit: Int by value(50)
+
+    @ValueDescription("个人收藏：每人可创建的指令集上限")
+    val command_set_limit: Int by value(50)
+
     @ValueDescription("是否启用转发消息（消息过长时收入转发消息，部分框架可能不支持）")
     val enable_ForwardMessage: Boolean by value(true)
 

@@ -1,6 +1,7 @@
 package site.tiedan.module
 
 import site.tiedan.MiraiCompilerFramework.logger
+import site.tiedan.config.PastebinConfig
 import site.tiedan.data.Database
 import site.tiedan.data.PastebinData
 import site.tiedan.data.dao.CodeCacheDao
@@ -10,26 +11,32 @@ import java.sql.Connection
 
 /**
  * # 个人收藏
- * - 收藏：每人最多 [MAX_FAVORITES] 个，序号固定，可设置一个收藏别名
- * - 指令集：每人最多 [MAX_SETS] 个，单个指令集的条数上限为单用户进程上限
+ * - 收藏：每人最多 [maxFavorites] 个，序号固定，可设置一个收藏别名
+ * - 指令集：每人最多 [maxSets] 个，单个指令集的条数上限为单用户进程上限
  *
  * @author tiedanGH
  */
 object FavoriteManager {
 
-    const val MAX_FAVORITES = 50
-    const val MAX_SETS = 20
+    /** 每人可收藏的项目上限；序号最多 999 */
+    val maxFavorites: Int get() = PastebinConfig.favorite_limit.coerceIn(1, 999)
+
+    /** 每人可创建的指令集上限 */
+    val maxSets: Int get() = PastebinConfig.command_set_limit.coerceAtLeast(1)
+
     const val MAX_NAME_LENGTH = 10
     const val MAX_INPUT_LENGTH = 500
 
     /* ==================== 名称校验 ==================== */
 
-    /** 纯数字一律按序号解析：指令集名称、收藏别名的校验与执行分派共用 */
-    fun isIndexToken(token: String): Boolean = token.isNotEmpty() && token.all { it.isDigit() }
+    /**
+     * 3 位以内的纯数字按序号解析，4位及以上的数字可作为名称（指令集名称、收藏别名的校验与执行共用）
+     */
+    fun isIndexToken(token: String): Boolean = token.length in 1..3 && token.all { it.isDigit() }
 
     private fun checkNameFormat(name: String, what: String): String? = when {
         name.length > MAX_NAME_LENGTH -> "${what}不能超过 $MAX_NAME_LENGTH 个字"
-        isIndexToken(name) -> "${what}不能是纯数字"
+        isIndexToken(name) -> "${what}不能是 3 位以内的纯数字"
         else -> null
     }
 
@@ -78,7 +85,7 @@ object FavoriteManager {
     fun favorites(userID: String): List<FavoriteDao.Favorite> = Database.read { FavoriteDao.listFavorites(it, userID) }
 
     /** 最小的空位序号，收藏已满时返回 null */
-    fun firstFreeSlot(usedSlots: Set<Int>): Int? = (1..MAX_FAVORITES).firstOrNull { it !in usedSlots }
+    fun firstFreeSlot(usedSlots: Set<Int>): Int? = (1..maxFavorites).firstOrNull { it !in usedSlots }
 
     /**
      * 批量收藏结果
@@ -173,7 +180,7 @@ object FavoriteManager {
         }
         val target = existing ?: run {
             val slot = firstFreeSlot(favorites.mapTo(HashSet()) { it.slot })
-                ?: return@transaction AliasResult.Rejected("收藏已达上限 $MAX_FAVORITES 个，无法将 $project 加入收藏")
+                ?: return@transaction AliasResult.Rejected("收藏已达上限 $maxFavorites 个，无法将 $project 加入收藏")
             FavoriteDao.addFavorite(conn, userID, slot, project!!)
             FavoriteDao.Favorite(slot, project, null)
         }
@@ -212,8 +219,8 @@ object FavoriteManager {
             if (created) {
                 val aliases = FavoriteDao.listFavorites(conn, userID).mapNotNullTo(HashSet()) { it.alias }
                 checkSetName(setName, aliases)?.let { return@transaction SetAddResult.Rejected(it) }
-                if (names.size >= MAX_SETS) {
-                    return@transaction SetAddResult.Rejected("指令集数量已达上限 $MAX_SETS 个，请先删除不用的指令集")
+                if (names.size >= maxSets) {
+                    return@transaction SetAddResult.Rejected("指令集数量已达上限 $maxSets 个，请先删除不用的指令集")
                 }
             }
             val size = FavoriteDao.listSet(conn, userID, setName).size
@@ -346,8 +353,8 @@ object FavoriteManager {
         if (setName in names) return ImportProblem("导入名称与您的指令集「$setName」重名，请指定新名称后重试", nameIssue = true)
         val aliases = FavoriteDao.listFavorites(conn, userID).mapNotNullTo(HashSet()) { it.alias }
         checkSetName(setName, aliases)?.let { return ImportProblem(it, nameIssue = true) }
-        if (names.size >= MAX_SETS) {
-            return ImportProblem("指令集已达上限 $MAX_SETS 个，请先删除不用的指令集", nameIssue = false)
+        if (names.size >= maxSets) {
+            return ImportProblem("指令集已达上限 $maxSets 个，请先删除不用的指令集", nameIssue = false)
         }
         if (count > perSetLimit) {
             return ImportProblem("该指令集共 $count 条指令，超出单用户进程上限 $perSetLimit 条", nameIssue = false)
@@ -365,7 +372,7 @@ object FavoriteManager {
 
     /**
      * 按快捷前缀后的名称查找自己的收藏别名或指令集，收藏别名优先
-     * - 收藏别名与指令集名称不超过 [MAX_NAME_LENGTH] 个字且不是纯数字，不符合的名称直接跳过，不查询数据库
+     * - 收藏别名与指令集名称不超过 [MAX_NAME_LENGTH] 个字且不是 3 位以内的纯数字，不符合的名称直接跳过，不查询数据库
      * @return 都不匹配时返回 null
      */
     fun resolveQuick(userID: String, token: String): QuickTarget? {
@@ -558,14 +565,14 @@ object FavoriteManager {
      * 卡片的文字版：图片渲染或上传失败时使用
      */
     fun formatCardText(card: Card): String = buildString {
-        appendLine("⭐ 收藏（${card.favorites.size}/$MAX_FAVORITES）")
+        appendLine("⭐ 收藏（${card.favorites.size}/$maxFavorites）")
         if (card.favorites.isEmpty()) appendLine("暂无收藏")
         for (row in card.favorites) {
             append("${row.slot}. ${row.project}")
             row.alias?.let { append("（$it）") }
             appendLine()
         }
-        appendLine("📦 指令集（${card.sets.size}/$MAX_SETS）")
+        appendLine("📦 指令集（${card.sets.size}/$maxSets）")
         if (card.sets.isEmpty()) append("暂无指令集")
         append(card.sets.joinToString("\n") { set ->
             "· ${set.name}（${set.projects.size}/${card.setLimit} 条）：${mergedProjectText(set.projects)}"

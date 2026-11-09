@@ -15,10 +15,14 @@ import site.tiedan.data.dao.FavoriteDao.Favorite
 class FavoriteManagerTest {
 
     @Test
-    @DisplayName("纯数字（含全角数字）一律按序号解析")
+    @DisplayName("3 位以内的纯数字（含全角数字）按序号解析，4 位及以上可作为名称")
     fun indexToken() {
         assertTrue(FavoriteManager.isIndexToken("12"))
         assertTrue(FavoriteManager.isIndexToken("１２"))
+        assertTrue(FavoriteManager.isIndexToken("999"))
+        assertTrue(FavoriteManager.isIndexToken("007"))
+        assertFalse(FavoriteManager.isIndexToken("1000"))
+        assertFalse(FavoriteManager.isIndexToken("2048"))
         assertFalse(FavoriteManager.isIndexToken("a1"))
         assertFalse(FavoriteManager.isIndexToken("-1"))
         assertFalse(FavoriteManager.isIndexToken(""))
@@ -34,7 +38,8 @@ class FavoriteManagerTest {
         assertNull(FavoriteManager.checkAlias("ys", projects, others, sets))
         assertNull(FavoriteManager.checkAlias("无", projects, others, sets), "「无」按普通别名处理")
         assertNotNull(FavoriteManager.checkAlias("12345678901", projects, others, sets), "超过 10 个字")
-        assertNotNull(FavoriteManager.checkAlias("12", projects, others, sets), "纯数字")
+        assertNotNull(FavoriteManager.checkAlias("12", projects, others, sets), "3 位以内的纯数字")
+        assertNull(FavoriteManager.checkAlias("2048", projects, others, sets), "4 位及以上的纯数字可以作为别名")
         assertNotNull(FavoriteManager.checkAlias("猜数字", projects, others, sets), "与项目原名重复")
         assertNotNull(FavoriteManager.checkAlias("cs", projects, others, sets), "与自己的其他收藏别名重复")
         assertNotNull(FavoriteManager.checkAlias("早安", projects, others, sets), "与自己的指令集名称重复")
@@ -46,13 +51,16 @@ class FavoriteManagerTest {
         assertNull(FavoriteManager.checkSetName("早安", setOf("ys")))
         assertNotNull(FavoriteManager.checkSetName("ys", setOf("ys")))
         assertNotNull(FavoriteManager.checkSetName("007", emptySet()))
+        assertNull(FavoriteManager.checkSetName("1000", emptySet()))
         assertNotNull(FavoriteManager.checkSetName("一二三四五六七八九十一", emptySet()))
     }
 
     @Test
     @DisplayName("按序号、收藏别名、项目名称、项目别名查找收藏")
     fun findFavorite() {
-        val favorites = listOf(Favorite(1, "今日运势", "ys"), Favorite(3, "猜数字", null), Favorite(4, "已删除项目", null))
+        val favorites = listOf(
+            Favorite(1, "今日运势", "ys"), Favorite(3, "猜数字", null), Favorite(4, "已删除项目", null), Favorite(5, "2048", null),
+        )
         val projectAlias = mapOf("csz" to "猜数字")
 
         fun find(token: String) = FavoriteManager.findFavorite(favorites, token) { projectAlias[it] }?.slot
@@ -63,6 +71,7 @@ class FavoriteManagerTest {
         assertEquals(3, find("猜数字"))
         assertEquals(3, find("csz"))
         assertEquals(4, find("已删除项目"), "项目已删除时仍可按原名找到")
+        assertEquals(5, find("2048"), "4 位纯数字按项目名称查找，不当作序号")
         assertNull(find("不存在"))
     }
 
@@ -72,7 +81,7 @@ class FavoriteManagerTest {
         assertEquals(1, FavoriteManager.firstFreeSlot(emptySet()))
         assertEquals(2, FavoriteManager.firstFreeSlot(setOf(1, 3, 4)))
         assertEquals(4, FavoriteManager.firstFreeSlot(setOf(1, 2, 3)))
-        assertNull(FavoriteManager.firstFreeSlot((1..FavoriteManager.MAX_FAVORITES).toSet()))
+        assertNull(FavoriteManager.firstFreeSlot((1..FavoriteManager.maxFavorites).toSet()))
     }
 
     @Test

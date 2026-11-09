@@ -633,7 +633,7 @@ object MarkdownImageGenerator {
             appendLine("<div class='fav-wrap'>")
             appendLine("<div class='fav-title'>⭐ 收藏项目和指令集 ⭐</div>")
 
-            appendLine("<div class='fav-sub'>收藏项目（${card.favorites.size}/${FavoriteManager.MAX_FAVORITES}）</div>")
+            appendLine("<div class='fav-sub'>收藏项目（${card.favorites.size}/${FavoriteManager.maxFavorites}）</div>")
             appendLine("<table class='fav-table'>")
             appendLine(
                 "<thead><tr><th class='c-slot'>#</th><th class='c-name'>项目</th><th class='c-author'>作者</th>" +
@@ -655,7 +655,7 @@ object MarkdownImageGenerator {
             }
             appendLine("</tbody></table>")
 
-            appendLine("<div class='fav-sub'>指令集（${card.sets.size}/${FavoriteManager.MAX_SETS}）</div>")
+            appendLine("<div class='fav-sub'>指令集（${card.sets.size}/${FavoriteManager.maxSets}）</div>")
             appendLine("<table class='fav-table'>")
             appendLine("<thead><tr><th class='c-set'>名称</th><th class='c-count'>条数</th><th class='c-projects'>包含项目</th></tr></thead>")
             appendLine("<tbody>")

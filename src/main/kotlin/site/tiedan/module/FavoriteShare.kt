@@ -7,17 +7,17 @@ import java.security.SecureRandom
  * - 分享时保存指令集的快照，只存在内存中：[TTL_MILLIS] 后过期，机器人重启后失效
  * - 内容完全相同的快照共用同一个分享码（只比较指令内容），重复分享时重新计时并更新名称
  * - 过期后仍可导入最后一次，导入后删除；新建分享时会先清理全部过期分享
- * - 每人最多同时保留 [MAX_ACTIVE_PER_USER] 个分享码，超出时清除最久未重新分享的那个
+ * - 每人最多同时保留 [maxActivePerUser] 个分享码，超出时清除最久未重新分享的那个
  *
  * @author tiedanGH
  */
 object FavoriteShare {
 
-    /** 分享码有效期 */
+    /** 分享码有效期（24 小时） */
     const val TTL_MILLIS = 24 * 60 * 60 * 1000L
 
-    /** 单个用户同时有效的分享码上限 */
-    const val MAX_ACTIVE_PER_USER = FavoriteManager.MAX_SETS
+    /** 单个用户同时有效的分享码上限，与指令集上限一致 */
+    val maxActivePerUser: Int get() = FavoriteManager.maxSets
 
     private const val CODE_LENGTH = 6
 
@@ -61,8 +61,9 @@ object FavoriteShare {
             return renewed
         }
         val own = byCode.values.filter { it.creatorID == userID }
-        if (own.size >= MAX_ACTIVE_PER_USER) {
-            own.sortedBy { it.expiresAt }.take(own.size - MAX_ACTIVE_PER_USER + 1).forEach(::remove)
+        val limit = maxActivePerUser
+        if (own.size >= limit) {
+            own.sortedBy { it.expiresAt }.take(own.size - limit + 1).forEach(::remove)
         }
         val code = generateSequence { newCode() }.first { it !in byCode }
         val snapshot = Snapshot(code, setName, userID, items, now + TTL_MILLIS)
